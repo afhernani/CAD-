@@ -1,0 +1,18 @@
+[workspace]
+name = "CAD+"
+version = "0.1.0"
+description = "Aplicación CAD en C++20 con SFML"
+authors = ["Hernani <afhernani@gmail.com>"]
+channels = ["conda-forge"]
+platforms = ["linux-64"]
+
+[tasks]
+# Tarea para compilar y ejecutar
+build = "cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
+run = "./build/CAD+"
+dev = { cmd = "cmake --build build && ./build/CAD+", depends-on = ["build"] }
+
+[dependencies]
+cxx-compiler = ">=1.7.0"
+cmake = ">=3.28.0"
+sfml = "2.6.*"

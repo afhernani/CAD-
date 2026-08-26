@@ -1,0 +1,36 @@
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+# Directorio de compilación de CMake
+build/
+
+# Entorno de Pixi
+.pixi/
+
+# Archivos binarios y ejecutables
+*.exe
+*.o
+*.so
+*.a
+*.dylib
+CAD+
+CAD+.exe
+
+# Archivos de configuración de IDE
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
+
+# Fuentes (opcional, si no quieres subir la fuente arial.ttf)
+# assets/*.ttf
+
+# Logs
+*.log

@@ -1,0 +1,19 @@
+
+---
+
+### 🔧 Paso 2: Añadirlo a Git y hacer el commit
+
+Ahora que tienes el `README.md` (y el `.gitignore` que creamos antes), vamos a hacer el commit inicial. Ejecuta esto en tu terminal:
+
+```bash
+# Asegúrate de estar en la raíz del proyecto
+cd ~/github/cad_cpp
+
+# Añadir todos los archivos al índice de Git
+git add .
+
+# Hacer el primer commit
+git commit -m "feat: Initial commit - CAD+ v0.5 core structure, command line, zoom/pan and snaps"
+
+# Ver el estado (deberías ver que todo está limpio)
+git status
