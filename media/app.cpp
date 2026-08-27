@@ -17,7 +17,7 @@ namespace cad {
         window_.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "CAD+ v0.4", sf::Style::Close | sf::Style::Resize);
         // window_.setFramerateLimit(60);
         // SOLUCIÓN: Forzar posición explícita
-        window_.setPosition(sf::Vector2i(100, 100));
+        window_.setPosition(sf::Vector2i(100, 800));
         window_.setVerticalSyncEnabled(false);  // Desactivar vsync explícitamente
         // DIAGNÓSTICO:
         std::cout << "Ventana creada. Tamaño: " 

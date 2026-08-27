@@ -1,6 +1,8 @@
 #pragma once
 #include "document.hpp"
 #include <string>
+#include <optional>    // para manejar valores que pueden no existir
+#include <string_view> // c++17/20 para vistars de cadenas sin copia
 
 namespace cad {
 
@@ -22,12 +24,13 @@ namespace cad {
         Point2D lastPoint; // Guarda el último punto para cálculos relativos
 
         // Procesa el texto que el usuario escribe y pulsa Enter
-        void processInput(const std::string& input);
+        void processInput(std::string_view input);
 
     private:
-        void executeCommand(const std::string& cmd);
-        void processCoordinate(const std::string& coordStr);
-        Point2D parseCoordinate(const std::string& str);
+        void executeCommand(std::string_view cmd);
+        void processCoordinate(std::string_view coordStr);
+        // <-- CAMBIO: Devuelve std::optional y es const
+        [[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
     };
 
 } // namespace cad

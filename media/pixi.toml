@@ -7,11 +7,10 @@ channels = ["conda-forge"]
 platforms = ["linux-64", "win-64"]
 
 [tasks]
-build = "cmake -B build -G \"Visual Studio 16 2019\" -A x64 && cmake --build build --config Release"
-dev = { cmd = "cmake --build build --config Release && ./build/Release/CAD+.exe", depends-on = ["build"] }
-
-[activation.env]
-CMAKE_GENERATOR = "Visual Studio 16 2019"
+# Tarea para compilar y ejecutar
+build = "cmake -B build -DCMAKE_BUILD_TYPE=Release && cmake --build build"
+run = "./build/CAD+"
+dev = { cmd = "cmake --build build && ./build/CAD+", depends-on = ["build"] }
 
 [dependencies]
 cxx-compiler = ">=1.7.0"
