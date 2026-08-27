@@ -78,12 +78,14 @@ namespace cad {
                 bool isInCanvas = (my >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) && 
                                 my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT));
                 
-                // Cambiar cursor según la zona
-                if (cursorsLoaded_) {
-                    if (isInCanvas) {
-                        window_.setMouseCursor(transparentCursor_);  // Cursor invisible
-                    } else {
-                        window_.setMouseCursor(arrowCursor_);        // Flecha normal
+                
+                // Ocultar/mostrar cursor del sistema según la zona
+                if (isInCanvas) {
+                    window_.setMouseCursorVisible(false);  // Desactivar cursor completamente en el canvas
+                } else {
+                    window_.setMouseCursorVisible(true);   // Restaurar cursor fuera del canvas
+                    if (cursorsLoaded_) {
+                        window_.setMouseCursor(arrowCursor_);  // Asegurar flecha normal
                     }
                 }
                 
