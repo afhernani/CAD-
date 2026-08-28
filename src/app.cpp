@@ -269,32 +269,27 @@ namespace cad {
     }
 
     void App::drawEntities() {
-        for (const auto& l : engine_.doc.lines) {
-            sf::Vertex pts[] = {
-                sf::Vertex(worldToScreen(l.p1.x, l.p1.y), sf::Color::White),
-                sf::Vertex(worldToScreen(l.p2.x, l.p2.y), sf::Color::White)
-            };
-            window_.draw(pts, 2, sf::Lines);
-        }
+        auto w2s = [this](double x, double y) {
+            return worldToScreen(x, y);
+        };
 
-        for (const auto& c : engine_.doc.circles) {
-            sf::CircleShape shape(c.radius * viewScale_);
-            shape.setFillColor(sf::Color::Transparent);
-            shape.setOutlineColor(sf::Color::White);
-            shape.setOutlineThickness(1.f);
-            shape.setOrigin(c.radius * viewScale_, c.radius * viewScale_);
-            shape.setPosition(worldToScreen(c.center.x, c.center.y));
-            window_.draw(shape);
+        // Iterar sobre todas las entidades de forma polimórfica
+        for (const auto& entity : engine_.doc.entities) {
+            const Layer* layer = engine_.doc.getLayer(entity->layerName);
+            if (!layer || !layer->visible || layer->frozen) continue;
+            
+            // Llamada polimórfica: cada entidad sabe cómo dibujarse
+            entity->draw(window_, w2s, layer->color, viewScale_);
         }
-        // Dibujar marcador de Object Snap
+        
+        // Marcador de Object Snap
         if (isSnapped_) {
             sf::Vector2f screenPos = worldToScreen(snappedPoint_.x, snappedPoint_.y);
-            
             sf::RectangleShape marker(sf::Vector2f(8.f, 8.f));
             marker.setFillColor(sf::Color::Transparent);
             marker.setOutlineColor(sf::Color::Yellow);
             marker.setOutlineThickness(1.5f);
-            marker.setOrigin(4.f, 4.f); // Centrar el marcador en el punto
+            marker.setOrigin(4.f, 4.f);
             marker.setPosition(screenPos);
             window_.draw(marker);
         }
@@ -468,31 +463,31 @@ namespace cad {
     void App::findSnap() {
         isSnapped_ = false;
         
-        // El radio de snap en unidades del mundo. 
-        // Usamos 10.0f / viewScale_ para que el área de "imán" sea siempre de unos 10 píxeles en pantalla,
-        // sin importar cuánto zoom hagamos.
         float snapRadiusPixels = 10.0f;
         float snapRadiusWorld = snapRadiusPixels / viewScale_;
         float snapDistSq = snapRadiusWorld * snapRadiusWorld;
 
-        // Revisar todas las líneas del documento
-        for (const auto& line : engine_.doc.lines) {
-            // Comprobar punto final 1 (p1)
-            float dx = currentMouseWorldPos_.x - line.p1.x;
-            float dy = currentMouseWorldPos_.y - line.p1.y;
-            if ((dx * dx + dy * dy) < snapDistSq) {
-                isSnapped_ = true;
-                snappedPoint_ = line.p1;
-                return; // Ya encontramos un snap, no hace falta seguir buscando
-            }
+        // Recorremos todas las entidades polimórficamente
+        for (const auto& entity : engine_.doc.entities) {
+            // Intentamos convertir la entidad a una Línea
+            if (const auto* line = dynamic_cast<const Line*>(entity.get())) {
+                // Comprobar punto final 1 (p1)
+                float dx1 = currentMouseWorldPos_.x - line->p1.x;
+                float dy1 = currentMouseWorldPos_.y - line->p1.y;
+                if ((dx1 * dx1 + dy1 * dy1) < snapDistSq) {
+                    isSnapped_ = true;
+                    snappedPoint_ = line->p1;
+                    return;
+                }
 
-            // Comprobar punto final 2 (p2)
-            dx = currentMouseWorldPos_.x - line.p2.x;
-            dy = currentMouseWorldPos_.y - line.p2.y;
-            if ((dx * dx + dy * dy) < snapDistSq) {
-                isSnapped_ = true;
-                snappedPoint_ = line.p2;
-                return;
+                // Comprobar punto final 2 (p2)
+                float dx2 = currentMouseWorldPos_.x - line->p2.x;
+                float dy2 = currentMouseWorldPos_.y - line->p2.y;
+                if ((dx2 * dx2 + dy2 * dy2) < snapDistSq) {
+                    isSnapped_ = true;
+                    snappedPoint_ = line->p2;
+                    return;
+                }
             }
         }
     }

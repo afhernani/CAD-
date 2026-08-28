@@ -3,26 +3,26 @@
 #include <sstream>
 #include <iostream>
 #include <cmath>
-#include <numbers>     // <-- NUEVO: C++20 para constantes matemáticas
-#include <stdexcept>   // <-- NUEVO: Para capturar excepciones de std::stod
-
+#include <numbers>
+#include <stdexcept>
 
 namespace cad {
 
-    void Engine::processInput(std::string_view input) { // <-- CAMBIO: string_view
-        // string_view no tiene .erase(), así que hacemos una copia local solo para limpiar
+    void Engine::processInput(std::string_view input) {
         std::string cleanInput(input);
         cleanInput.erase(0, cleanInput.find_first_not_of(' '));
         cleanInput.erase(cleanInput.find_last_not_of(' ') + 1);
 
         if (currentMode == Mode::IDLE) {
             executeCommand(cleanInput);
+        } else if (currentMode == Mode::LAYER_COMMAND) {
+            processLayerCommand(cleanInput);
         } else {
             processCoordinate(cleanInput);
         }
     }
 
-    void Engine::executeCommand(std::string_view cmd) { // <-- CAMBIO: string_view
+    void Engine::executeCommand(std::string_view cmd) {
         std::string upperCmd(cmd);
         std::transform(upperCmd.begin(), upperCmd.end(), upperCmd.begin(), ::toupper);
 
@@ -36,28 +36,87 @@ namespace cad {
         }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
             doc.clear();
-            lastPoint = {0.0, 0.0}; // <-- MEJORA: Inicialización explícita
+            lastPoint = {0.0, 0.0};
             statusMessage = "Dibujo borrado.";
         }
         else if (upperCmd == "AXIS" || upperCmd == "EJES") {
             statusMessage = "Usa el boton en la barra de herramientas para activar/desactivar ejes";
+        }
+        else if (upperCmd == "LA" || upperCmd == "LAYER" || upperCmd == "CAPA") {
+            currentMode = Mode::LAYER_COMMAND;
+            statusMessage = "CAPA | ON <nombre> | OFF <nombre> | NEW <nombre> | SET <nombre> | LIST";
         }
         else {
             statusMessage = "Comando desconocido: " + std::string(cmd);
         }
     }
 
-    void Engine::processCoordinate(std::string_view coordStr) { // <-- CAMBIO: string_view
-        // <-- CAMBIO CRÍTICO: Ahora recibimos un optional
+    void Engine::processLayerCommand(std::string_view input) {
+        std::string upperInput(input);
+        std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+        
+        std::istringstream iss(upperInput);
+        std::string subCmd;
+        std::string layerName;
+        
+        iss >> subCmd;
+        iss >> layerName;
+
+        if (subCmd == "NEW" || subCmd == "NUEVA") {
+            if (!layerName.empty()) {
+                doc.addLayer(layerName);
+                statusMessage = "Capa '" + layerName + "' creada.";
+            } else {
+                statusMessage = "Error: Especifica un nombre para la nueva capa.";
+            }
+        }
+        else if (subCmd == "SET" || subCmd == "ACTUAL") {
+            if (!layerName.empty() && doc.layers.find(layerName) != doc.layers.end()) {
+                doc.setCurrentLayer(layerName);
+                statusMessage = "Capa actual: '" + layerName + "'.";
+            } else {
+                statusMessage = "Error: Capa no encontrada o nombre vacío.";
+            }
+        }
+        else if (subCmd == "ON" || subCmd == "ENCENDER") {
+            if (!layerName.empty()) {
+                doc.setLayerVisibility(layerName, true);
+                statusMessage = "Capa '" + layerName + "' activada.";
+            } else {
+                statusMessage = "Error: Especifica el nombre de la capa.";
+            }
+        }
+        else if (subCmd == "OFF" || subCmd == "APAGAR") {
+            if (!layerName.empty()) {
+                doc.setLayerVisibility(layerName, false);
+                statusMessage = "Capa '" + layerName + "' desactivada.";
+            } else {
+                statusMessage = "Error: Especifica el nombre de la capa.";
+            }
+        }
+        else if (subCmd == "LIST" || subCmd == "LISTA") {
+            std::string list = "Capas: ";
+            for (const auto& pair : doc.layers) {
+                list += pair.first + (pair.second.isCurrent ? " (Actual) " : " ");
+            }
+            statusMessage = list;
+        }
+        else {
+            statusMessage = "Subcomando no reconocido. Usa: NEW, SET, ON, OFF, LIST";
+        }
+        
+        currentMode = Mode::IDLE;
+    }
+
+    void Engine::processCoordinate(std::string_view coordStr) {
         auto p = parseCoordinate(coordStr);
 
-        // BLINDAJE: Si el parsing falló (devolvió nullopt), cancelamos la operación
         if (!p.has_value()) {
-            currentMode = Mode::IDLE; // Reseteamos el modo para que el usuario pueda intentar de nuevo
+            currentMode = Mode::IDLE;
             return;
         }
 
-        lastPoint = p.value(); // Desempaquetamos el valor con seguridad
+        lastPoint = p.value();
 
         if (currentMode == Mode::DRAW_LINE) {
             if (statusMessage.find("primer punto") != std::string::npos) {
@@ -65,7 +124,11 @@ namespace cad {
                 statusMessage = "LINEA | Especificar siguiente punto:";
             } else {
                 tempPoint2 = lastPoint;
-                doc.lines.push_back({tempPoint1, tempPoint2});
+                auto newLine = std::make_unique<Line>();
+                newLine->p1 = tempPoint1;
+                newLine->p2 = tempPoint2;
+                newLine->layerName = doc.currentLayerName;
+                doc.addEntity(std::move(newLine));
                 currentMode = Mode::IDLE;
                 statusMessage = "Listo";
             }
@@ -78,16 +141,21 @@ namespace cad {
                 double dx = lastPoint.x - tempPoint1.x;
                 double dy = lastPoint.y - tempPoint1.y;
                 double radius = std::sqrt(dx * dx + dy * dy);
-                doc.circles.push_back({tempPoint1, radius});
+                
+                auto newCircle = std::make_unique<Circle>();
+                newCircle->center = tempPoint1;
+                newCircle->radius = radius;
+                newCircle->layerName = doc.currentLayerName;
+                doc.addEntity(std::move(newCircle));
+                
                 currentMode = Mode::IDLE;
                 statusMessage = "Listo";
             }
         }
     }
 
-    // <-- CAMBIO: Devuelve optional y es const
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
-        Point2D p{0.0, 0.0}; // <-- MEJORA: Inicialización designada/clara
+        Point2D p{0.0, 0.0};
         std::string_view s = str;
         bool isRelative = false;
 
@@ -95,21 +163,17 @@ namespace cad {
             return std::nullopt;
         }
 
-        // 1. Detectar si es relativa (@)
         if (s[0] == '@') {
             isRelative = true;
             s = s.substr(1);
         }
 
         try {
-            // 2. Detectar si es polar (<)
             size_t anglePos = s.find('<');
             if (anglePos != std::string_view::npos) {
-                // std::stod requiere std::string, así que convertimos el string_view temporalmente
                 double dist = std::stod(std::string(s.substr(0, anglePos)));
                 double angleDeg = std::stod(std::string(s.substr(anglePos + 1)));
                 
-                // <-- CAMBIO C++20: Usamos std::numbers::pi en lugar de M_PI
                 double angleRad = angleDeg * std::numbers::pi / 180.0;
                 double dx = dist * std::cos(angleRad);
                 double dy = dist * std::sin(angleRad);
@@ -122,7 +186,6 @@ namespace cad {
                     p.y = dy;
                 }
             }
-            // 3. Si es cartesiana (x,y)
             else {
                 size_t commaPos = s.find(',');
                 if (commaPos != std::string_view::npos) {
@@ -142,7 +205,6 @@ namespace cad {
                 }
             }
         } 
-        // <-- CAMBIO CRÍTICO: Capturamos las excepciones para evitar crashes
         catch (const std::invalid_argument&) {
             statusMessage = "Error: Formato de coordenada inválido.";
             return std::nullopt;
@@ -152,7 +214,7 @@ namespace cad {
             return std::nullopt;
         }
 
-        return p; // Si todo salió bien, devolvemos el punto válido
+        return p;
     }
 
 } // namespace cad

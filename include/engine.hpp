@@ -9,7 +9,8 @@ namespace cad {
     enum class Mode {
         IDLE,           // Esperando un comando
         DRAW_LINE,      // Esperando puntos para una línea
-        DRAW_CIRCLE     // Esperando centro y radio
+        DRAW_CIRCLE,     // Esperando centro y radio
+        LAYER_COMMAND // Nuevo modo para gestionar subcomandos de capa
     };
 
     class Engine {
@@ -29,6 +30,7 @@ namespace cad {
     private:
         void executeCommand(std::string_view cmd);
         void processCoordinate(std::string_view coordStr);
+        void processLayerCommand(std::string_view input); // Nuevo método
         // <-- CAMBIO: Devuelve std::optional y es const
         [[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
     };
