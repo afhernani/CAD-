@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>    // para manejar valores que pueden no existir
 #include <string_view> // c++17/20 para vistars de cadenas sin copia
+#include <vector>
 
 namespace cad {
 
@@ -10,6 +11,9 @@ namespace cad {
         IDLE,           // Esperando un comando
         DRAW_LINE,      // Esperando puntos para una línea
         DRAW_CIRCLE,     // Esperando centro y radio
+        DRAW_ARC,
+        DRAW_POLYLINE,
+        DRAW_POLYGON,
         LAYER_COMMAND // Nuevo modo para gestionar subcomandos de capa
     };
 
@@ -23,6 +27,17 @@ namespace cad {
         Point2D tempPoint1;
         Point2D tempPoint2;
         Point2D lastPoint; // Guarda el último punto para cálculos relativos
+
+        // Estado específico para Polilínea
+        std::vector<Point2D> tempPolylinePoints;
+
+        // Estado específico para Polígono
+        Point2D tempPolygonCenter;
+        int tempPolygonSides = 0;
+
+        // Estado específico para Arco
+        double tempArcRadius = 0.0;
+        double tempArcStartAngle = 0.0;
 
         // Procesa el texto que el usuario escribe y pulsa Enter
         void processInput(std::string_view input);

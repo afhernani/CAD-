@@ -34,19 +34,6 @@ namespace cad {
             currentMode = Mode::DRAW_CIRCLE;
             statusMessage = "CIRCULO | Especificar centro:";
         }
-        else if (upperCmd == "A" || upperCmd == "ARC" || upperCmd == "ARCO") {
-            currentMode = Mode::DRAW_ARC;
-            statusMessage = "ARCO | Especificar centro:";
-        }
-        else if (upperCmd == "PL" || upperCmd == "POLILINEA") {
-            currentMode = Mode::DRAW_POLYLINE;
-            tempPolylinePoints.clear();
-            statusMessage = "POLILINEA | Especificar primer punto (C=Cerrar, U=Deshacer):";
-        }
-        else if (upperCmd == "POL" || upperCmd == "POLIGONO") {
-            currentMode = Mode::DRAW_POLYGON;
-            statusMessage = "POLIGONO | Especificar centro:";
-        }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
             doc.clear();
             lastPoint = {0.0, 0.0};
@@ -122,46 +109,15 @@ namespace cad {
     }
 
     void Engine::processCoordinate(std::string_view coordStr) {
-        // Comandos especiales para Polilínea antes de parsear coordenadas
-        if (currentMode == Mode::DRAW_POLYLINE) {
-            std::string upperStr(coordStr);
-            std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
-            
-            if (upperStr == "C" || upperStr == "CLOSE" || upperStr == "CERRAR") {
-                if (tempPolylinePoints.size() >= 2) {
-                    tempPolylinePoints.push_back(tempPolylinePoints.front()); // Cerrar forma
-                    auto newPoly = std::make_unique<Polyline>();
-                    newPoly->points = tempPolylinePoints;
-                    newPoly->layerName = doc.currentLayerName;
-                    doc.addEntity(std::move(newPoly));
-                    statusMessage = "Polilínea cerrada.";
-                }
-                tempPolylinePoints.clear();
-                currentMode = Mode::IDLE;
-                return;
-            }
-            if (upperStr == "U" || upperStr == "UNDO") {
-                if (!tempPolylinePoints.empty()) {
-                    tempPolylinePoints.pop_back();
-                    statusMessage = "Último punto de polilínea eliminado.";
-                }
-                return;
-            }
-        }
-
         auto p = parseCoordinate(coordStr);
+
         if (!p.has_value()) {
-            // Si falla el parseo en modos especiales, no salir inmediatamente para permitir comandos de texto
-            if (currentMode != Mode::DRAW_POLYLINE) {
-                currentMode = Mode::IDLE;
-            }
+            currentMode = Mode::IDLE;
             return;
         }
 
         lastPoint = p.value();
-        double inputValue = p.value().x; // Usamos X como valor escalar para radios/ángulos/lados
 
-        // --- LÍNEA ---
         if (currentMode == Mode::DRAW_LINE) {
             if (statusMessage.find("primer punto") != std::string::npos) {
                 tempPoint1 = lastPoint;
@@ -177,16 +133,20 @@ namespace cad {
                 statusMessage = "Listo";
             }
         }
-        // --- CÍRCULO ---
         else if (currentMode == Mode::DRAW_CIRCLE) {
             if (statusMessage.find("centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
                 statusMessage = "CIRCULO | Especificar radio (número) o punto en el borde:";
             } else {
+                // NUEVO: Detectar si es un radio directo o una coordenada
                 std::string input(coordStr);
                 try {
                     double radius = std::stod(input);
-                    if (input.find(',') == std::string::npos && input.find('@') == std::string::npos && input.find('<') == std::string::npos) {
+                    // Si no hay comas ni símbolos de coordenada, es un radio directo
+                    if (input.find(',') == std::string::npos && 
+                        input.find('@') == std::string::npos && 
+                        input.find('<') == std::string::npos) {
+                        // Radio directo
                         auto newCircle = std::make_unique<Circle>();
                         newCircle->center = tempPoint1;
                         newCircle->radius = radius;
@@ -196,8 +156,11 @@ namespace cad {
                         statusMessage = "Círculo creado con radio: " + std::to_string(radius);
                         return;
                     }
-                } catch (...) {}
+                } catch (...) {
+                    // No es un número, continuar con cálculo de distancia
+                }
                 
+                // Calcular radio como distancia entre centro y punto
                 double dx = lastPoint.x - tempPoint1.x;
                 double dy = lastPoint.y - tempPoint1.y;
                 double radius = std::sqrt(dx * dx + dy * dy);
@@ -211,65 +174,6 @@ namespace cad {
                 currentMode = Mode::IDLE;
                 statusMessage = "Listo";
             }
-        }
-        // --- ARCO ---
-        else if (currentMode == Mode::DRAW_ARC) {
-            if (statusMessage.find("centro") != std::string::npos) {
-                tempPoint1 = lastPoint;
-                statusMessage = "ARCO | Especificar radio (número):";
-            } 
-            else if (statusMessage.find("radio") != std::string::npos) {
-                tempArcRadius = inputValue;
-                statusMessage = "ARCO | Especificar ángulo de inicio (grados, 0=Este):";
-            }
-            else if (statusMessage.find("inicio") != std::string::npos) {
-                tempArcStartAngle = inputValue;
-                statusMessage = "ARCO | Especificar ángulo final (grados):";
-            }
-            else {
-                double endAngle = inputValue;
-                auto newArc = std::make_unique<Arc>();
-                newArc->center = tempPoint1;
-                newArc->radius = tempArcRadius;
-                newArc->startAngle = tempArcStartAngle;
-                newArc->endAngle = endAngle;
-                newArc->layerName = doc.currentLayerName;
-                doc.addEntity(std::move(newArc));
-                
-                currentMode = Mode::IDLE;
-                statusMessage = "Arco creado.";
-            }
-        }
-        // --- POLÍGONO ---
-        else if (currentMode == Mode::DRAW_POLYGON) {
-            if (statusMessage.find("centro") != std::string::npos) {
-                tempPolygonCenter = lastPoint;
-                statusMessage = "POLIGONO | Escribe el número de lados (ej: 6):";
-            }
-            else if (statusMessage.find("lados") != std::string::npos) {
-                tempPolygonSides = static_cast<int>(inputValue);
-                if (tempPolygonSides < 3) tempPolygonSides = 3;
-                statusMessage = "POLIGONO | Especificar radio (número):";
-            }
-            else {
-                double radius = inputValue;
-                auto newPoly = std::make_unique<Polygon>();
-                newPoly->center = tempPolygonCenter;
-                newPoly->sides = tempPolygonSides;
-                newPoly->radius = radius;
-                newPoly->layerName = doc.currentLayerName;
-                doc.addEntity(std::move(newPoly));
-                
-                currentMode = Mode::IDLE;
-                statusMessage = "Polígono creado.";
-            }
-        }
-        // --- POLILÍNEA ---
-        else if (currentMode == Mode::DRAW_POLYLINE) {
-            tempPolylinePoints.push_back(lastPoint);
-            statusMessage = "POLILINEA | Siguiente punto (C=Cerrar, U=Deshacer):";
-            // Nota: No creamos la entidad aún, esperamos a que el usuario cierre o cancele.
-            // Para visualizarla mientras se dibuja, habría que añadir lógica de "entidad temporal" en App.
         }
     }
 
@@ -319,7 +223,6 @@ namespace cad {
                         p.y = y;
                     }
                 } else {
-                    // Si es un solo número, lo ponemos en X (útil para radios/ángulos)
                     p.x = std::stod(std::string(s));
                     p.y = 0.0;
                 }

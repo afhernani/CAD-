@@ -39,4 +39,30 @@ namespace cad {
                  const sf::Color& color, float viewScale) const override;
     };
 
+    class Arc : public Entity {
+    public:
+        Point2D center;
+        double radius = 0.0;
+        double startAngle = 0.0; // en grados
+        double endAngle = 0.0;   // en grados
+        void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
+                  const sf::Color& color, float viewScale) const override;
+    };
+
+    class Polyline : public Entity {
+    public:
+        std::vector<Point2D> points;
+        void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
+                  const sf::Color& color, float viewScale) const override;
+    };
+
+    class Polygon : public Entity {
+    public:
+        Point2D center;
+        int sides = 3;
+        double radius = 0.0;
+        void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
+                  const sf::Color& color, float viewScale) const override;
+    };
+
 } // namespace cad

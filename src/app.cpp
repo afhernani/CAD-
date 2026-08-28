@@ -489,6 +489,23 @@ namespace cad {
                     return;
                 }
             }
+            else if (const auto* circle = dynamic_cast<const Circle*>(entity.get())) {
+                // Snap al centro del círculo
+                float dx = currentMouseWorldPos_.x - circle->center.x;
+                float dy = currentMouseWorldPos_.y - circle->center.y;
+                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = circle->center; return; }
+            }
+            else if (const auto* arc = dynamic_cast<const Arc*>(entity.get())) {
+                float dx = currentMouseWorldPos_.x - arc->center.x;
+                float dy = currentMouseWorldPos_.y - arc->center.y;
+                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = arc->center; return; }
+            }
+            else if (const auto* poly = dynamic_cast<const Polygon*>(entity.get())) {
+                float dx = currentMouseWorldPos_.x - poly->center.x;
+                float dy = currentMouseWorldPos_.y - poly->center.y;
+                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = poly->center; return; }
+            }
+            // Polyline requeriría iterar sobre sus points, lo añadimos si lo necesitas.
         }
     }
 
