@@ -138,6 +138,29 @@ namespace cad {
                 tempPoint1 = lastPoint;
                 statusMessage = "CIRCULO | Especificar radio (o punto en el borde):";
             } else {
+                // NUEVO: Detectar si es un radio directo o una coordenada
+                std::string input(coordStr);
+                try {
+                    double radius = std::stod(input);
+                    // Si no hay comas ni símbolos de coordenada, es un radio directo
+                    if (input.find(',') == std::string::npos && 
+                        input.find('@') == std::string::npos && 
+                        input.find('<') == std::string::npos) {
+                        // Radio directo
+                        auto newCircle = std::make_unique<Circle>();
+                        newCircle->center = tempPoint1;
+                        newCircle->radius = radius;
+                        newCircle->layerName = doc.currentLayerName;
+                        doc.addEntity(std::move(newCircle));
+                        currentMode = Mode::IDLE;
+                        statusMessage = "Círculo creado con radio: " + std::to_string(radius);
+                        return;
+                    }
+                } catch (...) {
+                    // No es un número, continuar con cálculo de distancia
+                }
+
+
                 double dx = lastPoint.x - tempPoint1.x;
                 double dy = lastPoint.y - tempPoint1.y;
                 double radius = std::sqrt(dx * dx + dy * dy);
