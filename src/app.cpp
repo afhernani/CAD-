@@ -164,7 +164,20 @@ namespace cad {
                     }
                     // En la sección de clic en barra de menú
                     else if (mx >= 280 && mx <= 320) {
-                        engine_.processInput("HELP");
+                        // Clic en botón de ayuda
+                        std::string helpText = engine_.getHelpForTopic("");
+                        commandHistory_.push_back("HELP");
+                        std::string line;
+                        for (char c : helpText) {
+                            if (c == '\n') {
+                                if (!line.empty()) commandHistory_.push_back(line);
+                                line.clear();
+                            } else {
+                                line += c;
+                            }
+                        }
+                        if (!line.empty()) commandHistory_.push_back(line);
+                        engine_.statusMessage = "Ayuda mostrada";
                     }
                 }
                 // B) Clic en el Canvas
@@ -181,36 +194,75 @@ namespace cad {
             // --- ESCRITURA EN LÍNEA DE COMANDOS ---
             if (event.type == sf::Event::TextEntered && isTyping_) {
                 if (event.text.unicode == 13) { // Enter
-                    // Guardar en historial antes de procesar (aunque esté vacío)
-                    if (!inputBuffer_.empty()) {
+                    // Detectar si es comando HELP
+                    std::string upperInput(inputBuffer_);
+                    std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+                    
+                    bool isHelpCommand = (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?") ||
+                                        (upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ");
+                    
+                    if (isHelpCommand) {
+                        // Extraer el tema (si existe)
+                        std::string topic = "";
+                        size_t spacePos = inputBuffer_.find(' ');
+                        if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
+                            topic = inputBuffer_.substr(spacePos + 1);
+                        }
+                        
+                        // Obtener texto de ayuda del engine
+                        std::string helpText = engine_.getHelpForTopic(topic);
+                        
+                        // Añadir el comando al historial
                         commandHistory_.push_back(inputBuffer_);
+                        
+                        // Dividir el texto de ayuda en líneas y añadir cada una al historial
+                        std::string line;
+                        for (char c : helpText) {
+                            if (c == '\n') {
+                                if (!line.empty()) {
+                                    commandHistory_.push_back(line);
+                                }
+                                line.clear();
+                            } else {
+                                line += c;
+                            }
+                        }
+                        if (!line.empty()) {
+                            commandHistory_.push_back(line);
+                        }
+                        
+                        // Limitar historial
                         if (commandHistory_.size() > 100) {
-                            commandHistory_.erase(commandHistory_.begin());
+                            int excess = commandHistory_.size() - 100;
+                            commandHistory_.erase(commandHistory_.begin(), 
+                                                commandHistory_.begin() + excess);
+                        }
+                        
+                        engine_.statusMessage = "Ayuda mostrada";
+                    }
+                    else {
+                        // Comando normal
+                        engine_.processInput(inputBuffer_);
+                        if (!inputBuffer_.empty()) {
+                            commandHistory_.push_back(inputBuffer_);
+                            if (commandHistory_.size() > 100) {
+                                commandHistory_.erase(commandHistory_.begin());
+                            }
                         }
                     }
                     
-                    // Enviar al engine (incluso si está vacío, para terminar polilínea)
-                    engine_.processInput(inputBuffer_);
-                    if (!inputBuffer_.empty()) {
-                        commandHistory_.push_back(inputBuffer_);
-                        if (commandHistory_.size() > 100) {
-                            commandHistory_.erase(commandHistory_.begin());
-                        }
-                    }
                     inputBuffer_.clear();
                     commandScrollOffset_ = 0;
                 } 
                 else if (event.text.unicode == 8) { // Backspace
                     if (!inputBuffer_.empty()) inputBuffer_.pop_back();
                 } 
-                // else if (event.text.unicode < 128) {
-                //     inputBuffer_ += static_cast<char>(event.text.unicode);
-                // }
                 else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
-                    // SOLO caracteres ASCII imprimibles (espacio a ~)
+                    // SOLO caracteres ASCII imprimibles
                     inputBuffer_ += static_cast<char>(event.text.unicode);
                 }
             }
+
             // --- TECLA ESCAPE: Cancelar comando ---
             if (event.type == sf::Event::KeyPressed && 
                 event.key.code == sf::Keyboard::Escape) {

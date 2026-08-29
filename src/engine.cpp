@@ -55,7 +55,7 @@ namespace cad {
                 if (upperClean.size() > 5) {
                     topic = cleanInput.substr(5); // Mantener case original para el tema
                 }
-                showHelp(topic);
+                getHelpText(topic);
                 return;
             }
         }
@@ -124,10 +124,11 @@ namespace cad {
             statusMessage = "CAPA | ON <nombre> | OFF <nombre> | NEW <nombre> | SET <nombre> | LIST";
         }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
-            // Si hay un argumento después de HELP, mostrar ayuda específica
-            // Por simplicidad, si el comando es solo "HELP", mostrar general
-            // Si es "HELP L", el usuario debe escribirlo en dos pasos o usamos processInput
-            showHelp("");
+            std::string helpText = getHelpText("");
+            // Aquí necesitamos pasar el texto a App para que lo muestre
+            // Opción simple: usar statusMessage para confirmación
+            statusMessage = "Ayuda mostrada en ventana de comandos";
+            // Nota: Necesitamos una forma de comunicar esto a App
         }
         else {
             statusMessage = "Comando desconocido: " + std::string(cmd);
@@ -467,183 +468,119 @@ namespace cad {
         return p;
     }
 
-    void Engine::showHelp(std::string_view topic) {
+    std::string Engine::getHelpText(std::string_view topic) {
         std::string upperTopic(topic);
         std::transform(upperTopic.begin(), upperTopic.end(), upperTopic.begin(), ::toupper);
-        
-        // Limpiar espacios
         upperTopic.erase(0, upperTopic.find_first_not_of(' '));
         upperTopic.erase(upperTopic.find_last_not_of(' ') + 1);
 
-        // Si no hay tema, mostrar ayuda general
+        std::ostringstream oss;
+        oss << "\n========================================\n";
+        oss << "  CAD+ v0.4 - SISTEMA DE AYUDA\n";
+        oss << "========================================\n\n";
+
         if (upperTopic.empty()) {
-            statusMessage = "AYUDA: Comandos disponibles: L, C, A, PL, POL, LA, Z, AXIS, HELP. Usa HELP <comando> para detalles.";
-            std::cout << "\n========================================" << std::endl;
-            std::cout << "  CAD+ v0.4 - SISTEMA DE AYUDA" << std::endl;
-            std::cout << "========================================\n" << std::endl;
+            oss << "COMANDOS DE DIBUJO:\n";
+            oss << "  L, LINEA      - Dibujar línea\n";
+            oss << "  C, CIRCULO    - Dibujar círculo\n";
+            oss << "  A, ARCO       - Dibujar arco\n";
+            oss << "  PL, POLILINEA - Dibujar polilínea\n";
+            oss << "  POL, POLIGONO - Dibujar polígono regular\n\n";
             
-            std::cout << "COMANDOS DE DIBUJO:" << std::endl;
-            std::cout << "  L, LINEA      - Dibujar línea" << std::endl;
-            std::cout << "  C, CIRCULO    - Dibujar círculo" << std::endl;
-            std::cout << "  A, ARCO       - Dibujar arco" << std::endl;
-            std::cout << "  PL, POLILINEA - Dibujar polilínea" << std::endl;
-            std::cout << "  POL, POLIGONO - Dibujar polígono regular\n" << std::endl;
+            oss << "COMANDOS DE EDICIÓN:\n";
+            oss << "  Z, BORRAR     - Borrar todo el dibujo\n";
+            oss << "  ESC           - Cancelar comando actual\n\n";
             
-            std::cout << "COMANDOS DE EDICIÓN:" << std::endl;
-            std::cout << "  Z, BORRAR     - Borrar todo el dibujo" << std::endl;
-            std::cout << "  ESC           - Cancelar comando actual\n" << std::endl;
+            oss << "COMANDOS DE CAPAS:\n";
+            oss << "  LA, LAYER     - Gestionar capas (NEW, SET, ON, OFF, LIST)\n\n";
             
-            std::cout << "COMANDOS DE CAPAS:" << std::endl;
-            std::cout << "  LA, LAYER, CAPA - Gestionar capas" << std::endl;
-            std::cout << "    Subcomandos: NEW, SET, ON, OFF, LIST\n" << std::endl;
+            oss << "COMANDOS DE VISTA:\n";
+            oss << "  AXIS, EJES    - Activar/desactivar ejes\n";
+            oss << "  Rueda ratón   - Zoom\n";
+            oss << "  Clic derecho  - Desplazar vista (Pan)\n\n";
             
-            std::cout << "COMANDOS DE VISTA:" << std::endl;
-            std::cout << "  AXIS, EJES    - Activar/desactivar ejes" << std::endl;
-            std::cout << "  Rueda ratón   - Zoom" << std::endl;
-            std::cout << "  Clic derecho  - Desplazar vista (Pan)\n" << std::endl;
+            oss << "AYUDA:\n";
+            oss << "  HELP <comando> - Detalles de un comando\n";
+            oss << "  Ejemplo: HELP L, HELP LA\n\n";
             
-            std::cout << "SISTEMA DE COORDENADAS:" << std::endl;
-            std::cout << "  x,y           - Coordenadas absolutas" << std::endl;
-            std::cout << "  @dx,dy        - Coordenadas relativas" << std::endl;
-            std::cout << "  @dist<ang     - Coordenadas polares" << std::endl;
-            std::cout << "  numero        - Valor escalar (radio, ángulo, lados)\n" << std::endl;
-            
-            std::cout << "AYUDA ESPECÍFICA:" << std::endl;
-            std::cout << "  HELP <comando> - Mostrar detalles de un comando" << std::endl;
-            std::cout << "  Ejemplo: HELP L, HELP LA, HELP POL\n" << std::endl;
-            
-            std::cout << "========================================\n" << std::endl;
-            return;
+            oss << "========================================\n";
+            return oss.str();
         }
 
-        // Ayuda específica por comando
+        // Ayuda específica (ejemplos abreviados)
         if (upperTopic == "L" || upperTopic == "LINE" || upperTopic == "LINEA") {
-            std::cout << "\n--- COMANDO: LINEA (L) ---" << std::endl;
-            std::cout << "Dibuja una línea recta entre dos puntos.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  1. Escribe: L" << std::endl;
-            std::cout << "  2. Especifica primer punto (coordenada o clic)" << std::endl;
-            std::cout << "  3. Especifica segundo punto" << std::endl;
-            std::cout << "  4. La línea se crea automáticamente\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  L -> 0,0 -> 100,0     (línea de 100 unidades horizontal)" << std::endl;
-            std::cout << "  L -> 0,0 -> @50,30    (línea relativa)" << std::endl;
-            std::cout << "  L -> 0,0 -> @100<45   (línea polar: 100 unidades a 45°)\n" << std::endl;
-            statusMessage = "Ayuda: LINEA - Dibuja línea entre dos puntos";
+            oss << "--- COMANDO: LINEA (L) ---\n";
+            oss << "Dibuja una línea recta entre dos puntos.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: L\n";
+            oss << "  2. Especifica primer punto\n";
+            oss << "  3. Especificar segundo punto\n\n";
+            oss << "Ejemplos:\n";
+            oss << "  L -> 0,0 -> 100,0\n";
+            oss << "  L -> 0,0 -> @50,30\n";
+            return oss.str();
         }
         else if (upperTopic == "C" || upperTopic == "CIRCLE" || upperTopic == "CIRCULO") {
-            std::cout << "\n--- COMANDO: CIRCULO (C) ---" << std::endl;
-            std::cout << "Dibuja un círculo especificando centro y radio.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  1. Escribe: C" << std::endl;
-            std::cout << "  2. Especifica centro (coordenada o clic)" << std::endl;
-            std::cout << "  3. Especifica radio de dos formas:" << std::endl;
-            std::cout << "     - Número directo: 50 (radio = 50 unidades)" << std::endl;
-            std::cout << "     - Punto en el borde: clic o coordenada\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  C -> 0,0 -> 50        (círculo centro (0,0), radio 50)" << std::endl;
-            std::cout << "  C -> 0,0 -> 100,0     (círculo centro (0,0), radio 100)\n" << std::endl;
-            statusMessage = "Ayuda: CIRCULO - Dibuja círculo con centro y radio";
+            oss << "--- COMANDO: CIRCULO (C) ---\n";
+            oss << "Dibuja un círculo especificando centro y radio.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: C\n";
+            oss << "  2. Especifica centro\n";
+            oss << "  3. Especifica radio (número o punto)\n\n";
+            oss << "Ejemplos:\n";
+            oss << "  C -> 0,0 -> 50\n";
+            oss << "  C -> 0,0 -> 100,0\n";
+            return oss.str();
         }
         else if (upperTopic == "A" || upperTopic == "ARC" || upperTopic == "ARCO") {
-            std::cout << "\n--- COMANDO: ARCO (A) ---" << std::endl;
-            std::cout << "Dibuja un arco especificando centro, radio y ángulos.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  1. Escribe: A" << std::endl;
-            std::cout << "  2. Especifica centro" << std::endl;
-            std::cout << "  3. Especifica radio (número o punto)" << std::endl;
-            std::cout << "  4. Especifica ángulo de inicio (grados, 0°=Este)" << std::endl;
-            std::cout << "  5. Especifica ángulo final (grados)\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  A -> 0,0 -> 50 -> 0 -> 180    (semicírculo superior)" << std::endl;
-            std::cout << "  A -> 0,0 -> 100 -> 90 -> 270  (semicírculo izquierdo)\n" << std::endl;
-            std::cout << "Nota: Los ángulos van en sentido antihorario desde el eje X positivo." << std::endl;
-            statusMessage = "Ayuda: ARCO - Dibuja arco con centro, radio y ángulos";
+            oss << "--- COMANDO: ARCO (A) ---\n";
+            oss << "Dibuja un arco especificando centro, radio y ángulos.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: A\n";
+            oss << "  2. Especifica centro\n";
+            oss << "  3. Especifica radio\n";
+            oss << "  4. Especifica ángulo inicio (grados)\n";
+            oss << "  5. Especifica ángulo final (grados)\n\n";
+            oss << "Ejemplo: A -> 0,0 -> 50 -> 0 -> 180\n";
+            return oss.str();
         }
         else if (upperTopic == "PL" || upperTopic == "POLILINEA") {
-            std::cout << "\n--- COMANDO: POLILINEA (PL) ---" << std::endl;
-            std::cout << "Dibuja una secuencia de segmentos conectados.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  1. Escribe: PL" << std::endl;
-            std::cout << "  2. Especifica puntos sucesivos" << std::endl;
-            std::cout << "  3. Termina de una de estas formas:" << std::endl;
-            std::cout << "     - Enter vacío: termina polilínea abierta" << std::endl;
-            std::cout << "     - C (Cerrar): cierra la polilínea" << std::endl;
-            std::cout << "     - U (Deshacer): elimina último punto\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  PL -> 0,0 -> 100,0 -> 100,100 -> C    (triángulo cerrado)" << std::endl;
-            std::cout << "  PL -> 0,0 -> 50,0 -> 50,50 -> Enter   (polilínea abierta)\n" << std::endl;
-            statusMessage = "Ayuda: POLILINEA - Dibuja secuencia de segmentos";
+            oss << "--- COMANDO: POLILINEA (PL) ---\n";
+            oss << "Dibuja una secuencia de segmentos conectados.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: PL\n";
+            oss << "  2. Especifica puntos sucesivos\n";
+            oss << "  3. Termina: Enter (abierta) o C (cerrar)\n\n";
+            oss << "Ejemplo: PL -> 0,0 -> 100,0 -> 100,100 -> C\n";
+            return oss.str();
         }
         else if (upperTopic == "POL" || upperTopic == "POLIGONO") {
-            std::cout << "\n--- COMANDO: POLIGONO (POL) ---" << std::endl;
-            std::cout << "Dibuja un polígono regular especificando centro, lados y radio.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  1. Escribe: POL" << std::endl;
-            std::cout << "  2. Especifica centro" << std::endl;
-            std::cout << "  3. Escribe número de lados (mínimo 3)" << std::endl;
-            std::cout << "  4. Especifica radio (número o punto)\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  POL -> 0,0 -> 6 -> 50     (hexágono, radio 50)" << std::endl;
-            std::cout << "  POL -> 0,0 -> 4 -> 100    (cuadrado, radio 100)\n" << std::endl;
-            statusMessage = "Ayuda: POLIGONO - Dibuja polígono regular";
+            oss << "--- COMANDO: POLIGONO (POL) ---\n";
+            oss << "Dibuja un polígono regular.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: POL\n";
+            oss << "  2. Especifica centro\n";
+            oss << "  3. Escribe número de lados\n";
+            oss << "  4. Especifica radio\n\n";
+            oss << "Ejemplo: POL -> 0,0 -> 6 -> 50\n";
+            return oss.str();
         }
         else if (upperTopic == "LA" || upperTopic == "LAYER" || upperTopic == "CAPA") {
-            std::cout << "\n--- COMANDO: CAPAS (LA) ---" << std::endl;
-            std::cout << "Gestiona las capas del dibujo.\n" << std::endl;
-            std::cout << "Subcomandos:" << std::endl;
-            std::cout << "  LA NEW <nombre>    - Crear nueva capa" << std::endl;
-            std::cout << "  LA SET <nombre>    - Establecer capa actual" << std::endl;
-            std::cout << "  LA ON <nombre>     - Activar visibilidad de capa" << std::endl;
-            std::cout << "  LA OFF <nombre>    - Desactivar visibilidad de capa" << std::endl;
-            std::cout << "  LA LIST            - Listar todas las capas\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  LA NEW Muros       - Crea capa 'Muros'" << std::endl;
-            std::cout << "  LA SET Muros       - Activa 'Muros' como capa actual" << std::endl;
-            std::cout << "  LA OFF Muros       - Oculta la capa 'Muros'" << std::endl;
-            std::cout << "  LA LIST            - Muestra: 0 (Actual) Muros\n" << std::endl;
-            std::cout << "Nota: Las entidades nuevas se crean en la capa actual." << std::endl;
-            statusMessage = "Ayuda: CAPAS - Gestión de capas del dibujo";
-        }
-        else if (upperTopic == "Z" || upperTopic == "BORRAR") {
-            std::cout << "\n--- COMANDO: BORRAR (Z) ---" << std::endl;
-            std::cout << "Elimina TODAS las entidades del dibujo.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  Escribe: Z" << std::endl;
-            std::cout << "  El dibujo se limpia completamente.\n" << std::endl;
-            std::cout << "⚠️  ADVERTENCIA: Esta acción no se puede deshacer." << std::endl;
-            std::cout << "  Usa con precaución.\n" << std::endl;
-            statusMessage = "Ayuda: BORRAR - Elimina todo el dibujo";
-        }
-        else if (upperTopic == "AXIS" || upperTopic == "EJES") {
-            std::cout << "\n--- COMANDO: EJES (AXIS) ---" << std::endl;
-            std::cout << "Activa o desactiva la visualización de los ejes cartesianos.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  Escribe: AXIS" << std::endl;
-            std::cout << "  O usa el botón en la barra de herramientas.\n" << std::endl;
-            std::cout << "Los ejes muestran:" << std::endl;
-            std::cout << "  - Eje X en rojo (50 unidades)" << std::endl;
-            std::cout << "  - Eje Y en verde (50 unidades)" << std::endl;
-            std::cout << "  - Origen en blanco\n" << std::endl;
-            statusMessage = "Ayuda: EJES - Activa/desactiva ejes cartesianos";
-        }
-        else if (upperTopic == "HELP" || upperTopic == "AYUDA") {
-            std::cout << "\n--- COMANDO: AYUDA (HELP) ---" << std::endl;
-            std::cout << "Muestra información sobre los comandos disponibles.\n" << std::endl;
-            std::cout << "Uso:" << std::endl;
-            std::cout << "  HELP              - Lista general de comandos" << std::endl;
-            std::cout << "  HELP <comando>    - Detalles de un comando específico\n" << std::endl;
-            std::cout << "Ejemplos:" << std::endl;
-            std::cout << "  HELP              - Muestra todos los comandos" << std::endl;
-            std::cout << "  HELP L            - Ayuda sobre LINEA" << std::endl;
-            std::cout << "  HELP LA           - Ayuda sobre CAPAS" << std::endl;
-            std::cout << "  HELP POL          - Ayuda sobre POLIGONO\n" << std::endl;
-            statusMessage = "Ayuda: HELP - Sistema de ayuda";
+            oss << "--- COMANDO: CAPAS (LA) ---\n";
+            oss << "Gestiona las capas del dibujo.\n\n";
+            oss << "Subcomandos:\n";
+            oss << "  LA NEW <nombre>    - Crear nueva capa\n";
+            oss << "  LA SET <nombre>    - Establecer capa actual\n";
+            oss << "  LA ON <nombre>     - Activar visibilidad\n";
+            oss << "  LA OFF <nombre>    - Desactivar visibilidad\n";
+            oss << "  LA LIST            - Listar capas\n\n";
+            oss << "Ejemplo: LA NEW Muros\n";
+            return oss.str();
         }
         else {
-            std::cout << "\n⚠️  Comando no reconocido: " << upperTopic << std::endl;
-            std::cout << "Usa HELP para ver la lista de comandos disponibles.\n" << std::endl;
-            statusMessage = "Comando no encontrado. Usa HELP para ver disponibles.";
+            oss << "Comando no reconocido: " << topic << "\n";
+            oss << "Usa HELP para ver comandos disponibles.\n";
+            return oss.str();
         }
     }
 

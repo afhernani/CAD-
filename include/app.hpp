@@ -74,6 +74,11 @@ namespace cad {
         void drawCommandWindow();
         void findSnap();
         void drawCrosshair();
+
+        // Buffer para mostrar ayuda en ventana de comandos
+        std::vector<std::string> helpLines_;
+        bool showingHelp_ = false;
+        
     };
 
 } // namespace cad
