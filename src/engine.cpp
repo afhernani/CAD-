@@ -181,17 +181,18 @@ namespace cad {
                     newPoly->points = tempPolylinePoints;
                     newPoly->layerName = doc.currentLayerName;
                     doc.addEntity(std::move(newPoly));
-                    statusMessage = "Polilínea terminada (" + 
+                    statusMessage = "Polilinea terminada (" + 
                                     std::to_string(tempPolylinePoints.size()) + " puntos).";
                 } else {
-                    statusMessage = "Polilínea cancelada (puntos insuficientes).";
+                    statusMessage = "Polilinea cancelada (puntos insuficientes).";
                 }
                 tempPolylinePoints.clear();
                 currentMode = Mode::IDLE;
-            } else {
+            } //else {
                 // Cualquier otro modo: cancelar
-                cancelCommand();
-            }
+                //cancelCommand();
+            //}
+            // para otros comandos: no hacer nada, mantener el estado actual
             return;
         }
         // Comandos especiales para Polilínea
@@ -343,9 +344,13 @@ namespace cad {
                 statusMessage = "POLIGONO | Número de lados (ej: 6):";
             }
             else if (statusMessage.find("lados") != std::string::npos) {
-                // Aquí siempre esperamos un número
-                tempPolygonSides = static_cast<int>(scalarValue);
-                if (tempPolygonSides < 3) tempPolygonSides = 3;
+                // Si coordStr está vacío, usar valor por defecto
+                if (coordStr.empty()) {
+                    tempPolygonSides = 6; // Valor por defecto
+                } else {
+                    tempPolygonSides = static_cast<int>(scalarValue);
+                    if (tempPolygonSides < 3) tempPolygonSides = 3;
+                }
                 statusMessage = "POLIGONO | Radio (número) o punto para definir radio:";
             }
             else {
