@@ -8,59 +8,10 @@
 
 namespace cad {
 
-    void Engine::cancelCommand() {
-        currentMode = Mode::IDLE;
-        tempPolylinePoints.clear();
-        tempPolygonSides = 0;
-        tempArcRadius = 0.0;
-        tempArcStartAngle = 0.0;
-        statusMessage = "Comando cancelado.";
-    }
-
-    // NUEVO: Detecta si el string es solo un número (posiblemente con signo y decimales)
-    bool Engine::isNumericValue(std::string_view str) const {
-        std::string s(str);
-        // Eliminar espacios
-        s.erase(0, s.find_first_not_of(' '));
-        s.erase(s.find_last_not_of(' ') + 1);
-        
-        if (s.empty()) return false;
-        
-        // Si tiene coma, @, o <, NO es un valor escalar
-        if (s.find(',') != std::string::npos) return false;
-        if (s.find('@') != std::string::npos) return false;
-        if (s.find('<') != std::string::npos) return false;
-        
-        // Intentar convertir a número
-        try {
-            std::stod(s);
-            return true;
-        } catch (...) {
-            return false;
-        }
-    }
-
     void Engine::processInput(std::string_view input) {
         std::string cleanInput(input);
         cleanInput.erase(0, cleanInput.find_first_not_of(' '));
         cleanInput.erase(cleanInput.find_last_not_of(' ') + 1);
-
-        // ENTER vacío en polilínea -> terminar sin cerrar
-        if (cleanInput.empty() && currentMode == Mode::DRAW_POLYLINE) {
-            if (tempPolylinePoints.size() >= 2) {
-                auto newPoly = std::make_unique<Polyline>();
-                newPoly->points = tempPolylinePoints;
-                newPoly->layerName = doc.currentLayerName;
-                doc.addEntity(std::move(newPoly));
-                statusMessage = "Polilínea terminada (" + 
-                                std::to_string(tempPolylinePoints.size()) + " puntos).";
-            } else {
-                statusMessage = "Polilínea cancelada (puntos insuficientes).";
-            }
-            tempPolylinePoints.clear();
-            currentMode = Mode::IDLE;
-            return;
-        }
 
         if (currentMode == Mode::IDLE) {
             executeCommand(cleanInput);
@@ -90,7 +41,7 @@ namespace cad {
         else if (upperCmd == "PL" || upperCmd == "POLILINEA") {
             currentMode = Mode::DRAW_POLYLINE;
             tempPolylinePoints.clear();
-            statusMessage = "POLILINEA | Primer punto (Enter=terminar, C=cerrar, U=deshacer):";
+            statusMessage = "POLILINEA | Especificar primer punto (C=Cerrar, U=Deshacer):";
         }
         else if (upperCmd == "POL" || upperCmd == "POLIGONO") {
             currentMode = Mode::DRAW_POLYGON;
@@ -171,37 +122,14 @@ namespace cad {
     }
 
     void Engine::processCoordinate(std::string_view coordStr) {
-
-        // Input vacío = cancelar comando (excepto en polilínea, donde termina)
-        if (coordStr.empty()) {
-            if (currentMode == Mode::DRAW_POLYLINE) {
-                // Terminar polilínea abierta
-                if (tempPolylinePoints.size() >= 2) {
-                    auto newPoly = std::make_unique<Polyline>();
-                    newPoly->points = tempPolylinePoints;
-                    newPoly->layerName = doc.currentLayerName;
-                    doc.addEntity(std::move(newPoly));
-                    statusMessage = "Polilínea terminada (" + 
-                                    std::to_string(tempPolylinePoints.size()) + " puntos).";
-                } else {
-                    statusMessage = "Polilínea cancelada (puntos insuficientes).";
-                }
-                tempPolylinePoints.clear();
-                currentMode = Mode::IDLE;
-            } else {
-                // Cualquier otro modo: cancelar
-                cancelCommand();
-            }
-            return;
-        }
-        // Comandos especiales para Polilínea
+        // Comandos especiales para Polilínea antes de parsear coordenadas
         if (currentMode == Mode::DRAW_POLYLINE) {
             std::string upperStr(coordStr);
             std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
             
             if (upperStr == "C" || upperStr == "CLOSE" || upperStr == "CERRAR") {
                 if (tempPolylinePoints.size() >= 2) {
-                    tempPolylinePoints.push_back(tempPolylinePoints.front());
+                    tempPolylinePoints.push_back(tempPolylinePoints.front()); // Cerrar forma
                     auto newPoly = std::make_unique<Polyline>();
                     newPoly->points = tempPolylinePoints;
                     newPoly->layerName = doc.currentLayerName;
@@ -215,35 +143,23 @@ namespace cad {
             if (upperStr == "U" || upperStr == "UNDO") {
                 if (!tempPolylinePoints.empty()) {
                     tempPolylinePoints.pop_back();
-                    statusMessage = "Último punto eliminado.";
+                    statusMessage = "Último punto de polilínea eliminado.";
                 }
                 return;
             }
         }
 
-        // Detectar si es valor escalar (número puro) o coordenada
-        bool isScalar = isNumericValue(coordStr);
-        double scalarValue = 0.0;
-        if (isScalar) {
-            try {
-                scalarValue = std::stod(std::string(coordStr));
-            } catch (...) {
-                isScalar = false;
+        auto p = parseCoordinate(coordStr);
+        if (!p.has_value()) {
+            // Si falla el parseo en modos especiales, no salir inmediatamente para permitir comandos de texto
+            if (currentMode != Mode::DRAW_POLYLINE) {
+                currentMode = Mode::IDLE;
             }
+            return;
         }
 
-        // Parsear como coordenada (si no es escalar, o si necesitamos el punto)
-        std::optional<Point2D> p;
-        if (!isScalar) {
-            p = parseCoordinate(coordStr);
-            if (!p.has_value()) {
-                if (currentMode != Mode::DRAW_POLYLINE) {
-                    currentMode = Mode::IDLE;
-                }
-                return;
-            }
-            lastPoint = p.value();
-        }
+        lastPoint = p.value();
+        double inputValue = p.value().x; // Usamos X como valor escalar para radios/ángulos/lados
 
         // --- LÍNEA ---
         if (currentMode == Mode::DRAW_LINE) {
@@ -265,16 +181,26 @@ namespace cad {
         else if (currentMode == Mode::DRAW_CIRCLE) {
             if (statusMessage.find("centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
-                statusMessage = "CIRCULO | Radio (número) o punto en el borde:";
+                statusMessage = "CIRCULO | Especificar radio (número) o punto en el borde:";
             } else {
-                double radius;
-                if (isScalar) {
-                    radius = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    radius = std::sqrt(dx * dx + dy * dy);
-                }
+                std::string input(coordStr);
+                try {
+                    double radius = std::stod(input);
+                    if (input.find(',') == std::string::npos && input.find('@') == std::string::npos && input.find('<') == std::string::npos) {
+                        auto newCircle = std::make_unique<Circle>();
+                        newCircle->center = tempPoint1;
+                        newCircle->radius = radius;
+                        newCircle->layerName = doc.currentLayerName;
+                        doc.addEntity(std::move(newCircle));
+                        currentMode = Mode::IDLE;
+                        statusMessage = "Círculo creado con radio: " + std::to_string(radius);
+                        return;
+                    }
+                } catch (...) {}
+                
+                double dx = lastPoint.x - tempPoint1.x;
+                double dy = lastPoint.y - tempPoint1.y;
+                double radius = std::sqrt(dx * dx + dy * dy);
                 
                 auto newCircle = std::make_unique<Circle>();
                 newCircle->center = tempPoint1;
@@ -283,47 +209,25 @@ namespace cad {
                 doc.addEntity(std::move(newCircle));
                 
                 currentMode = Mode::IDLE;
-                statusMessage = "Círculo creado (radio: " + std::to_string(radius) + ")";
+                statusMessage = "Listo";
             }
         }
         // --- ARCO ---
         else if (currentMode == Mode::DRAW_ARC) {
             if (statusMessage.find("centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
-                statusMessage = "ARCO | Radio (número) o punto para definir radio:";
+                statusMessage = "ARCO | Especificar radio (número):";
             } 
             else if (statusMessage.find("radio") != std::string::npos) {
-                if (isScalar) {
-                    tempArcRadius = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    tempArcRadius = std::sqrt(dx * dx + dy * dy);
-                }
-                statusMessage = "ARCO | Ángulo inicio (grados, 0=Este) o punto:";
+                tempArcRadius = inputValue;
+                statusMessage = "ARCO | Especificar ángulo de inicio (grados, 0=Este):";
             }
             else if (statusMessage.find("inicio") != std::string::npos) {
-                if (isScalar) {
-                    tempArcStartAngle = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    tempArcStartAngle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
-                    if (tempArcStartAngle < 0) tempArcStartAngle += 360.0;
-                }
-                statusMessage = "ARCO | Ángulo final (grados) o punto:";
+                tempArcStartAngle = inputValue;
+                statusMessage = "ARCO | Especificar ángulo final (grados):";
             }
             else {
-                double endAngle;
-                if (isScalar) {
-                    endAngle = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    endAngle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
-                    if (endAngle < 0) endAngle += 360.0;
-                }
-
+                double endAngle = inputValue;
                 auto newArc = std::make_unique<Arc>();
                 newArc->center = tempPoint1;
                 newArc->radius = tempArcRadius;
@@ -340,24 +244,15 @@ namespace cad {
         else if (currentMode == Mode::DRAW_POLYGON) {
             if (statusMessage.find("centro") != std::string::npos) {
                 tempPolygonCenter = lastPoint;
-                statusMessage = "POLIGONO | Número de lados (ej: 6):";
+                statusMessage = "POLIGONO | Escribe el número de lados (ej: 6):";
             }
             else if (statusMessage.find("lados") != std::string::npos) {
-                // Aquí siempre esperamos un número
-                tempPolygonSides = static_cast<int>(scalarValue);
+                tempPolygonSides = static_cast<int>(inputValue);
                 if (tempPolygonSides < 3) tempPolygonSides = 3;
-                statusMessage = "POLIGONO | Radio (número) o punto para definir radio:";
+                statusMessage = "POLIGONO | Especificar radio (número):";
             }
             else {
-                double radius;
-                if (isScalar) {
-                    radius = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPolygonCenter.x;
-                    double dy = lastPoint.y - tempPolygonCenter.y;
-                    radius = std::sqrt(dx * dx + dy * dy);
-                }
-
+                double radius = inputValue;
                 auto newPoly = std::make_unique<Polygon>();
                 newPoly->center = tempPolygonCenter;
                 newPoly->sides = tempPolygonSides;
@@ -366,13 +261,15 @@ namespace cad {
                 doc.addEntity(std::move(newPoly));
                 
                 currentMode = Mode::IDLE;
-                statusMessage = "Polígono creado (" + std::to_string(tempPolygonSides) + " lados).";
+                statusMessage = "Polígono creado.";
             }
         }
         // --- POLILÍNEA ---
         else if (currentMode == Mode::DRAW_POLYLINE) {
             tempPolylinePoints.push_back(lastPoint);
-            statusMessage = "POLILINEA | Siguiente punto (Enter=terminar, C=cerrar, U=deshacer):";
+            statusMessage = "POLILINEA | Siguiente punto (C=Cerrar, U=Deshacer):";
+            // Nota: No creamos la entidad aún, esperamos a que el usuario cierre o cancele.
+            // Para visualizarla mientras se dibuja, habría que añadir lógica de "entidad temporal" en App.
         }
     }
 
@@ -422,8 +319,7 @@ namespace cad {
                         p.y = y;
                     }
                 } else {
-                    // Número solo sin contexto de coordenada -> no debería llegar aquí
-                    // porque isNumericValue lo captura antes
+                    // Si es un solo número, lo ponemos en X (útil para radios/ángulos)
                     p.x = std::stod(std::string(s));
                     p.y = 0.0;
                 }

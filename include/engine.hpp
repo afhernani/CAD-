@@ -41,11 +41,15 @@ namespace cad {
 
         // Procesa el texto que el usuario escribe y pulsa Enter
         void processInput(std::string_view input);
+        // Cancela cualquier comando en curso
+        void cancelCommand();
 
     private:
         void executeCommand(std::string_view cmd);
         void processCoordinate(std::string_view coordStr);
         void processLayerCommand(std::string_view input); // Nuevo método
+        // Detecta si el input es solo un número (valor escalar)
+        bool isNumericValue(std::string_view str) const;
         // <-- CAMBIO: Devuelve std::optional y es const
         [[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
     };

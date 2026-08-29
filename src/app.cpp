@@ -177,23 +177,31 @@ namespace cad {
             // --- ESCRITURA EN LÍNEA DE COMANDOS ---
             if (event.type == sf::Event::TextEntered && isTyping_) {
                 if (event.text.unicode == 13) { // Enter
+                    // Guardar en historial antes de procesar (aunque esté vacío)
                     if (!inputBuffer_.empty()) {
-                        // Guardar en historial antes de procesar
                         commandHistory_.push_back(inputBuffer_);
-                        // Limitar historial a 100 comandos
                         if (commandHistory_.size() > 100) {
                             commandHistory_.erase(commandHistory_.begin());
                         }
-                        
-                        engine_.processInput(inputBuffer_);
-                        inputBuffer_.clear();
-                        commandScrollOffset_ = 0;  // Resetear scroll al escribir
                     }
-                } else if (event.text.unicode == 8) { // Backspace
+                    
+                    // Enviar al engine (incluso si está vacío, para terminar polilínea)
+                    engine_.processInput(inputBuffer_);
+                    inputBuffer_.clear();
+                    commandScrollOffset_ = 0;
+                } 
+                else if (event.text.unicode == 8) { // Backspace
                     if (!inputBuffer_.empty()) inputBuffer_.pop_back();
-                } else if (event.text.unicode < 128) {
+                } 
+                else if (event.text.unicode < 128) {
                     inputBuffer_ += static_cast<char>(event.text.unicode);
                 }
+            }
+            // --- TECLA ESCAPE: Cancelar comando ---
+            if (event.type == sf::Event::KeyPressed && 
+                event.key.code == sf::Keyboard::Escape) {
+                engine_.cancelCommand();
+                inputBuffer_.clear();
             }
         }
     }
