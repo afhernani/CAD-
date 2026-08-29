@@ -163,7 +163,7 @@ namespace cad {
                         engine_.processInput("Z");
                     }
                     // En la sección de clic en barra de menú
-                    else if (mx >= 300 && mx <= 350 && my >= 0 && my < MENU_HEIGHT) {
+                    else if (mx >= 280 && mx <= 320) {
                         engine_.processInput("HELP");
                     }
                 }
@@ -480,6 +480,28 @@ namespace cad {
             sf::Vertex(sf::Vector2f(238, MENU_HEIGHT + 36), sf::Color::White)
         };
         window_.draw(trashLine2, 2, sf::Lines);
+
+        // --- Separador vertical ---
+        sf::RectangleShape sep2(sf::Vector2f(1, 40));
+        sep2.setFillColor(sf::Color(80, 80, 80));
+        sep2.setPosition(270, MENU_HEIGHT + 10);
+        window_.draw(sep2);
+
+        // --- Botón Ayuda (?) ---
+        sf::RectangleShape btnHelp(sf::Vector2f(40, 40));
+        btnHelp.setFillColor(sf::Color(70, 70, 75));
+        btnHelp.setOutlineColor(sf::Color(100, 100, 100));
+        btnHelp.setOutlineThickness(1.f);
+        btnHelp.setPosition(280, MENU_HEIGHT + 10);
+        window_.draw(btnHelp);
+
+        // Icono de interrogación
+        sf::Text helpIcon("?", font_, 24);
+        helpIcon.setFillColor(sf::Color::White);
+        // Centrar el texto dentro del botón de 40x40
+        helpIcon.setPosition(288, MENU_HEIGHT + 14); 
+        window_.draw(helpIcon);
+
     }
 
     void App::findSnap() {
