@@ -51,6 +51,7 @@ namespace cad {
         // Detecta si el input es solo un número (valor escalar)
         bool isNumericValue(std::string_view str) const;
         // <-- CAMBIO: Devuelve std::optional y es const
+        void showHelp(std::string_view topic);
         [[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
     };
 

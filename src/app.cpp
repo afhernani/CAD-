@@ -162,6 +162,10 @@ namespace cad {
                     } else if (mx >= 220 && mx <= 260) {
                         engine_.processInput("Z");
                     }
+                    // En la sección de clic en barra de menú
+                    else if (mx >= 300 && mx <= 350 && my >= 0 && my < MENU_HEIGHT) {
+                        engine_.processInput("HELP");
+                    }
                 }
                 // B) Clic en el Canvas
                 else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
@@ -187,13 +191,23 @@ namespace cad {
                     
                     // Enviar al engine (incluso si está vacío, para terminar polilínea)
                     engine_.processInput(inputBuffer_);
+                    if (!inputBuffer_.empty()) {
+                        commandHistory_.push_back(inputBuffer_);
+                        if (commandHistory_.size() > 100) {
+                            commandHistory_.erase(commandHistory_.begin());
+                        }
+                    }
                     inputBuffer_.clear();
                     commandScrollOffset_ = 0;
                 } 
                 else if (event.text.unicode == 8) { // Backspace
                     if (!inputBuffer_.empty()) inputBuffer_.pop_back();
                 } 
-                else if (event.text.unicode < 128) {
+                // else if (event.text.unicode < 128) {
+                //     inputBuffer_ += static_cast<char>(event.text.unicode);
+                // }
+                else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
+                    // SOLO caracteres ASCII imprimibles (espacio a ~)
                     inputBuffer_ += static_cast<char>(event.text.unicode);
                 }
             }
@@ -310,7 +324,7 @@ namespace cad {
         menu.setPosition(0, 0);
         window_.draw(menu);
         
-        sf::Text menuTxt("Archivo  Editar  Ver  Dibujar  Modificar", font_, 14);
+        sf::Text menuTxt("Archivo  Editar  Ver  Dibujar  Modificar Ayuda", font_, 14);
         menuTxt.setFillColor(sf::Color(220, 220, 220));
         menuTxt.setPosition(10, 8);
         window_.draw(menuTxt);
