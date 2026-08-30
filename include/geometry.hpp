@@ -22,6 +22,8 @@ namespace cad {
                          const sf::Color& color, float viewScale) const = 0;
         virtual bool isNear(const Point2D& point, double tolerance) const = 0;
         virtual void move(double dx, double dy) = 0;
+        virtual std::unique_ptr<Entity> clone() const = 0;
+        virtual void rotate(const Point2D& center, double angleDeg) = 0;
     };
 
     class Line : public Entity {
@@ -34,6 +36,8 @@ namespace cad {
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
         void move(double dx, double dy) override;
+        std::unique_ptr<Entity> clone() const override;
+        void rotate(const Point2D& center, double angleDeg) override;
     };
 
     class Circle : public Entity {
@@ -46,6 +50,8 @@ namespace cad {
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
         void move(double dx, double dy) override;
+        std::unique_ptr<Entity> clone() const override;
+        void rotate(const Point2D& center, double angleDeg) override;
     };
 
     class Arc : public Entity {
@@ -59,6 +65,8 @@ namespace cad {
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
         void move(double dx, double dy) override;
+        std::unique_ptr<Entity> clone() const override;
+        void rotate(const Point2D& center, double angleDeg) override;
     };
 
     class Polyline : public Entity {
@@ -69,6 +77,8 @@ namespace cad {
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
         void move(double dx, double dy) override;
+        std::unique_ptr<Entity> clone() const override;
+        void rotate(const Point2D& center, double angleDeg) override;
     };
 
     class Polygon : public Entity {
@@ -81,6 +91,8 @@ namespace cad {
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
         void move(double dx, double dy) override;
+        std::unique_ptr<Entity> clone() const override;
+        void rotate(const Point2D& center, double angleDeg) override;
     };
 
 } // namespace cad

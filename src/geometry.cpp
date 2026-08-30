@@ -58,6 +58,23 @@ namespace cad {
         p2.x += dx; p2.y += dy;
     }
 
+    std::unique_ptr<Entity> Line::clone() const {
+        auto c = std::make_unique<Line>();
+        c->p1 = p1; c->p2 = p2;
+        c->layerName = layerName;
+        return c;
+    }
+    void Line::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        auto rot = [&](Point2D& p) {
+            double dx = p.x - center.x, dy = p.y - center.y;
+            p.x = center.x + dx * cosA - dy * sinA;
+            p.y = center.y + dx * sinA + dy * cosA;
+        };
+        rot(p1); rot(p2);
+    }
+
     // --- Circle ---
     void Circle::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                       const sf::Color& color, float viewScale) const {
@@ -79,6 +96,20 @@ namespace cad {
 
     void Circle::move(double dx, double dy) {
         center.x += dx; center.y += dy;
+    }
+
+    std::unique_ptr<Entity> Circle::clone() const {
+        auto c = std::make_unique<Circle>();
+        c->center = center; c->radius = radius;
+        c->layerName = layerName;
+        return c;
+    }
+    void Circle::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        double dx = this->center.x - center.x, dy = this->center.y - center.y;
+        this->center.x = center.x + dx * cosA - dy * sinA;
+        this->center.y = center.y + dx * sinA + dy * cosA;
     }
 
     // --- Arc (Arco) ---
@@ -122,6 +153,23 @@ namespace cad {
         // El radio y los ángulos no cambian al mover.
     }
 
+    std::unique_ptr<Entity> Arc::clone() const {
+        auto c = std::make_unique<Arc>();
+        c->center = center; c->radius = radius;
+        c->startAngle = startAngle; c->endAngle = endAngle;
+        c->layerName = layerName;
+        return c;
+    }
+    void Arc::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        double dx = this->center.x - center.x, dy = this->center.y - center.y;
+        this->center.x = center.x + dx * cosA - dy * sinA;
+        this->center.y = center.y + dx * sinA + dy * cosA;
+        this->startAngle += angleDeg;
+        this->endAngle += angleDeg;
+    }
+
     // --- Polyline (Polilínea) ---
     void Polyline::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                         const sf::Color& color, float viewScale) const {
@@ -148,6 +196,22 @@ namespace cad {
         for (auto& p : points) {
             p.x += dx;
             p.y += dy;
+        }
+    }
+
+    std::unique_ptr<Entity> Polyline::clone() const {
+        auto c = std::make_unique<Polyline>();
+        c->points = points;
+        c->layerName = layerName;
+        return c;
+    }
+    void Polyline::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        for (auto& p : points) {
+            double dx = p.x - center.x, dy = p.y - center.y;
+            p.x = center.x + dx * cosA - dy * sinA;
+            p.y = center.y + dx * sinA + dy * cosA;
         }
     }
 
@@ -197,6 +261,20 @@ namespace cad {
         center.x += dx; 
         center.y += dy;
         // El radio y los lados no cambian al mover.
+    }
+
+    std::unique_ptr<Entity> Polygon::clone() const {
+        auto c = std::make_unique<Polygon>();
+        c->center = center; c->sides = sides; c->radius = radius;
+        c->layerName = layerName;
+        return c;
+    }
+    void Polygon::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        double dx = this->center.x - center.x, dy = this->center.y - center.y;
+        this->center.x = center.x + dx * cosA - dy * sinA;
+        this->center.y = center.y + dx * sinA + dy * cosA;
     }
 
 } // namespace cad

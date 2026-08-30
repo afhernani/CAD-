@@ -15,6 +15,8 @@ namespace cad {
         DRAW_POLYLINE,
         DRAW_POLYGON,
         LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
+        COPY,
+        ROTATE,
         MOVE
     };
 
@@ -56,6 +58,10 @@ namespace cad {
         void deleteSelected();
 
         Point2D moveBasePoint; // punto para mover
+        // COPIAR Y ROTAR
+        Point2D copyBasePoint;
+        Point2D rotateCenter;
+        double rotateAngle = 0.0;
 
     private:
         void executeCommand(std::string_view cmd);

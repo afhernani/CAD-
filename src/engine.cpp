@@ -132,6 +132,23 @@ namespace cad {
                                 std::to_string(selectedEntities.size()) + " entidades seleccionadas):";
             }
         }
+        else if (upperCmd == "CO" || upperCmd == "COPY" || upperCmd == "COPIAR") {
+            if (selectedEntities.empty()) {
+                statusMessage = "COPIAR | Primero selecciona entidades.";
+            } else {
+                currentMode = Mode::COPY;
+                statusMessage = "COPIAR | Punto base (" +
+                                std::to_string(selectedEntities.size()) + " entidades):";
+            }
+        }
+        else if (upperCmd == "RO" || upperCmd == "ROTATE" || upperCmd == "ROTAR") {
+            if (selectedEntities.empty()) {
+                statusMessage = "ROTAR | Primero selecciona entidades.";
+            } else {
+                currentMode = Mode::ROTATE;
+                statusMessage = "ROTAR | Centro de rotación:";
+            }
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -426,6 +443,46 @@ namespace cad {
                 
                 currentMode = Mode::IDLE;
                 statusMessage = "Entidades movidas.";
+            }
+        }
+        // --- COPIAR ---
+        else if (currentMode == Mode::COPY) {
+            if (statusMessage.find("base") != std::string::npos) {
+                copyBasePoint = lastPoint;
+                statusMessage = "COPIAR | Punto destino:";
+            } else {
+                double dx = lastPoint.x - copyBasePoint.x;
+                double dy = lastPoint.y - copyBasePoint.y;
+                // Clonar y mover cada entidad seleccionada
+                for (Entity* e : selectedEntities) {
+                    auto copy = e->clone();
+                    copy->move(dx, dy);
+                    doc.addEntity(std::move(copy));
+                }
+                currentMode = Mode::IDLE;
+                statusMessage = "Entidades copiadas.";
+            }
+        }
+        // --- ROTAR ---
+        else if (currentMode == Mode::ROTATE) {
+            if (statusMessage.find("Centro") != std::string::npos) {
+                rotateCenter = lastPoint;
+                statusMessage = "ROTAR | Ángulo (grados) o punto:";
+            } else {
+                double angle;
+                if (isScalar) {
+                    angle = scalarValue;
+                } else {
+                    double dx = lastPoint.x - rotateCenter.x;
+                    double dy = lastPoint.y - rotateCenter.y;
+                    angle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+                }
+                // Aplicar rotacion a todas las entidades seleccionadas.
+                for (Entity* e : selectedEntities) {
+                    e->rotate(rotateCenter, angle);
+                }
+                currentMode = Mode::IDLE;
+                statusMessage = "Entidades rotadas " + std::to_string(angle) + "°";
             }
         }
     }
