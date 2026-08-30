@@ -42,6 +42,8 @@ namespace cad {
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        void trim(const Point2D& cutPoint, bool keepStart);
+        void extend(const Point2D& borderPoint);
     };
 
     class Circle : public Entity {
@@ -106,5 +108,15 @@ namespace cad {
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
+
+    // Funciones auxiliares de intersección
+    struct IntersectionResult {
+        bool intersects = false;
+        Point2D point;
+        double param = 0.0; // Parámetro t en [0,1] para segmentos
+    };
+    
+    IntersectionResult lineLineIntersection(const Point2D& a1, const Point2D& a2,
+                                           const Point2D& b1, const Point2D& b2);
 
 } // namespace cad

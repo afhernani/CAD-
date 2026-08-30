@@ -20,7 +20,9 @@ namespace cad {
         SCALE,
         MOVE,
         MIRROR,
-        MEASURE_DIST
+        MEASURE_DIST,
+        TRIM,
+        EXTEND
     };
 
     class Engine {
@@ -70,6 +72,11 @@ namespace cad {
         double scaleFactor = 1.0;
         // MIRROR
         Point2D mirrorAxisP1;
+        // EXTEND / TRIM
+        std::vector<Entity*> trimBoundaries;
+        std::vector<Entity*> extendBoundaries;
+        bool trimSelectingBoundaries = true;
+        bool extendSelectingBoundaries = true;
 
     private:
         void executeCommand(std::string_view cmd);

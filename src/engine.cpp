@@ -172,6 +172,19 @@ namespace cad {
             currentMode = Mode::MEASURE_DIST;
             statusMessage = "DIST | Especificar primer punto:";
         }
+
+        else if (upperCmd == "TR" || upperCmd == "TRIM" || upperCmd == "RECORTAR") {
+            currentMode = Mode::TRIM;
+            trimSelectingBoundaries = true;
+            trimBoundaries.clear();
+            statusMessage = "TRIM | Seleccionar cortes (Enter para terminar):";
+        }
+        else if (upperCmd == "EX" || upperCmd == "EXTEND" || upperCmd == "ALARGAR") {
+            currentMode = Mode::EXTEND;
+            extendSelectingBoundaries = true;
+            extendBoundaries.clear();
+            statusMessage = "EXTEND | Seleccionar bordes (Enter para terminar):";
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -246,24 +259,40 @@ namespace cad {
         // Input vacío = cancelar comando (excepto en polilínea, donde termina)
         if (coordStr.empty()) {
             if (currentMode == Mode::DRAW_POLYLINE) {
-                // Terminar polilínea abierta
                 if (tempPolylinePoints.size() >= 2) {
                     auto newPoly = std::make_unique<Polyline>();
                     newPoly->points = tempPolylinePoints;
                     newPoly->layerName = doc.currentLayerName;
                     doc.addEntity(std::move(newPoly));
-                    statusMessage = "Polilinea terminada (" + 
-                                    std::to_string(tempPolylinePoints.size()) + " puntos).";
+                    statusMessage = "Polilinea terminada (" +
+                        std::to_string(tempPolylinePoints.size()) + " puntos).";
                 } else {
                     statusMessage = "Polilinea cancelada (puntos insuficientes).";
                 }
                 tempPolylinePoints.clear();
                 currentMode = Mode::IDLE;
-            } //else {
-                // Cualquier otro modo: cancelar
-                //cancelCommand();
-            //}
-            // para otros comandos: no hacer nada, mantener el estado actual
+            }
+            else if (currentMode == Mode::TRIM) {
+                if (trimSelectingBoundaries) {
+                    // Terminar selección de cortes, pasar a recortar
+                    trimSelectingBoundaries = false;
+                    statusMessage = "TRIM | Seleccionar entidades a recortar (clic sobre ellas):";
+                } else {
+                    // Ya estábamos recortando, salir del comando
+                    currentMode = Mode::IDLE;
+                    statusMessage = "TRIM cancelado.";
+                }
+            }
+            else if (currentMode == Mode::EXTEND) {
+                if (extendSelectingBoundaries) {
+                    extendSelectingBoundaries = false;
+                    statusMessage = "EXTEND | Seleccionar entidades a alargar (clic sobre ellas):";
+                } else {
+                    currentMode = Mode::IDLE;
+                    statusMessage = "EXTEND cancelado.";
+                }
+            }
+            // Para otros modos: no hacer nada, mantener estado
             return;
         }
         // Comandos especiales para Polilínea
@@ -579,6 +608,125 @@ namespace cad {
                 // (Esto requeriría que App tenga acceso, pero con statusMessage es suficiente por ahora)
                 
                 currentMode = Mode::IDLE;
+            }
+        }
+        // --- TRIM ---
+        else if (currentMode == Mode::TRIM) {
+            if (trimSelectingBoundaries) {
+                if (coordStr.empty()) {
+                    // Terminar selección de cortes, pasar a seleccionar entidades a recortar
+                    trimSelectingBoundaries = false;
+                    statusMessage = "TRIM | Seleccionar entidades a recortar:";
+                } else {
+                    // Añadir entidad a cortes (usar último punto para buscar entidad cercana)
+                    Entity* found = nullptr;
+                    for (auto& entity : doc.entities) {
+                        if (entity->isNear(lastPoint, 5.0 / 1.0)) { // tolerance hardcoded por ahora
+                            found = entity.get();
+                            break;
+                        }
+                    }
+                    if (found) {
+                        trimBoundaries.push_back(found);
+                        statusMessage = "TRIM | Corte añadido (" + 
+                                    std::to_string(trimBoundaries.size()) + " cortes). Enter para terminar:";
+                    }
+                }
+            } else {
+                // Seleccionar entidad a recortar y recortar al corte más cercano
+                Entity* toTrim = nullptr;
+                for (auto& entity : doc.entities) {
+                    if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                        toTrim = entity.get();
+                        break;
+                    }
+                }
+                
+                if (toTrim && dynamic_cast<Line*>(toTrim)) {
+                    Line* line = dynamic_cast<Line*>(toTrim);
+                    Point2D closestCut;
+                    double minDist = std::numeric_limits<double>::max();
+                    
+                    // Encontrar el corte más cercano a la línea
+                    for (Entity* boundary : trimBoundaries) {
+                        if (auto* boundaryLine = dynamic_cast<Line*>(boundary)) {
+                            auto inter = lineLineIntersection(line->p1, line->p2, 
+                                                            boundaryLine->p1, boundaryLine->p2);
+                            if (inter.intersects && inter.param >= 0 && inter.param <= 1) {
+                                double dist = std::hypot(inter.point.x - lastPoint.x, 
+                                                        inter.point.y - lastPoint.y);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    closestCut = inter.point;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (minDist < std::numeric_limits<double>::max()) {
+                        // Determinar qué extremo mantener
+                        double d1 = std::hypot(closestCut.x - line->p1.x, closestCut.y - line->p1.y);
+                        double d2 = std::hypot(closestCut.x - line->p2.x, closestCut.y - line->p2.y);
+                        line->trim(closestCut, d1 < d2);
+                        statusMessage = "TRIM | Entidad recortada.";
+                    }
+                }
+            }
+        }
+        // --- EXTEND ---
+        else if (currentMode == Mode::EXTEND) {
+            if (extendSelectingBoundaries) {
+                if (coordStr.empty()) {
+                    extendSelectingBoundaries = false;
+                    statusMessage = "EXTEND | Seleccionar entidades a alargar:";
+                } else {
+                    Entity* found = nullptr;
+                    for (auto& entity : doc.entities) {
+                        if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                            found = entity.get();
+                            break;
+                        }
+                    }
+                    if (found) {
+                        extendBoundaries.push_back(found);
+                        statusMessage = "EXTEND | Borde añadido (" + 
+                                    std::to_string(extendBoundaries.size()) + " bordes). Enter para terminar:";
+                    }
+                }
+            } else {
+                Entity* toExtend = nullptr;
+                for (auto& entity : doc.entities) {
+                    if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                        toExtend = entity.get();
+                        break;
+                    }
+                }
+                
+                if (toExtend && dynamic_cast<Line*>(toExtend)) {
+                    Line* line = dynamic_cast<Line*>(toExtend);
+                    Point2D closestBorder;
+                    double minDist = std::numeric_limits<double>::max();
+                    
+                    for (Entity* boundary : extendBoundaries) {
+                        if (auto* boundaryLine = dynamic_cast<Line*>(boundary)) {
+                            auto inter = lineLineIntersection(line->p1, line->p2,
+                                                            boundaryLine->p1, boundaryLine->p2);
+                            if (inter.intersects) {
+                                double dist = std::hypot(inter.point.x - lastPoint.x,
+                                                        inter.point.y - lastPoint.y);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    closestBorder = inter.point;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (minDist < std::numeric_limits<double>::max()) {
+                        line->extend(closestBorder);
+                        statusMessage = "EXTEND | Entidad alargada.";
+                    }
+                }
             }
         }
     }

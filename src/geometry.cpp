@@ -40,7 +40,6 @@ namespace cad {
 
             return { 2.0 * projX - p.x, 2.0 * projY - p.y };
         }
-
     }
 
     // --- Line ---
@@ -366,6 +365,59 @@ namespace cad {
     void Polygon::mirror(const Point2D& axisP1, const Point2D& axisP2) {
         center = reflectPoint(center, axisP1, axisP2);
         // El radio y los lados no cambian
+    }
+
+        // --- INTERSECCIÓN LÍNEA-LÍNEA ---
+    IntersectionResult lineLineIntersection(const Point2D& a1, const Point2D& a2,
+                                           const Point2D& b1, const Point2D& b2) {
+        IntersectionResult result;
+        double dx1 = a2.x - a1.x, dy1 = a2.y - a1.y;
+        double dx2 = b2.x - b1.x, dy2 = b2.y - b1.y;
+        double denom = dx1 * dy2 - dy1 * dx2;
+        
+        if (std::abs(denom) < 1e-10) return result; // Paralelas
+        
+        double t = ((b1.x - a1.x) * dy2 - (b1.y - a1.y) * dx2) / denom;
+        double u = ((b1.x - a1.x) * dy1 - (b1.y - a1.y) * dx1) / denom;
+        
+        result.intersects = true;
+        result.point = { a1.x + t * dx1, a1.y + t * dy1 };
+        result.param = t;
+        return result;
+    }
+
+    // --- MÉTODO TRIM PARA LINE ---
+    void Line::trim(const Point2D& cutPoint, bool keepStart) {
+        double d1 = std::hypot(cutPoint.x - p1.x, cutPoint.y - p1.y);
+        double d2 = std::hypot(cutPoint.x - p2.x, cutPoint.y - p2.y);
+        
+        if (keepStart) {
+            // Mantener p1, mover p2 al punto de corte
+            p2 = cutPoint;
+        } else {
+            // Mantener p2, mover p1 al punto de corte
+            p1 = cutPoint;
+        }
+    }
+
+    // --- MÉTODO EXTEND PARA LINE ---
+    void Line::extend(const Point2D& borderPoint) {
+        // Alargar la línea hasta borderPoint en la dirección del segmento
+        double dx = p2.x - p1.x, dy = p2.y - p1.y;
+        double len = std::hypot(dx, dy);
+        if (len < 1e-10) return;
+        
+        // Determinar qué extremo está más cerca del borderPoint
+        double d1 = std::hypot(borderPoint.x - p1.x, borderPoint.y - p1.y);
+        double d2 = std::hypot(borderPoint.x - p2.x, borderPoint.y - p2.y);
+        
+        if (d1 < d2) {
+            // Alargar desde p1
+            p1 = borderPoint;
+        } else {
+            // Alargar desde p2
+            p2 = borderPoint;
+        }
     }
 
 } // namespace cad
