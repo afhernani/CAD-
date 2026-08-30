@@ -35,6 +35,8 @@ namespace cad {
         Point2D tempPoint1;
         Point2D tempPoint2;
         Point2D lastPoint; // Guarda el último punto para cálculos relativos
+        // Copia sincronizada desde App para cálculos de tolerancia
+        double viewScale = 1.0;  
 
         // Estado específico para Polilínea
         std::vector<Point2D> tempPolylinePoints;

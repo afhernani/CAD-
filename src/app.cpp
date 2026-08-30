@@ -44,6 +44,7 @@ namespace cad {
         }
         
         viewScale_ = 1.0f;
+        engine_.viewScale = 1.0;
         viewPanX_ = 50.0f;
         viewPanY_ = 50.0f;
         showAxes_ = true;  // Por defecto, mostrar ejes
@@ -121,6 +122,8 @@ namespace cad {
                     
                     if (viewScale_ < 0.01f) viewScale_ = 0.01f;
                     if (viewScale_ > 100.0f) viewScale_ = 100.0f;
+                    //sincronizar con engine para trim y extend
+                    engine_.viewScale = viewScale_;
                 }
             }
 

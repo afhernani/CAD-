@@ -621,7 +621,7 @@ namespace cad {
                     // Añadir entidad a cortes (usar último punto para buscar entidad cercana)
                     Entity* found = nullptr;
                     for (auto& entity : doc.entities) {
-                        if (entity->isNear(lastPoint, 5.0 / 1.0)) { // tolerance hardcoded por ahora
+                        if (entity->isNear(lastPoint, 5.0 / viewScale)) { // tolerance hardcoded por ahora
                             found = entity.get();
                             break;
                         }
@@ -636,7 +636,7 @@ namespace cad {
                 // Seleccionar entidad a recortar y recortar al corte más cercano
                 Entity* toTrim = nullptr;
                 for (auto& entity : doc.entities) {
-                    if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                    if (entity->isNear(lastPoint, 5.0 / viewScale)) {
                         toTrim = entity.get();
                         break;
                     }
@@ -682,7 +682,7 @@ namespace cad {
                 } else {
                     Entity* found = nullptr;
                     for (auto& entity : doc.entities) {
-                        if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                        if (entity->isNear(lastPoint, 5.0 / viewScale)) {
                             found = entity.get();
                             break;
                         }
@@ -696,7 +696,7 @@ namespace cad {
             } else {
                 Entity* toExtend = nullptr;
                 for (auto& entity : doc.entities) {
-                    if (entity->isNear(lastPoint, 5.0 / 1.0)) {
+                    if (entity->isNear(lastPoint, 5.0 / viewScale)) {
                         toExtend = entity.get();
                         break;
                     }
