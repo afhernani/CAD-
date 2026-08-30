@@ -75,6 +75,13 @@ namespace cad {
         rot(p1); rot(p2);
     }
 
+    void Line::scale(const Point2D& basePoint, double factor) {
+        p1.x = basePoint.x + (p1.x - basePoint.x) * factor;
+        p1.y = basePoint.y + (p1.y - basePoint.y) * factor;
+        p2.x = basePoint.x + (p2.x - basePoint.x) * factor;
+        p2.y = basePoint.y + (p2.y - basePoint.y) * factor;
+    }
+
     // --- Circle ---
     void Circle::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                       const sf::Color& color, float viewScale) const {
@@ -110,6 +117,12 @@ namespace cad {
         double dx = this->center.x - center.x, dy = this->center.y - center.y;
         this->center.x = center.x + dx * cosA - dy * sinA;
         this->center.y = center.y + dx * sinA + dy * cosA;
+    }
+
+    void Circle::scale(const Point2D& basePoint, double factor) {
+        center.x = basePoint.x + (center.x - basePoint.x) * factor;
+        center.y = basePoint.y + (center.y - basePoint.y) * factor;
+        radius *= factor;
     }
 
     // --- Arc (Arco) ---
@@ -170,6 +183,13 @@ namespace cad {
         this->endAngle += angleDeg;
     }
 
+    void Arc::scale(const Point2D& basePoint, double factor) {
+        center.x = basePoint.x + (center.x - basePoint.x) * factor;
+        center.y = basePoint.y + (center.y - basePoint.y) * factor;
+        radius *= factor;
+    }
+
+
     // --- Polyline (Polilínea) ---
     void Polyline::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                         const sf::Color& color, float viewScale) const {
@@ -212,6 +232,13 @@ namespace cad {
             double dx = p.x - center.x, dy = p.y - center.y;
             p.x = center.x + dx * cosA - dy * sinA;
             p.y = center.y + dx * sinA + dy * cosA;
+        }
+    }
+
+    void Polyline::scale(const Point2D& basePoint, double factor) {
+        for (auto& p : points) {
+            p.x = basePoint.x + (p.x - basePoint.x) * factor;
+            p.y = basePoint.y + (p.y - basePoint.y) * factor;
         }
     }
 
@@ -275,6 +302,12 @@ namespace cad {
         double dx = this->center.x - center.x, dy = this->center.y - center.y;
         this->center.x = center.x + dx * cosA - dy * sinA;
         this->center.y = center.y + dx * sinA + dy * cosA;
+    }
+    
+    void Polygon::scale(const Point2D& basePoint, double factor) {
+        center.x = basePoint.x + (center.x - basePoint.x) * factor;
+        center.y = basePoint.y + (center.y - basePoint.y) * factor;
+        radius *= factor;
     }
 
 } // namespace cad

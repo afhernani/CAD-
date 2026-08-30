@@ -17,6 +17,7 @@ namespace cad {
         LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
         COPY,
         ROTATE,
+        SCALE,
         MOVE
     };
 
@@ -62,6 +63,9 @@ namespace cad {
         Point2D copyBasePoint;
         Point2D rotateCenter;
         double rotateAngle = 0.0;
+        // ESCALAR
+        Point2D scaleBasePoint;
+        double scaleFactor = 1.0;
 
     private:
         void executeCommand(std::string_view cmd);

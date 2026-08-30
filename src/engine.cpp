@@ -149,6 +149,17 @@ namespace cad {
                 statusMessage = "ROTAR | Centro de rotación:";
             }
         }
+
+        else if (upperCmd == "SC" || upperCmd == "SCALE" || upperCmd == "ESCALAR") {
+            if (selectedEntities.empty()) {
+                statusMessage = "ESCALAR | Primero selecciona entidades (clic izquierdo).";
+            } else {
+                currentMode = Mode::SCALE;
+                statusMessage = "ESCALAR | Punto base (" + 
+                                std::to_string(selectedEntities.size()) + " entidades):";
+            }
+        }
+
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -483,6 +494,33 @@ namespace cad {
                 }
                 currentMode = Mode::IDLE;
                 statusMessage = "Entidades rotadas " + std::to_string(angle) + "°";
+            }
+        }
+        // --- ESCALAR ---
+        else if (currentMode == Mode::SCALE) {
+            if (statusMessage.find("base") != std::string::npos) {
+                scaleBasePoint = lastPoint;
+                statusMessage = "ESCALAR | Factor de escala (número) o dos puntos:";
+            } else {
+                double factor;
+                if (isScalar) {
+                    factor = scalarValue;
+                } else {
+                    // Si es un punto, calcular factor como distancia al base
+                    // (simplificación: factor = distancia del punto al base)
+                    double dx = lastPoint.x - scaleBasePoint.x;
+                    double dy = lastPoint.y - scaleBasePoint.y;
+                    factor = std::sqrt(dx * dx + dy * dy);
+                    // Normalizar si es necesario (ej: factor = 1.0 si distancia = 100)
+                    // Por ahora, usamos la distancia directa como factor
+                }
+                
+                for (Entity* e : selectedEntities) {
+                    e->scale(scaleBasePoint, factor);
+                }
+                
+                currentMode = Mode::IDLE;
+                statusMessage = "Entidades escaladas (factor: " + std::to_string(factor) + ")";
             }
         }
     }

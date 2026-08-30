@@ -24,6 +24,7 @@ namespace cad {
         virtual void move(double dx, double dy) = 0;
         virtual std::unique_ptr<Entity> clone() const = 0;
         virtual void rotate(const Point2D& center, double angleDeg) = 0;
+        virtual void scale(const Point2D& basePoint, double factor) = 0;
     };
 
     class Line : public Entity {
@@ -38,6 +39,7 @@ namespace cad {
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& basePoint, double factor) override;
     };
 
     class Circle : public Entity {
@@ -52,6 +54,7 @@ namespace cad {
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& basePoint, double factor) override;
     };
 
     class Arc : public Entity {
@@ -67,6 +70,7 @@ namespace cad {
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& basePoint, double factor) override;
     };
 
     class Polyline : public Entity {
@@ -79,6 +83,7 @@ namespace cad {
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& basePoint, double factor) override;
     };
 
     class Polygon : public Entity {
@@ -93,6 +98,7 @@ namespace cad {
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& basePoint, double factor) override;
     };
 
 } // namespace cad
