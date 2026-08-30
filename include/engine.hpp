@@ -14,7 +14,8 @@ namespace cad {
         DRAW_ARC,
         DRAW_POLYLINE,
         DRAW_POLYGON,
-        LAYER_COMMAND // Nuevo modo para gestionar subcomandos de capa
+        LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
+        MOVE
     };
 
     class Engine {
@@ -53,6 +54,8 @@ namespace cad {
         void clearSelection();
         void selectEntity(const Point2D& clickPoint, double tolerance);
         void deleteSelected();
+
+        Point2D moveBasePoint; // punto para mover
 
     private:
         void executeCommand(std::string_view cmd);

@@ -370,7 +370,7 @@ namespace cad {
             sf::Color drawColor = isSelected ? sf::Color::Cyan : layer->color;
             
             // Llamada polimórfica: cada entidad sabe cómo dibujarse
-            entity->draw(window_, w2s, layer->color, viewScale_);
+            entity->draw(window_, w2s, drawColor, viewScale_);
         }
         
         // Marcador de Object Snap

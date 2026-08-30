@@ -2,6 +2,7 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <functional>
+#include <vector>
 
 namespace cad {
 

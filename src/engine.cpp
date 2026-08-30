@@ -123,11 +123,20 @@ namespace cad {
             currentMode = Mode::LAYER_COMMAND;
             statusMessage = "CAPA | ON <nombre> | OFF <nombre> | NEW <nombre> | SET <nombre> | LIST";
         }
+        else if (upperCmd == "M" || upperCmd == "MOVE" || upperCmd == "MOVER") {
+            if (selectedEntities.empty()) {
+                statusMessage = "MOVER | Primero selecciona entidades (clic izquierdo).";
+            } else {
+                currentMode = Mode::MOVE;
+                statusMessage = "MOVER | Especificar punto base (" + 
+                                std::to_string(selectedEntities.size()) + " entidades seleccionadas):";
+            }
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
-            std::string helpText = getHelpText("");
+            //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
             // Opción simple: usar statusMessage para confirmación
-            statusMessage = "Ayuda mostrada en ventana de comandos";
+            statusMessage = "Ayuda: escribe HELP <comando> para más detalles";
             // Nota: Necesitamos una forma de comunicar esto a App
         }
         else {
@@ -401,6 +410,24 @@ namespace cad {
             tempPolylinePoints.push_back(lastPoint);
             statusMessage = "POLILINEA | Siguiente punto (Enter=terminar, C=cerrar, U=deshacer):";
         }
+        // --- MOVER ---
+        else if (currentMode == Mode::MOVE) {
+            if (statusMessage.find("base") != std::string::npos) {
+                moveBasePoint = lastPoint;
+                statusMessage = "MOVER | Especificar punto destino:";
+            } else {
+                // Calcular delta y aplicar a todas las entidades seleccionadas
+                double dx = lastPoint.x - moveBasePoint.x;
+                double dy = lastPoint.y - moveBasePoint.y;
+                
+                for (Entity* entity : selectedEntities) {
+                    entity->move(dx, dy);
+                }
+                
+                currentMode = Mode::IDLE;
+                statusMessage = "Entidades movidas.";
+            }
+        }
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -501,8 +528,10 @@ namespace cad {
     }
 
     void Engine::deleteSelected() {
-        if (selectedEntities.empty()) return;
-
+        if (selectedEntities.empty()) {
+            statusMessage = "Nada seleccionado.";
+            return;
+        }
         // Eliminamos del vector principal de entidades
         doc.entities.erase(
             std::remove_if(doc.entities.begin(), doc.entities.end(),
