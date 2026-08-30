@@ -19,7 +19,8 @@ namespace cad {
         ROTATE,
         SCALE,
         MOVE,
-        MIRROR
+        MIRROR,
+        MEASURE_DIST
     };
 
     class Engine {

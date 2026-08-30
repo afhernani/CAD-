@@ -372,7 +372,32 @@ namespace cad {
             // Llamada polimórfica: cada entidad sabe cómo dibujarse
             entity->draw(window_, w2s, drawColor, viewScale_);
         }
-        
+    
+        // --- FEEDBACK VISUAL PARA COMANDO DIST ---
+        if (engine_.currentMode == Mode::MEASURE_DIST && 
+            engine_.statusMessage.find("segundo") != std::string::npos) {
+            
+            // Dibujar línea temporal desde tempPoint1 hasta el ratón
+            sf::Vertex line[] = {
+                sf::Vertex(worldToScreen(engine_.tempPoint1.x, engine_.tempPoint1.y), sf::Color::Yellow),
+                sf::Vertex(worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y), sf::Color::Yellow)
+            };
+            window_.draw(line, 2, sf::Lines);
+
+            // Dibujar texto con la distancia en tiempo real
+            double dx = currentMouseWorldPos_.x - engine_.tempPoint1.x;
+            double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
+            double dist = std::sqrt(dx * dx + dy * dy);
+            
+            std::string distText = std::format("Dist: {:.2f}", dist);
+            sf::Text txt(distText, font_, 14);
+            txt.setFillColor(sf::Color::Yellow);
+            // Posicionar el texto cerca del ratón (en pantalla)
+            sf::Vector2f mouseScreen = worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y);
+            txt.setPosition(mouseScreen.x + 10.f, mouseScreen.y - 20.f);
+            window_.draw(txt);
+        }
+
         // Marcador de Object Snap
         if (isSnapped_) {
             sf::Vector2f screenPos = worldToScreen(snappedPoint_.x, snappedPoint_.y);

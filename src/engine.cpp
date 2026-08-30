@@ -5,6 +5,7 @@
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
+#include <format>
 
 namespace cad {
 
@@ -166,6 +167,10 @@ namespace cad {
                 currentMode = Mode::MIRROR;
                 statusMessage = "SIMETRIA | Primer punto del eje de simetría:";
             }
+        }
+        else if (upperCmd == "DIST" || upperCmd == "MEDIR") {
+            currentMode = Mode::MEASURE_DIST;
+            statusMessage = "DIST | Especificar primer punto:";
         }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
@@ -555,6 +560,27 @@ namespace cad {
                 statusMessage = "Simetría aplicada.";
             }
         }
+        // --- MEDIR DISTANCIA ---
+        else if (currentMode == Mode::MEASURE_DIST) {
+            if (statusMessage.find("primer") != std::string::npos) {
+                tempPoint1 = lastPoint;
+                statusMessage = "DIST | Especificar segundo punto:";
+            } else {
+                double dx = lastPoint.x - tempPoint1.x;
+                double dy = lastPoint.y - tempPoint1.y;
+                double dist = std::sqrt(dx * dx + dy * dy);
+                double angle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+                
+                // Mostrar en barra de estado
+                statusMessage = std::format("Distancia: {:.4f}, Ángulo XY: {:.2f}°, DX: {:.4f}, DY: {:.4f}", 
+                                            dist, angle, dx, dy);
+                
+                // Opcional: añadir al historial de comandos para dejar constancia
+                // (Esto requeriría que App tenga acceso, pero con statusMessage es suficiente por ahora)
+                
+                currentMode = Mode::IDLE;
+            }
+        }
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -695,6 +721,9 @@ namespace cad {
             oss << "  Z, BORRAR     - Borrar todo el dibujo\n";
             oss << "  ESC           - Cancelar comando actual\n\n";
             
+            oss << "COMANDOS DE CONSULTA:\n";
+            oss << "  DIST, MEDIR     - Medir distancia entre dos puntos\n\n";
+            
             oss << "COMANDOS DE CAPAS:\n";
             oss << "  LA, LAYER     - Gestionar capas (NEW, SET, ON, OFF, LIST)\n\n";
             
@@ -779,6 +808,16 @@ namespace cad {
             oss << "  LA OFF <nombre>    - Desactivar visibilidad\n";
             oss << "  LA LIST            - Listar capas\n\n";
             oss << "Ejemplo: LA NEW Muros\n";
+            return oss.str();
+        }
+        else if (upperTopic == "DIST" || upperTopic == "MEDIR") {
+            oss << "--- COMANDO: MEDIR (DIST) ---\n";
+            oss << "Mide la distancia y ángulo entre dos puntos.\n\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: DIST\n";
+            oss << "  2. Especifica primer punto\n";
+            oss << "  3. Especifica segundo punto\n\n";
+            oss << "Muestra: Distancia total, ángulo en grados, delta X y delta Y.\n";
             return oss.str();
         }
         else {
