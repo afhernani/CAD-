@@ -23,6 +23,24 @@ namespace cad {
 
             return std::hypot(p.x - projX, p.y - projY);
         }
+
+        // Calcula el punto reflejado de 'p' respecto al eje definido por 'a' y 'b'
+        Point2D reflectPoint(const Point2D& p, const Point2D& a, const Point2D& b) {
+            double dx = b.x - a.x;
+            double dy = b.y - a.y;
+            double lenSq = dx * dx + dy * dy;
+            if (lenSq == 0.0) return p; // Eje inválido (punto)
+
+            double px = p.x - a.x;
+            double py = p.y - a.y;
+            double t = (px * dx + py * dy) / lenSq;
+
+            double projX = a.x + t * dx;
+            double projY = a.y + t * dy;
+
+            return { 2.0 * projX - p.x, 2.0 * projY - p.y };
+        }
+
     }
 
     // --- Line ---
@@ -82,6 +100,11 @@ namespace cad {
         p2.y = basePoint.y + (p2.y - basePoint.y) * factor;
     }
 
+    void Line::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        p1 = reflectPoint(p1, axisP1, axisP2);
+        p2 = reflectPoint(p2, axisP1, axisP2);
+    }
+
     // --- Circle ---
     void Circle::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                       const sf::Color& color, float viewScale) const {
@@ -123,6 +146,11 @@ namespace cad {
         center.x = basePoint.x + (center.x - basePoint.x) * factor;
         center.y = basePoint.y + (center.y - basePoint.y) * factor;
         radius *= factor;
+    }
+
+    void Circle::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        center = reflectPoint(center, axisP1, axisP2);
+        // El radio no cambia
     }
 
     // --- Arc (Arco) ---
@@ -189,6 +217,25 @@ namespace cad {
         radius *= factor;
     }
 
+    void Arc::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        center = reflectPoint(center, axisP1, axisP2);
+        
+        // Calcular ángulo del eje
+        double dx = axisP2.x - axisP1.x;
+        double dy = axisP2.y - axisP1.y;
+        double axisAngle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+        
+        // Reflejar ángulos: alpha' = 2*theta - alpha
+        auto reflectAngle = [&](double ang) {
+            double newAng = 2.0 * axisAngle - ang;
+            while (newAng < 0.0) newAng += 360.0;
+            while (newAng >= 360.0) newAng -= 360.0;
+            return newAng;
+        };
+        
+        startAngle = reflectAngle(startAngle);
+        endAngle = reflectAngle(endAngle);
+    }
 
     // --- Polyline (Polilínea) ---
     void Polyline::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
@@ -239,6 +286,12 @@ namespace cad {
         for (auto& p : points) {
             p.x = basePoint.x + (p.x - basePoint.x) * factor;
             p.y = basePoint.y + (p.y - basePoint.y) * factor;
+        }
+    }
+
+    void Polyline::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        for (auto& p : points) {
+            p = reflectPoint(p, axisP1, axisP2);
         }
     }
 
@@ -308,6 +361,11 @@ namespace cad {
         center.x = basePoint.x + (center.x - basePoint.x) * factor;
         center.y = basePoint.y + (center.y - basePoint.y) * factor;
         radius *= factor;
+    }
+
+    void Polygon::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        center = reflectPoint(center, axisP1, axisP2);
+        // El radio y los lados no cambian
     }
 
 } // namespace cad

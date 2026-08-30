@@ -18,7 +18,8 @@ namespace cad {
         COPY,
         ROTATE,
         SCALE,
-        MOVE
+        MOVE,
+        MIRROR
     };
 
     class Engine {
@@ -66,6 +67,8 @@ namespace cad {
         // ESCALAR
         Point2D scaleBasePoint;
         double scaleFactor = 1.0;
+        // MIRROR
+        Point2D mirrorAxisP1;
 
     private:
         void executeCommand(std::string_view cmd);

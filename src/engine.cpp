@@ -159,7 +159,14 @@ namespace cad {
                                 std::to_string(selectedEntities.size()) + " entidades):";
             }
         }
-
+        else if (upperCmd == "SI" || upperCmd == "SYM" || upperCmd == "MIRROR" || upperCmd == "SIMETRIA") {
+            if (selectedEntities.empty()) {
+                statusMessage = "SIMETRIA | Primero selecciona entidades (clic izquierdo).";
+            } else {
+                currentMode = Mode::MIRROR;
+                statusMessage = "SIMETRIA | Primer punto del eje de simetría:";
+            }
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -521,6 +528,31 @@ namespace cad {
                 
                 currentMode = Mode::IDLE;
                 statusMessage = "Entidades escaladas (factor: " + std::to_string(factor) + ")";
+            }
+        }
+        // --- SIMETRIA (MIRROR) ---
+        else if (currentMode == Mode::MIRROR) {
+            if (statusMessage.find("Primer") != std::string::npos) {
+                mirrorAxisP1 = lastPoint;
+                statusMessage = "SIMETRIA | Segundo punto del eje:";
+            } else {
+                Point2D axisP2 = lastPoint;
+                
+                // Para cada entidad seleccionada, creamos una copia reflejada
+                // (Si no tienes el método clone(), puedes modificar las originales directamente)
+                for (Entity* e : selectedEntities) {
+                    // Opción A: Modificar las originales (las mueve)
+                    // e->mirror(mirrorAxisP1, axisP2);
+                    
+                    // Opción B: Crear copias reflejadas (recomendado)
+                    // Necesitas el método clone() que vimos antes. Si no lo tienes, usa la Opción A.
+                    auto copy = e->clone(); 
+                    copy->mirror(mirrorAxisP1, axisP2);
+                    doc.addEntity(std::move(copy));
+                }
+                
+                currentMode = Mode::IDLE;
+                statusMessage = "Simetría aplicada.";
             }
         }
     }

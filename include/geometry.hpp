@@ -25,6 +25,7 @@ namespace cad {
         virtual std::unique_ptr<Entity> clone() const = 0;
         virtual void rotate(const Point2D& center, double angleDeg) = 0;
         virtual void scale(const Point2D& basePoint, double factor) = 0;
+        virtual void mirror(const Point2D& axisP1, const Point2D& axisP2) = 0;
     };
 
     class Line : public Entity {
@@ -40,6 +41,7 @@ namespace cad {
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
 
     class Circle : public Entity {
@@ -55,6 +57,7 @@ namespace cad {
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
 
     class Arc : public Entity {
@@ -71,6 +74,7 @@ namespace cad {
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
 
     class Polyline : public Entity {
@@ -84,6 +88,7 @@ namespace cad {
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
 
     class Polygon : public Entity {
@@ -99,6 +104,7 @@ namespace cad {
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
     };
 
 } // namespace cad
