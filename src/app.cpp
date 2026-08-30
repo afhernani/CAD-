@@ -187,6 +187,10 @@ namespace cad {
                         std::string coord = std::format("{:.6f},{:.6f}", targetPoint.x, targetPoint.y);
                         engine_.processInput(coord);
                         inputBuffer_.clear(); 
+                    }else {
+                        // NUEVO: Convertir sf::Vector2f a Point2D antes de llamar a selectEntity
+                        Point2D worldPoint = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+                        engine_.selectEntity(worldPoint, 5.0 / viewScale_); 
                     }
                 }
             }
@@ -268,6 +272,11 @@ namespace cad {
                 event.key.code == sf::Keyboard::Escape) {
                 engine_.cancelCommand();
                 inputBuffer_.clear();
+            }
+            // --- TECLA SUPRIMIR: Borrar seleccionados ---
+            if (event.type == sf::Event::KeyPressed && 
+                event.key.code == sf::Keyboard::Delete) {
+                engine_.deleteSelected();
             }
         }
     }
@@ -351,6 +360,14 @@ namespace cad {
         for (const auto& entity : engine_.doc.entities) {
             const Layer* layer = engine_.doc.getLayer(entity->layerName);
             if (!layer || !layer->visible || layer->frozen) continue;
+
+            // Comprobar si está seleccionada
+            bool isSelected = std::find(engine_.selectedEntities.begin(), 
+                                        engine_.selectedEntities.end(), 
+                                        entity.get()) != engine_.selectedEntities.end();
+
+            // Si está seleccionada, usamos Color Cyan, si no, el color de la capa
+            sf::Color drawColor = isSelected ? sf::Color::Cyan : layer->color;
             
             // Llamada polimórfica: cada entidad sabe cómo dibujarse
             entity->draw(window_, w2s, layer->color, viewScale_);

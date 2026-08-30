@@ -468,6 +468,54 @@ namespace cad {
         return p;
     }
 
+    void Engine::clearSelection() {
+        selectedEntities.clear();
+    }
+
+    void Engine::selectEntity(const Point2D& clickPoint, double tolerance) {
+        // Buscar la entidad más cercana al click
+        Entity* closest = nullptr;
+        double minDist = tolerance + 1.0; // Inicialmente fuera de rango
+
+        for (auto& entity : doc.entities) {
+            if (entity->isNear(clickPoint, tolerance)) {
+                // Calculamos distancia real para elegir la más cercana si hay solapamiento
+                // (Simplificación: tomamos la primera que cumpla isNear)
+                closest = entity.get();
+                break; 
+            }
+        }
+
+        if (closest) {
+            // Si ya estaba seleccionada, la deseleccionamos (toggle)
+            auto it = std::find(selectedEntities.begin(), selectedEntities.end(), closest);
+            if (it != selectedEntities.end()) {
+                selectedEntities.erase(it);
+            } else {
+                selectedEntities.push_back(closest);
+            }
+        } else {
+            // Si no clicamos nada, limpiamos selección
+            selectedEntities.clear();
+        }
+    }
+
+    void Engine::deleteSelected() {
+        if (selectedEntities.empty()) return;
+
+        // Eliminamos del vector principal de entidades
+        doc.entities.erase(
+            std::remove_if(doc.entities.begin(), doc.entities.end(),
+                [this](const std::unique_ptr<Entity>& e) {
+                    return std::find(selectedEntities.begin(), selectedEntities.end(), e.get()) != selectedEntities.end();
+                }),
+            doc.entities.end()
+        );
+        
+        selectedEntities.clear();
+        statusMessage = "Entidades borradas.";
+    }
+
     std::string Engine::getHelpText(std::string_view topic) {
         std::string upperTopic(topic);
         std::transform(upperTopic.begin(), upperTopic.end(), upperTopic.begin(), ::toupper);

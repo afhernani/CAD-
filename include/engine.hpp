@@ -47,6 +47,12 @@ namespace cad {
         std::string getHelpForTopic(std::string_view topic) {
             return getHelpText(topic);
         }
+        
+        std::vector<Entity*> selectedEntities; // Punteros a entidades seleccionadas
+
+        void clearSelection();
+        void selectEntity(const Point2D& clickPoint, double tolerance);
+        void deleteSelected();
 
     private:
         void executeCommand(std::string_view cmd);

@@ -19,6 +19,8 @@ namespace cad {
         virtual ~Entity() = default;
         virtual void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                          const sf::Color& color, float viewScale) const = 0;
+        virtual bool isNear(const Point2D& point, double tolerance) const = 0;
+        virtual void move(double dx, double dy) = 0;
     };
 
     class Line : public Entity {
@@ -28,6 +30,9 @@ namespace cad {
 
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                  const sf::Color& color, float viewScale) const override;
+        // Metodos virtuales:
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
     };
 
     class Circle : public Entity {
@@ -37,6 +42,9 @@ namespace cad {
 
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                  const sf::Color& color, float viewScale) const override;
+        // Metodos virtuales:
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
     };
 
     class Arc : public Entity {
@@ -47,6 +55,9 @@ namespace cad {
         double endAngle = 0.0;   // en grados
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                   const sf::Color& color, float viewScale) const override;
+        // Metodos virtuales:
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
     };
 
     class Polyline : public Entity {
@@ -54,6 +65,9 @@ namespace cad {
         std::vector<Point2D> points;
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                   const sf::Color& color, float viewScale) const override;
+        // Metodos virtuales:
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
     };
 
     class Polygon : public Entity {
@@ -63,6 +77,9 @@ namespace cad {
         double radius = 0.0;
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                   const sf::Color& color, float viewScale) const override;
+        // Metodos virtuales:
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
     };
 
 } // namespace cad
