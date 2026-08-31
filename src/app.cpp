@@ -98,16 +98,21 @@ namespace cad {
 
             // --- SCROLL EN VENTANA DE COMANDOS ---
             if (event.type == sf::Event::MouseWheelScrolled) {
-                int mx = event.mouseWheelScroll.x;
                 int my = event.mouseWheelScroll.y;
-                
                 // Si el ratón está sobre la ventana de comandos
-                if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT && 
+                if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
                     my < WINDOW_HEIGHT - STATUS_HEIGHT) {
+                    
+                    int lineHeight = 20;
+                    int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
+                    int totalLines = commandHistory_.size() + 1;
+                    int maxOffset = std::max(0, totalLines - maxLines);
+
                     if (event.mouseWheelScroll.delta > 0) {
                         commandScrollOffset_ = std::max(0, commandScrollOffset_ - 1);
                     } else {
-                        commandScrollOffset_++;
+                        // Limitar el offset al máximo para no pasar del inicio del historial
+                        commandScrollOffset_ = std::min(maxOffset, commandScrollOffset_ + 1);
                     }
                 }
             }
@@ -657,17 +662,19 @@ namespace cad {
         cmdBg.setPosition(0, WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT);
         window_.draw(cmdBg);
 
-        // Calcular cuántas líneas caben (aproximadamente 20px por línea)
         int lineHeight = 20;
         int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
         int startY = WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT + 5;
 
-        // Mostrar historial de comandos con scroll
         int totalLines = commandHistory_.size() + 1;  // +1 para la línea actual
+        int maxOffset = std::max(0, totalLines - maxLines);
+        
+        // Asegurar que el offset no exceda el máximo (por si se borran comandos)
+        commandScrollOffset_ = std::min(commandScrollOffset_, maxOffset);
+
         int startIdx = std::max(0, totalLines - maxLines - commandScrollOffset_);
-        
         int lineCount = 0;
-        
+
         // Dibujar líneas del historial
         for (int i = startIdx; i < commandHistory_.size() && lineCount < maxLines - 1; ++i) {
             sf::Text histText("> " + commandHistory_[i], font_, 12);
@@ -689,11 +696,17 @@ namespace cad {
         cmdText.setPosition(10, startY + (maxLines - 1) * lineHeight);
         window_.draw(cmdText);
 
-        // Indicador de scroll si hay más contenido
+        // Indicador de scroll DINÁMICO (se mueve según el offset)
         if (totalLines > maxLines) {
-            sf::RectangleShape scrollIndicator(sf::Vector2f(5, 30));
+            float scrollRatio = (maxOffset > 0) ? (float)commandScrollOffset_ / maxOffset : 0.0f;
+            float availableHeight = (maxLines - 1) * lineHeight; 
+            float indicatorHeight = 30.f;
+            float maxIndicatorY = startY + availableHeight - indicatorHeight;
+            float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
+
+            sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
             scrollIndicator.setFillColor(sf::Color(100, 100, 100));
-            scrollIndicator.setPosition(WINDOW_WIDTH - 10, startY + 10);
+            scrollIndicator.setPosition(WINDOW_WIDTH - 10, indicatorY);
             window_.draw(scrollIndicator);
         }
     }
