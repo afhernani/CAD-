@@ -78,6 +78,11 @@ namespace cad {
         // Buffer para mostrar ayuda en ventana de comandos
         std::vector<std::string> helpLines_;
         bool showingHelp_ = false;
+
+        // Convierte string UTF-8 a sf::String para renderizado correcto de acentos
+        sf::String toSfString(const std::string& utf8Str) {
+            return sf::String::fromUtf8(utf8Str.begin(), utf8Str.end());
+        }
         
     };
 

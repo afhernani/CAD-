@@ -20,3 +20,7 @@ add_custom_command(TARGET CAD+ POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:CAD+>/assets
 )
+
+# Test de acentos
+add_executable(test_acentos test/test_acentos.cpp)
+target_link_libraries(test_acentos PRIVATE sfml-graphics sfml-window sfml-system)

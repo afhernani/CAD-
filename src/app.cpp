@@ -1,8 +1,9 @@
 #include "app.hpp"
 #include <iostream>
-#include <format>
+#include <sstream>  // para std::ostringstream
 #include <chrono>
 #include <cmath>
+#include <iomanip>
 
 namespace cad {
 
@@ -192,7 +193,13 @@ namespace cad {
                 else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
                     if (engine_.currentMode != Mode::IDLE) {
                         Point2D targetPoint = isSnapped_ ? snappedPoint_ : Point2D{currentMouseWorldPos_.x, currentMouseWorldPos_.y};
-                        std::string coord = std::format("{:.6f},{:.6f}", targetPoint.x, targetPoint.y);
+                        
+                        // remplaxo std::string coord = std::format("{:.6f},{:.6f}", targetPoint.x, targetPoint.y);
+                        std::ostringstream oss;
+                        //oss << std::fixed << std::setprecision(2);
+                        oss << targetPoint.x << "," << targetPoint.y;
+                        std::string coord = oss.str();
+
                         engine_.processInput(coord);
                         inputBuffer_.clear(); 
                     }else {
@@ -397,8 +404,13 @@ namespace cad {
             double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
             double dist = std::sqrt(dx * dx + dy * dy);
             
-            std::string distText = std::format("Dist: {:.2f}", dist);
-            sf::Text txt(distText, font_, 14);
+            std::ostringstream oss;
+            oss << "Dist: " << dist;
+            sf::Text txt;
+            txt.setFont(font_);
+            txt.setString(toSfString(oss.str()));
+            txt.setCharacterSize(14);
+
             txt.setFillColor(sf::Color::Yellow);
             // Posicionar el texto cerca del ratón (en pantalla)
             sf::Vector2f mouseScreen = worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y);
@@ -426,7 +438,12 @@ namespace cad {
         menu.setPosition(0, 0);
         window_.draw(menu);
         
-        sf::Text menuTxt("Archivo  Editar  Ver  Dibujar  Modificar Ayuda", font_, 14);
+        // Después:
+        sf::Text menuTxt;
+        menuTxt.setFont(font_);
+        menuTxt.setString(toSfString("Archivo  Editar  Ver  Dibujar  Modificar  Ayuda"));
+        menuTxt.setCharacterSize(14);
+
         menuTxt.setFillColor(sf::Color(220, 220, 220));
         menuTxt.setPosition(10, 8);
         window_.draw(menuTxt);
@@ -441,13 +458,17 @@ namespace cad {
         window_.draw(statusBg);
 
         // Texto de estado con coordenadas en tiempo real
-        std::string statusStr = std::format("{} | X: {:.2f}, Y: {:.2f} | Zoom: {:.2f}x", 
-            engine_.statusMessage, 
-            currentMouseWorldPos_.x, 
-            currentMouseWorldPos_.y, 
-            viewScale_);
-            
-        sf::Text statusTxt(statusStr, font_, 12);
+        std::ostringstream oss;
+        // oss << std::fixed << std::setprecision(2);
+        oss << engine_.statusMessage 
+            << " | X: " << currentMouseWorldPos_.x 
+            << ", Y: " << currentMouseWorldPos_.y 
+            << " | Zoom: " << viewScale_ << "x";
+        sf::Text statusTxt;
+        statusTxt.setFont(font_);
+        statusTxt.setString(toSfString(oss.str()));
+        statusTxt.setCharacterSize(12);
+
         statusTxt.setFillColor(sf::Color::White);
         statusTxt.setPosition(10, WINDOW_HEIGHT - STATUS_HEIGHT + 6);
         window_.draw(statusTxt);
@@ -677,7 +698,11 @@ namespace cad {
 
         // Dibujar líneas del historial
         for (int i = startIdx; i < commandHistory_.size() && lineCount < maxLines - 1; ++i) {
-            sf::Text histText("> " + commandHistory_[i], font_, 12);
+            sf::Text histText;
+            histText.setFont(font_);
+            histText.setString(toSfString("> " + commandHistory_[i]));
+            histText.setCharacterSize(12);
+
             histText.setFillColor(sf::Color(180, 180, 180));
             histText.setPosition(10, startY + lineCount * lineHeight);
             window_.draw(histText);
@@ -691,7 +716,11 @@ namespace cad {
             prompt += "_";  // Cursor parpadeante
         }
         
-        sf::Text cmdText(prompt, font_, 12);
+        sf::Text cmdText;
+        cmdText.setFont(font_);
+        cmdText.setString(toSfString(prompt));
+        cmdText.setCharacterSize(12);
+
         cmdText.setFillColor(sf::Color::White);
         cmdText.setPosition(10, startY + (maxLines - 1) * lineHeight);
         window_.draw(cmdText);
