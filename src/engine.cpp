@@ -6,7 +6,6 @@
 #include <cmath>
 #include <numbers>
 #include <stdexcept>
-#include <format>
 
 namespace cad {
 
