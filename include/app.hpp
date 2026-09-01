@@ -89,6 +89,8 @@ namespace cad {
         }
         // Dibuja el feedback visual (entidad fantasma) según el modo actual
         void drawDrawingFeedback();
+        // Dibuja los grips (pinzamientos) para las entidades seleccionadas
+        void drawGrips();
     };
 
 } // namespace cad

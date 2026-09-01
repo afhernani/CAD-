@@ -405,12 +405,17 @@ namespace cad {
                                         entity.get()) != engine_.selectedEntities.end();
 
             // Si está seleccionada, usamos Color Cyan, si no, el color de la capa
-            sf::Color drawColor = isSelected ? sf::Color::Cyan : layer->color;
+            // sf::Color drawColor = isSelected ? sf::Color::Cyan : layer->color;
+            // Usar siempre el color de la capa (los grips indicarán la selección)
+            sf::Color drawColor = layer->color;
             
             // Llamada polimórfica: cada entidad sabe cómo dibujarse
             entity->draw(window_, w2s, drawColor, viewScale_);
         }
     
+        // >>> DIBUJAR GRIPS PARA ENTIDADES SELECCIONADAS <<<
+        drawGrips();
+
         // --- FEEDBACK VISUAL PARA COMANDO DIST ---
         if (engine_.currentMode == Mode::MEASURE_DIST && 
             engine_.statusMessage.find("segundo") != std::string::npos) {
@@ -947,6 +952,118 @@ namespace cad {
                 va[i].color = feedbackColor;
             }
             window_.draw(va);
+        }
+    }
+
+    void App::drawGrips() {
+        const float gripSize = 6.0f;  // Tamaño del grip en píxeles
+        sf::Color gripColor(0, 100, 255);  // Azul típico de AutoCAD
+        
+        for (Entity* entity : engine_.selectedEntities) {
+            // --- LÍNEA: Grips en inicio y fin ---
+            if (auto* line = dynamic_cast<Line*>(entity)) {
+                sf::Vector2f p1 = worldToScreen(line->p1.x, line->p1.y);
+                sf::Vector2f p2 = worldToScreen(line->p2.x, line->p2.y);
+                
+                sf::RectangleShape grip1(sf::Vector2f(gripSize, gripSize));
+                grip1.setFillColor(gripColor);
+                grip1.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                grip1.setPosition(p1);
+                window_.draw(grip1);
+                
+                sf::RectangleShape grip2(sf::Vector2f(gripSize, gripSize));
+                grip2.setFillColor(gripColor);
+                grip2.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                grip2.setPosition(p2);
+                window_.draw(grip2);
+            }
+            
+            // --- CÍRCULO: Grips en centro y punto del perímetro (a la derecha) ---
+            else if (auto* circle = dynamic_cast<Circle*>(entity)) {
+                sf::Vector2f center = worldToScreen(circle->center.x, circle->center.y);
+                sf::Vector2f perimeter = worldToScreen(circle->center.x + circle->radius, circle->center.y);
+                
+                sf::RectangleShape grip1(sf::Vector2f(gripSize, gripSize));
+                grip1.setFillColor(gripColor);
+                grip1.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                grip1.setPosition(center);
+                window_.draw(grip1);
+                
+                sf::RectangleShape grip2(sf::Vector2f(gripSize, gripSize));
+                grip2.setFillColor(gripColor);
+                grip2.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                grip2.setPosition(perimeter);
+                window_.draw(grip2);
+            }
+            
+            // --- ARCO: Grips en centro, punto inicial y punto final ---
+            else if (auto* arc = dynamic_cast<Arc*>(entity)) {
+                const double PI = 3.14159265358979323846;
+                double startRad = arc->startAngle * PI / 180.0;
+                double endRad = arc->endAngle * PI / 180.0;
+                
+                sf::Vector2f center = worldToScreen(arc->center.x, arc->center.y);
+                sf::Vector2f startPt = worldToScreen(
+                    arc->center.x + arc->radius * std::cos(startRad),
+                    arc->center.y + arc->radius * std::sin(startRad)
+                );
+                sf::Vector2f endPt = worldToScreen(
+                    arc->center.x + arc->radius * std::cos(endRad),
+                    arc->center.y + arc->radius * std::sin(endRad)
+                );
+                
+                auto drawGrip = [&](sf::Vector2f pos) {
+                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
+                    grip.setFillColor(gripColor);
+                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                    grip.setPosition(pos);
+                    window_.draw(grip);
+                };
+                
+                drawGrip(center);
+                drawGrip(startPt);
+                drawGrip(endPt);
+            }
+            
+            // --- POLILÍNEA: Grips en cada vértice ---
+            else if (auto* polyline = dynamic_cast<Polyline*>(entity)) {
+                for (const auto& pt : polyline->points) {
+                    sf::Vector2f screenPt = worldToScreen(pt.x, pt.y);
+                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
+                    grip.setFillColor(gripColor);
+                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                    grip.setPosition(screenPt);
+                    window_.draw(grip);
+                }
+            }
+            
+            // --- POLÍGONO: Grips en centro y cada vértice ---
+            else if (auto* polygon = dynamic_cast<Polygon*>(entity)) {
+                const double PI = 3.14159265358979323846;
+                double angleStep = 2.0 * PI / polygon->sides;
+                
+                // Grip en el centro
+                sf::Vector2f center = worldToScreen(polygon->center.x, polygon->center.y);
+                sf::RectangleShape centerGrip(sf::Vector2f(gripSize, gripSize));
+                centerGrip.setFillColor(gripColor);
+                centerGrip.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                centerGrip.setPosition(center);
+                window_.draw(centerGrip);
+                
+                // Grips en cada vértice
+                for (int i = 0; i < polygon->sides; ++i) {
+                    double angle = i * angleStep - PI / 2.0;
+                    double px = polygon->center.x + polygon->radius * std::cos(angle);
+                    double py = polygon->center.y + polygon->radius * std::sin(angle);
+                    sf::Vector2f vertex = worldToScreen(px, py);
+                    
+                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
+                    grip.setFillColor(gripColor);
+                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
+                    grip.setPosition(vertex);
+                    window_.draw(grip);
+                }
+            }
         }
     }
 
