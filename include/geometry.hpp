@@ -26,6 +26,10 @@ namespace cad {
         virtual void rotate(const Point2D& center, double angleDeg) = 0;
         virtual void scale(const Point2D& basePoint, double factor) = 0;
         virtual void mirror(const Point2D& axisP1, const Point2D& axisP2) = 0;
+        // Métodos virtuales para grips y copia
+        virtual std::vector<Point2D> getGripPoints() const = 0;
+        virtual void moveGrip(int index, const Point2D& newPos) = 0;
+        virtual void copyFrom(const Entity& src) = 0; // Para poder cancelar con ESC
     };
 
     class Line : public Entity {
@@ -44,6 +48,10 @@ namespace cad {
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
         void trim(const Point2D& cutPoint, bool keepStart);
         void extend(const Point2D& borderPoint);
+        // Métodos para grips y copyfrom
+        virtual std::vector<Point2D> getGripPoints() const override;
+        virtual void moveGrip(int index, const Point2D& newPos) override;
+        virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
     };
 
     class Circle : public Entity {
@@ -60,6 +68,10 @@ namespace cad {
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        // Métodos para grips y copyfrom
+        virtual std::vector<Point2D> getGripPoints() const override;
+        virtual void moveGrip(int index, const Point2D& newPos) override;
+        virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
     };
 
     class Arc : public Entity {
@@ -77,6 +89,10 @@ namespace cad {
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        // Métodos para grips y copyfrom
+        virtual std::vector<Point2D> getGripPoints() const override;
+        virtual void moveGrip(int index, const Point2D& newPos) override;
+        virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
     };
 
     class Polyline : public Entity {
@@ -91,6 +107,10 @@ namespace cad {
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        // Métodos para grips y copyfrom
+        virtual std::vector<Point2D> getGripPoints() const override;
+        virtual void moveGrip(int index, const Point2D& newPos) override;
+        virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
     };
 
     class Polygon : public Entity {
@@ -107,6 +127,10 @@ namespace cad {
         void rotate(const Point2D& center, double angleDeg) override;
         void scale(const Point2D& basePoint, double factor) override;
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        // Métodos para grips y copyfrom
+        virtual std::vector<Point2D> getGripPoints() const override;
+        virtual void moveGrip(int index, const Point2D& newPos) override;
+        virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
     };
 
     // Funciones auxiliares de intersección

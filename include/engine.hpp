@@ -22,7 +22,8 @@ namespace cad {
         MIRROR,
         MEASURE_DIST,
         TRIM,
-        EXTEND
+        EXTEND,
+        GRIP_EDIT // << grips editables
     };
 
     class Engine {
@@ -79,6 +80,10 @@ namespace cad {
         std::vector<Entity*> extendBoundaries;
         bool trimSelectingBoundaries = true;
         bool extendSelectingBoundaries = true;
+        // Variables para Grip Edit
+        Entity* activeGripEntity = nullptr;
+        int activeGripIndex = -1;
+        std::unique_ptr<Entity> gripBackup; // Para restaurar si se pulsa ESC
 
     private:
         void executeCommand(std::string_view cmd);

@@ -107,6 +107,12 @@ namespace cad {
                 if (isInCanvas) {
                     currentMouseWorldPos_ = screenToWorld(static_cast<float>(mx), static_cast<float>(my));
                     findSnap();
+                    // Actualizar geometría si estamos arrastrando un grip
+                    if (engine_.currentMode == Mode::GRIP_EDIT && engine_.activeGripEntity) {
+                        // SOLUCIÓN: Conversión explícita a Point2D
+                        Point2D targetPos = isSnapped_ ? snappedPoint_ : Point2D{currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+                        engine_.activeGripEntity->moveGrip(engine_.activeGripIndex, targetPos);
+                    }
                 }
             }
 
@@ -214,21 +220,54 @@ namespace cad {
                 }
                 // B) Clic en el Canvas
                 else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    if (engine_.currentMode != Mode::IDLE) {
-                        Point2D targetPoint = isSnapped_ ? snappedPoint_ : Point2D{currentMouseWorldPos_.x, currentMouseWorldPos_.y};
-                        
-                        // remplaxo std::string coord = std::format("{:.6f},{:.6f}", targetPoint.x, targetPoint.y);
-                        std::ostringstream oss;
-                        oss << std::fixed << std::setprecision(6);
-                        oss << targetPoint.x << "," << targetPoint.y;
-                        std::string coord = oss.str();
+                    Point2D worldPoint = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+                    double tolerance = 5.0 / viewScale_;
 
-                        engine_.processInput(coord);
-                        inputBuffer_.clear(); 
-                    }else {
-                        // NUEVO: Convertir sf::Vector2f a Point2D antes de llamar a selectEntity
-                        Point2D worldPoint = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
-                        engine_.selectEntity(worldPoint, 5.0 / viewScale_); 
+                    if (engine_.currentMode == Mode::GRIP_EDIT) {
+                        // Confirmar edición de grip
+                        engine_.currentMode = Mode::IDLE;
+                        engine_.activeGripEntity = nullptr;
+                        engine_.gripBackup.reset();
+                        engine_.statusMessage = "Entidad modificada.";
+                    } 
+                    else if (engine_.currentMode == Mode::IDLE) {
+                        // 1. Buscar si hemos clicado un grip de una entidad seleccionada
+                        Entity* hitEntity = nullptr;
+                        int hitIndex = -1;
+                        
+                        for (Entity* e : engine_.selectedEntities) {
+                            auto grips = e->getGripPoints();
+                            for (int i = 0; i < grips.size(); ++i) {
+                                double dist = std::hypot(worldPoint.x - grips[i].x, worldPoint.y - grips[i].y);
+                                if (dist <= tolerance) {
+                                    hitEntity = e;
+                                    hitIndex = i;
+                                    break;
+                                }
+                            }
+                            if (hitEntity) break;
+                        }
+
+                        if (hitEntity) {
+                            // Iniciar modo Grip Edit
+                            engine_.currentMode = Mode::GRIP_EDIT;
+                            engine_.activeGripEntity = hitEntity;
+                            engine_.activeGripIndex = hitIndex;
+                            engine_.gripBackup = hitEntity->clone(); // Guardar copia para ESC
+                            engine_.statusMessage = "Arrastrando grip... (Clic para confirmar, ESC para cancelar)";
+                        } else {
+                            // 2. Si no es un grip, selección normal de entidad
+                            engine_.selectEntity(worldPoint, tolerance);
+                        }
+                    }
+                    // ... (el resto de modos como DRAW_LINE etc. los dejas igual que los tenías) ...
+                    else if (engine_.currentMode != Mode::IDLE) {
+                        Point2D targetPoint = isSnapped_ ? snappedPoint_ : worldPoint;
+                        std::ostringstream ossCoord;
+                        ossCoord << std::fixed << std::setprecision(6);
+                        ossCoord << targetPoint.x << "," << targetPoint.y;
+                        engine_.processInput(ossCoord.str());
+                        inputBuffer_.clear();
                     }
                 }
             }
@@ -306,8 +345,13 @@ namespace cad {
             }
 
             // --- TECLA ESCAPE: Cancelar comando ---
-            if (event.type == sf::Event::KeyPressed && 
-                event.key.code == sf::Keyboard::Escape) {
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                if (engine_.currentMode == Mode::GRIP_EDIT && engine_.gripBackup) {
+                    // Restaurar la entidad original
+                    engine_.activeGripEntity->copyFrom(*engine_.gripBackup);
+                    engine_.gripBackup.reset();
+                    engine_.statusMessage = "Edición de grip cancelada.";
+                }
                 engine_.cancelCommand();
                 inputBuffer_.clear();
             }
@@ -956,115 +1000,29 @@ namespace cad {
     }
 
     void App::drawGrips() {
-        const float gripSize = 6.0f;  // Tamaño del grip en píxeles
-        sf::Color gripColor(0, 100, 255);  // Azul típico de AutoCAD
-        
+        const float gripSize = 6.0f;
+        sf::Color gripColor(0, 100, 255); // Azul
+        sf::Color activeGripColor(255, 0, 0); // Rojo para el grip activo
+
         for (Entity* entity : engine_.selectedEntities) {
-            // --- LÍNEA: Grips en inicio y fin ---
-            if (auto* line = dynamic_cast<Line*>(entity)) {
-                sf::Vector2f p1 = worldToScreen(line->p1.x, line->p1.y);
-                sf::Vector2f p2 = worldToScreen(line->p2.x, line->p2.y);
+            auto grips = entity->getGripPoints();
+            for (int i = 0; i < grips.size(); ++i) {
+                sf::Vector2f screenPos = worldToScreen(grips[i].x, grips[i].y);
                 
-                sf::RectangleShape grip1(sf::Vector2f(gripSize, gripSize));
-                grip1.setFillColor(gripColor);
-                grip1.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                grip1.setPosition(p1);
-                window_.draw(grip1);
+                // Si es el grip que estamos arrastrando, lo pintamos rojo y más grande
+                bool isActive = (engine_.currentMode == Mode::GRIP_EDIT && 
+                                engine_.activeGripEntity == entity && 
+                                engine_.activeGripIndex == i);
                 
-                sf::RectangleShape grip2(sf::Vector2f(gripSize, gripSize));
-                grip2.setFillColor(gripColor);
-                grip2.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                grip2.setPosition(p2);
-                window_.draw(grip2);
-            }
-            
-            // --- CÍRCULO: Grips en centro y punto del perímetro (a la derecha) ---
-            else if (auto* circle = dynamic_cast<Circle*>(entity)) {
-                sf::Vector2f center = worldToScreen(circle->center.x, circle->center.y);
-                sf::Vector2f perimeter = worldToScreen(circle->center.x + circle->radius, circle->center.y);
-                
-                sf::RectangleShape grip1(sf::Vector2f(gripSize, gripSize));
-                grip1.setFillColor(gripColor);
-                grip1.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                grip1.setPosition(center);
-                window_.draw(grip1);
-                
-                sf::RectangleShape grip2(sf::Vector2f(gripSize, gripSize));
-                grip2.setFillColor(gripColor);
-                grip2.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                grip2.setPosition(perimeter);
-                window_.draw(grip2);
-            }
-            
-            // --- ARCO: Grips en centro, punto inicial y punto final ---
-            else if (auto* arc = dynamic_cast<Arc*>(entity)) {
-                const double PI = 3.14159265358979323846;
-                double startRad = arc->startAngle * PI / 180.0;
-                double endRad = arc->endAngle * PI / 180.0;
-                
-                sf::Vector2f center = worldToScreen(arc->center.x, arc->center.y);
-                sf::Vector2f startPt = worldToScreen(
-                    arc->center.x + arc->radius * std::cos(startRad),
-                    arc->center.y + arc->radius * std::sin(startRad)
-                );
-                sf::Vector2f endPt = worldToScreen(
-                    arc->center.x + arc->radius * std::cos(endRad),
-                    arc->center.y + arc->radius * std::sin(endRad)
-                );
-                
-                auto drawGrip = [&](sf::Vector2f pos) {
-                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
-                    grip.setFillColor(gripColor);
-                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                    grip.setPosition(pos);
-                    window_.draw(grip);
-                };
-                
-                drawGrip(center);
-                drawGrip(startPt);
-                drawGrip(endPt);
-            }
-            
-            // --- POLILÍNEA: Grips en cada vértice ---
-            else if (auto* polyline = dynamic_cast<Polyline*>(entity)) {
-                for (const auto& pt : polyline->points) {
-                    sf::Vector2f screenPt = worldToScreen(pt.x, pt.y);
-                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
-                    grip.setFillColor(gripColor);
-                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                    grip.setPosition(screenPt);
-                    window_.draw(grip);
-                }
-            }
-            
-            // --- POLÍGONO: Grips en centro y cada vértice ---
-            else if (auto* polygon = dynamic_cast<Polygon*>(entity)) {
-                const double PI = 3.14159265358979323846;
-                double angleStep = 2.0 * PI / polygon->sides;
-                
-                // Grip en el centro
-                sf::Vector2f center = worldToScreen(polygon->center.x, polygon->center.y);
-                sf::RectangleShape centerGrip(sf::Vector2f(gripSize, gripSize));
-                centerGrip.setFillColor(gripColor);
-                centerGrip.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                centerGrip.setPosition(center);
-                window_.draw(centerGrip);
-                
-                // Grips en cada vértice
-                for (int i = 0; i < polygon->sides; ++i) {
-                    double angle = i * angleStep - PI / 2.0;
-                    double px = polygon->center.x + polygon->radius * std::cos(angle);
-                    double py = polygon->center.y + polygon->radius * std::sin(angle);
-                    sf::Vector2f vertex = worldToScreen(px, py);
-                    
-                    sf::RectangleShape grip(sf::Vector2f(gripSize, gripSize));
-                    grip.setFillColor(gripColor);
-                    grip.setOrigin(gripSize / 2.f, gripSize / 2.f);
-                    grip.setPosition(vertex);
-                    window_.draw(grip);
-                }
+                float size = isActive ? gripSize * 1.5f : gripSize;
+                sf::Color color = isActive ? activeGripColor : gripColor;
+
+                sf::RectangleShape grip(sf::Vector2f(size, size));
+                grip.setFillColor(color);
+                grip.setOrigin(size / 2.f, size / 2.f);
+                grip.setPosition(screenPos);
+                window_.draw(grip);
             }
         }
     }
-
 } // namespace cad

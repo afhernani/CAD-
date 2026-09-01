@@ -420,4 +420,81 @@ namespace cad {
         }
     }
 
+    // --- Implementaciones de Grips y CopyFrom ---
+
+    // LINE
+    std::vector<Point2D> Line::getGripPoints() const { return {p1, p2}; }
+    void Line::moveGrip(int index, const Point2D& newPos) {
+        if (index == 0) p1 = newPos; else if (index == 1) p2 = newPos;
+    }
+    void Line::copyFrom(const Entity& src) {
+        auto& l = dynamic_cast<const Line&>(src);
+        p1 = l.p1; p2 = l.p2; layerName = l.layerName;
+    }
+
+    // CIRCLE
+    std::vector<Point2D> Circle::getGripPoints() const {
+        return {center, {center.x + radius, center.y}};
+    }
+    void Circle::moveGrip(int index, const Point2D& newPos) {
+        if (index == 0) center = newPos;
+        else if (index == 1) radius = std::hypot(newPos.x - center.x, newPos.y - center.y);
+    }
+    void Circle::copyFrom(const Entity& src) {
+        auto& c = dynamic_cast<const Circle&>(src);
+        center = c.center; radius = c.radius; layerName = c.layerName;
+    }
+
+    // ARC
+    std::vector<Point2D> Arc::getGripPoints() const {
+        const double PI = 3.14159265358979323846;
+        double sRad = startAngle * PI / 180.0;
+        double eRad = endAngle * PI / 180.0;
+        return {
+            center,
+            {center.x + radius * std::cos(sRad), center.y + radius * std::sin(sRad)},
+            {center.x + radius * std::cos(eRad), center.y + radius * std::sin(eRad)}
+        };
+    }
+    void Arc::moveGrip(int index, const Point2D& newPos) {
+        const double PI = 3.14159265358979323846;
+        if (index == 0) { center = newPos; }
+        else if (index == 1) { startAngle = std::atan2(newPos.y - center.y, newPos.x - center.x) * 180.0 / PI; }
+        else if (index == 2) { endAngle = std::atan2(newPos.y - center.y, newPos.x - center.x) * 180.0 / PI; }
+    }
+    void Arc::copyFrom(const Entity& src) {
+        auto& a = dynamic_cast<const Arc&>(src);
+        center = a.center; radius = a.radius; startAngle = a.startAngle; endAngle = a.endAngle; layerName = a.layerName;
+    }
+
+    // POLYLINE
+    std::vector<Point2D> Polyline::getGripPoints() const { return points; }
+    void Polyline::moveGrip(int index, const Point2D& newPos) {
+        if (index >= 0 && index < points.size()) points[index] = newPos;
+    }
+    void Polyline::copyFrom(const Entity& src) {
+        auto& p = dynamic_cast<const Polyline&>(src);
+        points = p.points; layerName = p.layerName;
+    }
+
+    // POLYGON
+    std::vector<Point2D> Polygon::getGripPoints() const {
+        const double PI = 3.14159265358979323846;
+        std::vector<Point2D> grips = {center};
+        double angleStep = 2.0 * PI / sides;
+        for (int i = 0; i < sides; ++i) {
+            double angle = i * angleStep - PI / 2.0;
+            grips.push_back({center.x + radius * std::cos(angle), center.y + radius * std::sin(angle)});
+        }
+        return grips;
+    }
+    void Polygon::moveGrip(int index, const Point2D& newPos) {
+        if (index == 0) { center = newPos; }
+        else { radius = std::hypot(newPos.x - center.x, newPos.y - center.y); } // Mantiene regularidad
+    }
+    void Polygon::copyFrom(const Entity& src) {
+        auto& p = dynamic_cast<const Polygon&>(src);
+        center = p.center; sides = p.sides; radius = p.radius; layerName = p.layerName;
+    }    
+
 } // namespace cad
