@@ -87,7 +87,8 @@ namespace cad {
         sf::String toSfString(const std::string& utf8Str) {
             return sf::String::fromUtf8(utf8Str.begin(), utf8Str.end());
         }
-        
+        // Dibuja el feedback visual (entidad fantasma) según el modo actual
+        void drawDrawingFeedback();
     };
 
 } // namespace cad

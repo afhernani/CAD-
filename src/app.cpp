@@ -441,6 +441,9 @@ namespace cad {
             txt.setPosition(mouseScreen.x + 10.f, mouseScreen.y - 20.f);
             window_.draw(txt);
         }
+        
+        // >>> AÑADIR ESTO: Feedback visual de dibujo <<<
+        drawDrawingFeedback();
 
         // Marcador de Object Snap
         if (isSnapped_) {
@@ -847,6 +850,103 @@ namespace cad {
             snapCircle.setOrigin(8.f, 8.f);
             snapCircle.setPosition(screenPos);
             window_.draw(snapCircle);
+        }
+    }
+
+    void App::drawDrawingFeedback() {
+        // Color amarillo para el feedback visual
+        sf::Color feedbackColor(255, 255, 0, 180); // Amarillo semitransparente
+        
+        auto w2s = [this](double x, double y) { return worldToScreen(x, y); };
+        
+        // --- LÍNEA ---
+        if (engine_.currentMode == Mode::DRAW_LINE && 
+            engine_.statusMessage.find("siguiente") != std::string::npos) {
+            // Ya tenemos el primer punto, dibujar línea hasta el ratón
+            sf::Vertex line[] = {
+                sf::Vertex(w2s(engine_.tempPoint1.x, engine_.tempPoint1.y), feedbackColor),
+                sf::Vertex(w2s(currentMouseWorldPos_.x, currentMouseWorldPos_.y), feedbackColor)
+            };
+            window_.draw(line, 2, sf::Lines);
+        }
+        
+        // --- CÍRCULO ---
+        else if (engine_.currentMode == Mode::DRAW_CIRCLE && 
+                (engine_.statusMessage.find("Radio") != std::string::npos ||   // ← R mayúscula
+                engine_.statusMessage.find("radio") != std::string::npos)) {  // ← r minúscula (por si acaso)
+            
+            double dx = currentMouseWorldPos_.x - engine_.tempPoint1.x;
+            double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
+            double radius = std::sqrt(dx * dx + dy * dy);
+            
+            const int numPoints = 64;
+            sf::VertexArray va(sf::LineStrip, numPoints + 1);
+            const double PI = 3.14159265358979323846;
+            double angleStep = 2.0 * PI / numPoints;
+            
+            for (int i = 0; i <= numPoints; ++i) {
+                double angle = i * angleStep;
+                double px = engine_.tempPoint1.x + radius * std::cos(angle);
+                double py = engine_.tempPoint1.y + radius * std::sin(angle);
+                va[i].position = w2s(px, py);
+                va[i].color = feedbackColor;
+            }
+            window_.draw(va);
+        }
+        
+        // --- ARCO ---
+        else if (engine_.currentMode == Mode::DRAW_ARC && 
+                engine_.statusMessage.find("radio") != std::string::npos) {
+            // Similar al círculo, mostramos el círculo completo como guía
+            double dx = currentMouseWorldPos_.x - engine_.tempPoint1.x;
+            double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
+            double radius = std::sqrt(dx * dx + dy * dy);
+            
+            sf::CircleShape circle(static_cast<float>(radius * viewScale_));
+            circle.setFillColor(sf::Color::Transparent);
+            circle.setOutlineColor(feedbackColor);
+            circle.setOutlineThickness(1.5f);
+            circle.setOrigin(static_cast<float>(radius * viewScale_), 
+                            static_cast<float>(radius * viewScale_));
+            circle.setPosition(w2s(engine_.tempPoint1.x, engine_.tempPoint1.y));
+            window_.draw(circle);
+        }
+        
+        // --- POLILÍNEA ---
+        else if (engine_.currentMode == Mode::DRAW_POLYLINE && 
+                !engine_.tempPolylinePoints.empty()) {
+            // Dibujar línea desde el último punto de la polilínea hasta el ratón
+            const auto& lastPt = engine_.tempPolylinePoints.back();
+            sf::Vertex line[] = {
+                sf::Vertex(w2s(lastPt.x, lastPt.y), feedbackColor),
+                sf::Vertex(w2s(currentMouseWorldPos_.x, currentMouseWorldPos_.y), feedbackColor)
+            };
+            window_.draw(line, 2, sf::Lines);
+        }
+        
+        // --- POLÍGONO ---
+        else if (engine_.currentMode == Mode::DRAW_POLYGON && 
+                engine_.statusMessage.find("radio") != std::string::npos) {
+            // Ya tenemos el centro y los lados, dibujar polígono con radio hasta el ratón
+            double dx = currentMouseWorldPos_.x - engine_.tempPolygonCenter.x;
+            double dy = currentMouseWorldPos_.y - engine_.tempPolygonCenter.y;
+            double radius = std::sqrt(dx * dx + dy * dy);
+            
+            int sides = engine_.tempPolygonSides > 0 ? engine_.tempPolygonSides : 6;
+            sf::VertexArray va(sf::LineStrip, sides + 1);
+
+            // SOLUCIÓN: Usar constante local en lugar de std::numbers::pi
+            const double PI = 3.14159265358979323846;
+            double angleStep = 2.0 * PI / sides;
+            
+            for (int i = 0; i <= sides; ++i) {
+                double angle = i * angleStep - PI / 2.0;
+                double px = engine_.tempPolygonCenter.x + radius * std::cos(angle);
+                double py = engine_.tempPolygonCenter.y + radius * std::sin(angle);
+                va[i].position = w2s(px, py);
+                va[i].color = feedbackColor;
+            }
+            window_.draw(va);
         }
     }
 
