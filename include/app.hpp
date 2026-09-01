@@ -29,7 +29,11 @@ namespace cad {
         std::string inputBuffer_;
         std::vector<std::string> commandHistory_;
         int commandScrollOffset_ = 0;
-        bool isTyping_ = true; 
+        bool isTyping_ = true;
+
+        bool isDraggingCommandScroll_ = false;
+        int dragStartY_ = 0;
+        int dragStartOffset_ = 0;
 
         // --- Sistema de Vista (Zoom y Pan) ---
         float viewScale_;

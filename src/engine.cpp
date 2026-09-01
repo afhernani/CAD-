@@ -1,6 +1,7 @@
 #include "engine.hpp"
 #include <algorithm>
 #include <sstream>
+#include <iomanip>
 #include <iostream>
 #include <cmath>
 #include <numbers>
@@ -601,9 +602,17 @@ namespace cad {
                 double angle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
                 
                 // Mostrar en barra de estado
-                statusMessage = std::format("Distancia: {:.4f}, Ángulo XY: {:.2f}°, DX: {:.4f}, DY: {:.4f}", 
-                                            dist, angle, dx, dy);
+                //statusMessage = std::format("Distancia: {:.4f}, Ángulo XY: {:.2f}°, DX: {:.4f}, DY: {:.4f}", 
+                //                            dist, angle, dx, dy);
                 
+                std::ostringstream ossDist;
+                ossDist << std::fixed << std::setprecision(2);
+                ossDist << "Distancia: " << dist 
+                        << ", Angulo XY: " << angle << " deg"
+                        << ", DX: " << dx 
+                        << ", DY: " << dy;
+                statusMessage = ossDist.str();
+
                 // Opcional: añadir al historial de comandos para dejar constancia
                 // (Esto requeriría que App tenga acceso, pero con statusMessage es suficiente por ahora)
                 

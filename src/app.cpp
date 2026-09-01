@@ -76,6 +76,19 @@ namespace cad {
                 
                 // Guardar posición de pantalla
                 currentMouseScreenPos_ = {mx, my};
+
+                // NUEVO: Lógica de arrastre del scroll de comandos
+                if (isDraggingCommandScroll_) {
+                    int deltaY = dragStartY_ - my;  // Invertido: arrastrar hacia arriba = scroll hacia abajo
+                    int lineHeight = 20;
+                    int linesMoved = deltaY / lineHeight;
+                    
+                    int totalLines = commandHistory_.size() + 1;
+                    int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
+                    int maxOffset = std::max(0, totalLines - maxLines);
+                    
+                    commandScrollOffset_ = std::max(0, std::min(maxOffset, dragStartOffset_ + linesMoved));
+                }
                 
                 bool isInCanvas = (my >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) && 
                                 my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT));
@@ -159,6 +172,16 @@ namespace cad {
                 int mx = event.mouseButton.x;
                 int my = event.mouseButton.y;
 
+                isDraggingCommandScroll_=false;
+
+                // NUEVO: Detectar clic en la ventana de comandos para arrastrar el scroll
+                if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
+                    my < WINDOW_HEIGHT - STATUS_HEIGHT) {
+                    isDraggingCommandScroll_ = true;
+                    dragStartY_ = my;
+                    dragStartOffset_ = commandScrollOffset_;
+                }
+
                 // A) Clic en la Barra de Herramientas
                 if (my >= MENU_HEIGHT && my < MENU_HEIGHT + TOOLBAR_HEIGHT) {
                     if (mx >= 10 && mx <= 50) {
@@ -196,7 +219,7 @@ namespace cad {
                         
                         // remplaxo std::string coord = std::format("{:.6f},{:.6f}", targetPoint.x, targetPoint.y);
                         std::ostringstream oss;
-                        //oss << std::fixed << std::setprecision(2);
+                        oss << std::fixed << std::setprecision(6);
                         oss << targetPoint.x << "," << targetPoint.y;
                         std::string coord = oss.str();
 
@@ -405,6 +428,7 @@ namespace cad {
             double dist = std::sqrt(dx * dx + dy * dy);
             
             std::ostringstream oss;
+            oss << std::fixed << std::setprecision(2);
             oss << "Dist: " << dist;
             sf::Text txt;
             txt.setFont(font_);
@@ -727,12 +751,13 @@ namespace cad {
 
         // Indicador de scroll DINÁMICO (se mueve según el offset)
         if (totalLines > maxLines) {
+            int maxOffset = std::max(0, totalLines - maxLines);
             float scrollRatio = (maxOffset > 0) ? (float)commandScrollOffset_ / maxOffset : 0.0f;
-            float availableHeight = (maxLines - 1) * lineHeight; 
+            float availableHeight = (maxLines - 1) * lineHeight;
             float indicatorHeight = 30.f;
             float maxIndicatorY = startY + availableHeight - indicatorHeight;
             float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
-
+            
             sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
             scrollIndicator.setFillColor(sf::Color(100, 100, 100));
             scrollIndicator.setPosition(WINDOW_WIDTH - 10, indicatorY);
