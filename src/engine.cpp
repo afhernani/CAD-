@@ -364,7 +364,7 @@ namespace cad {
         }
         // --- CÍRCULO ---
         else if (currentMode == Mode::DRAW_CIRCLE) {
-            if (statusMessage.find("centro") != std::string::npos) {
+            if (statusMessage.find("Centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
                 statusMessage = "CIRCULO | Radio (número) o punto en el borde:";
             } else {
@@ -389,11 +389,11 @@ namespace cad {
         }
         // --- ARCO ---
         else if (currentMode == Mode::DRAW_ARC) {
-            if (statusMessage.find("centro") != std::string::npos) {
+            if (statusMessage.find("Centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
                 statusMessage = "ARCO | Radio (número) o punto para definir radio:";
             } 
-            else if (statusMessage.find("radio") != std::string::npos) {
+            else if (statusMessage.find("Radio") != std::string::npos) {
                 if (isScalar) {
                     tempArcRadius = scalarValue;
                 } else {
@@ -517,6 +517,10 @@ namespace cad {
         }
         // --- ROTAR ---
         else if (currentMode == Mode::ROTATE) {
+            // Búsqueda robusta (insensible a mayúsculas/minúsculas)
+            std::string msgLower = statusMessage;
+            std::transform(msgLower.begin(), msgLower.end(), msgLower.begin(), ::tolower);
+            
             if (statusMessage.find("Centro") != std::string::npos) {
                 rotateCenter = lastPoint;
                 statusMessage = "ROTAR | Ángulo (grados) o punto:";
@@ -534,7 +538,10 @@ namespace cad {
                     e->rotate(rotateCenter, angle);
                 }
                 currentMode = Mode::IDLE;
-                statusMessage = "Entidades rotadas " + std::to_string(angle) + "°";
+                // Usar ostringstream para evitar std::format
+                std::ostringstream oss;
+                oss << "Entidades rotadas " << angle << "°";
+                statusMessage = oss.str();
             }
         }
         // --- ESCALAR ---

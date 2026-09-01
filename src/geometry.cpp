@@ -208,6 +208,13 @@ namespace cad {
         this->center.y = center.y + dx * sinA + dy * cosA;
         this->startAngle += angleDeg;
         this->endAngle += angleDeg;
+        // Normalizar ángulos al rango [0, 360)
+        auto normalize = [](double& ang) {
+            while (ang < 0.0) ang += 360.0;
+            while (ang >= 360.0) ang -= 360.0;
+        };
+        normalize(this->startAngle);
+        normalize(this->endAngle);
     }
 
     void Arc::scale(const Point2D& basePoint, double factor) {
@@ -295,20 +302,15 @@ namespace cad {
     }
 
     // --- Polygon (Polígono Regular) ---
-    void Polygon::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
-                       const sf::Color& color, float viewScale) const {
+    void Polygon::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, const sf::Color& color, float viewScale) const {
         if (sides < 3) return;
-
-        // sides + 1 para cerrar el polígono (volver al primer punto)
         sf::VertexArray va(sf::LineStrip, sides + 1);
         double angleStep = 2.0 * std::numbers::pi / sides;
-
         for (int i = 0; i <= sides; ++i) {
-            // Empezamos en -90 grados (arriba) para que el polígono se vea "de pie"
-            double angle = i * angleStep - std::numbers::pi / 2.0;
+            // Aplicar el offset de rotación
+            double angle = i * angleStep - std::numbers::pi / 2.0 + rotationOffset;
             double px = center.x + radius * std::cos(angle);
             double py = center.y + radius * std::sin(angle);
-            
             va[i].position = w2s(px, py);
             va[i].color = color;
         }
@@ -354,7 +356,9 @@ namespace cad {
         double dx = this->center.x - center.x, dy = this->center.y - center.y;
         this->center.x = center.x + dx * cosA - dy * sinA;
         this->center.y = center.y + dx * sinA + dy * cosA;
+        this->rotationOffset += rad; // Acumular rotación
     }
+
     
     void Polygon::scale(const Point2D& basePoint, double factor) {
         center.x = basePoint.x + (center.x - basePoint.x) * factor;

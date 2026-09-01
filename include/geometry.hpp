@@ -118,6 +118,7 @@ namespace cad {
         Point2D center;
         int sides = 3;
         double radius = 0.0;
+        double rotationOffset = 0.0; // En radianes
         void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s, 
                   const sf::Color& color, float viewScale) const override;
         // Metodos virtuales:
