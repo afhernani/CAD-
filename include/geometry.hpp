@@ -144,4 +144,30 @@ namespace cad {
     IntersectionResult lineLineIntersection(const Point2D& a1, const Point2D& a2,
                                            const Point2D& b1, const Point2D& b2);
 
+    class Ellipse : public Entity {
+    public:
+        Point2D center;
+        double majorRadius = 1.0;  // Semi-eje mayor
+        double minorRadius = 0.5;  // Semi-eje menor
+        double rotationAngle = 0.0; // En radianes
+        
+        void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
+                const sf::Color& color, float viewScale) const override;
+        bool isNear(const Point2D& point, double tolerance) const override;
+        void move(double dx, double dy) override;
+        void rotate(const Point2D& center, double angleDeg) override;
+        void scale(const Point2D& base, double factor) override;
+        void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
+        std::unique_ptr<Entity> clone() const override;
+        void copyFrom(const Entity& src) override;
+        
+        // Para grips
+        std::vector<Point2D> getGripPoints() const override;
+        void moveGrip(int index, const Point2D& newPos) override;
+        
+    private:
+        // Convierte coordenadas polares de la elipse a cartesianas
+        Point2D getPointOnEllipse(double angle) const;
+    };
+
 } // namespace cad

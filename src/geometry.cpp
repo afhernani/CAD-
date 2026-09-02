@@ -510,4 +510,175 @@ namespace cad {
         center = p.center; sides = p.sides; radius = p.radius; layerName = p.layerName;
     }    
 
+    // --- ELLIPSE ---
+
+    // Función auxiliar para reflejar un punto respecto a un eje definido por dos puntos
+    Point2D mirrorPoint(const Point2D& p, const Point2D& axisP1, const Point2D& axisP2) {
+        double dx = axisP2.x - axisP1.x;
+        double dy = axisP2.y - axisP1.y;
+        double lenSq = dx * dx + dy * dy;
+        
+        // Si el eje es un solo punto (longitud 0), no hay reflexión posible
+        if (lenSq == 0.0) return p; 
+        
+        // Proyección escalar del punto sobre el eje
+        double t = ((p.x - axisP1.x) * dx + (p.y - axisP1.y) * dy) / lenSq;
+        
+        // Coordenadas del "pie" de la perpendicular (punto más cercano en el eje)
+        double footX = axisP1.x + t * dx;
+        double footY = axisP1.y + t * dy;
+        
+        // El punto reflejado es simétrico respecto al pie: P' = 2*Pie - P
+        return { 2.0 * footX - p.x, 2.0 * footY - p.y };
+    }
+
+    void Ellipse::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
+                    const sf::Color& color, float viewScale) const {
+        const int numPoints = 64;
+        sf::VertexArray va(sf::LineStrip, numPoints + 1);
+        const double PI = 3.14159265358979323846;
+        double angleStep = 2.0 * PI / numPoints;
+        
+        for (int i = 0; i <= numPoints; ++i) {
+            double angle = i * angleStep;
+            Point2D pt = getPointOnEllipse(angle);
+            va[i].position = w2s(pt.x, pt.y);
+            va[i].color = color;
+        }
+        window.draw(va);
+    }
+
+    Point2D Ellipse::getPointOnEllipse(double angle) const {
+        // Rotar el ángulo por rotationAngle
+        double rotatedAngle = angle + rotationAngle;
+        const double PI = 3.14159265358979323846;
+        
+        // Ecuación paramétrica de la elipse
+        double x = center.x + majorRadius * std::cos(rotatedAngle);
+        double y = center.y + minorRadius * std::sin(rotatedAngle);
+        return {x, y};
+    }
+
+    bool Ellipse::isNear(const Point2D& point, double tolerance) const {
+        // Comprobar distancia a lo largo de la elipse (muestreo)
+        const int numPoints = 64;
+        const double PI = 3.14159265358979323846;
+        double angleStep = 2.0 * PI / numPoints;
+        
+        for (int i = 0; i < numPoints; ++i) {
+            double angle = i * angleStep;
+            Point2D pt = getPointOnEllipse(angle);
+            double dist = std::hypot(point.x - pt.x, point.y - pt.y);
+            if (dist <= tolerance) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void Ellipse::move(double dx, double dy) {
+        center.x += dx;
+        center.y += dy;
+    }
+
+    void Ellipse::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        double dx = this->center.x - center.x, dy = this->center.y - center.y;
+        this->center.x = center.x + dx * cosA - dy * sinA;
+        this->center.y = center.y + dx * sinA + dy * cosA;
+        this->rotationAngle += rad;
+    }
+
+    void Ellipse::scale(const Point2D& base, double factor) {
+        double dx = center.x - base.x, dy = center.y - base.y;
+        center.x = base.x + dx * factor;
+        center.y = base.y + dy * factor;
+        majorRadius *= factor;
+        minorRadius *= factor;
+    }
+
+    void Ellipse::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        center = mirrorPoint(center, axisP1, axisP2);
+        rotationAngle = -rotationAngle; // Invertir rotación
+    }
+
+    std::unique_ptr<Entity> Ellipse::clone() const {
+        auto c = std::make_unique<Ellipse>();
+        c->center = center;
+        c->majorRadius = majorRadius;
+        c->minorRadius = minorRadius;
+        c->rotationAngle = rotationAngle;
+        c->layerName = layerName;
+        return c;
+    }
+
+    void Ellipse::copyFrom(const Entity& src) {
+        auto& e = dynamic_cast<const Ellipse&>(src);
+        center = e.center;
+        majorRadius = e.majorRadius;
+        minorRadius = e.minorRadius;
+        rotationAngle = e.rotationAngle;
+        layerName = e.layerName;
+    }
+
+    std::vector<Point2D> Ellipse::getGripPoints() const {
+        const double PI = 3.14159265358979323846;
+        std::vector<Point2D> grips;
+        
+        // Centro
+        grips.push_back(center);
+        
+        // 4 puntos en los ejes (0°, 90°, 180°, 270°)
+        grips.push_back(getPointOnEllipse(0.0));           // Eje mayor +
+        grips.push_back(getPointOnEllipse(PI / 2.0));      // Eje menor +
+        grips.push_back(getPointOnEllipse(PI));            // Eje mayor -
+        grips.push_back(getPointOnEllipse(3 * PI / 2.0));  // Eje menor -
+        
+        return grips;
+    }
+
+    void Ellipse::moveGrip(int index, const Point2D& newPos) {
+        const double PI = 3.14159265358979323846;
+        
+        if (index == 0) {
+            // Mover centro
+            double dx = newPos.x - center.x;
+            double dy = newPos.y - center.y;
+            center.x = newPos.x;
+            center.y = newPos.y;
+        }
+        else if (index == 1) {
+            // Eje mayor + (0°)
+            double dx = newPos.x - center.x;
+            double dy = newPos.y - center.y;
+            majorRadius = std::hypot(dx, dy);
+            rotationAngle = std::atan2(dy, dx);
+        }
+        else if (index == 2) {
+            // Eje menor + (90°)
+            Point2D majorAxisPt = getPointOnEllipse(0.0);
+            double dx = newPos.x - center.x;
+            double dy = newPos.y - center.y;
+            minorRadius = std::hypot(dx, dy);
+            // Mantener perpendicularidad
+            rotationAngle = std::atan2(majorAxisPt.y - center.y, majorAxisPt.x - center.x);
+        }
+        else if (index == 3) {
+            // Eje mayor - (180°)
+            double dx = newPos.x - center.x;
+            double dy = newPos.y - center.y;
+            majorRadius = std::hypot(dx, dy);
+            rotationAngle = std::atan2(dy, dx) - PI;
+        }
+        else if (index == 4) {
+            // Eje menor - (270°)
+            Point2D majorAxisPt = getPointOnEllipse(0.0);
+            double dx = newPos.x - center.x;
+            double dy = newPos.y - center.y;
+            minorRadius = std::hypot(dx, dy);
+            rotationAngle = std::atan2(majorAxisPt.y - center.y, majorAxisPt.x - center.x);
+        }
+    }
+
 } // namespace cad

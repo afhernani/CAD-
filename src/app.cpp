@@ -997,6 +997,28 @@ namespace cad {
             }
             window_.draw(va);
         }
+        // --- ELIPSE ---
+        else if (engine_.currentMode == Mode::DRAW_ELLIPSE && 
+                engine_.statusMessage.find("eje mayor") != std::string::npos) {
+            // Dibujar elipse fantasma
+            double dx = currentMouseWorldPos_.x - engine_.tempPoint1.x;
+            double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
+            double majorRadius = std::sqrt(dx * dx + dy * dy);
+            
+            const int numPoints = 64;
+            sf::VertexArray va(sf::LineStrip, numPoints + 1);
+            const double PI = 3.14159265358979323846;
+            double angleStep = 2.0 * PI / numPoints;
+            
+            for (int i = 0; i <= numPoints; ++i) {
+                double angle = i * angleStep;
+                double px = engine_.tempPoint1.x + majorRadius * std::cos(angle);
+                double py = engine_.tempPoint1.y + (majorRadius * 0.5) * std::sin(angle); // Ratio temporal 2:1
+                va[i].position = w2s(px, py);
+                va[i].color = feedbackColor;
+            }
+            window_.draw(va);
+        }
     }
 
     void App::drawGrips() {

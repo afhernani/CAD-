@@ -112,6 +112,10 @@ namespace cad {
             currentMode = Mode::DRAW_POLYGON;
             statusMessage = "POLIGONO | Especificar centro:";
         }
+        else if (upperCmd == "EL" || upperCmd == "ELLIPSE" || upperCmd == "ELIPSE") {
+            currentMode = Mode::DRAW_ELLIPSE;
+            statusMessage = "ELIPSE | Especificar centro:";
+        }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
             doc.clear();
             lastPoint = {0.0, 0.0};
@@ -478,6 +482,45 @@ namespace cad {
             tempPolylinePoints.push_back(lastPoint);
             statusMessage = "POLILINEA | Siguiente punto (Enter=terminar, C=cerrar, U=deshacer):";
         }
+
+        // --- ELIPSE ---
+        else if (currentMode == Mode::DRAW_ELLIPSE) {
+            if (statusMessage.find("centro") != std::string::npos) {
+                tempPoint1 = lastPoint;
+                statusMessage = "ELIPSE | Punto final del eje mayor (o valor):";
+            }
+            else if (statusMessage.find("eje mayor") != std::string::npos) {
+                if (isScalar) {
+                    tempEllipseMajorRadius = scalarValue;
+                } else {
+                    double dx = lastPoint.x - tempPoint1.x;
+                    double dy = lastPoint.y - tempPoint1.y;
+                    tempEllipseMajorRadius = std::sqrt(dx * dx + dy * dy);
+                }
+                statusMessage = "ELIPSE | Radio del otro eje (o valor):";
+            }
+            else {
+                double minorRadius;
+                if (isScalar) {
+                    minorRadius = scalarValue;
+                } else {
+                    double dx = lastPoint.x - tempPoint1.x;
+                    double dy = lastPoint.y - tempPoint1.y;
+                    minorRadius = std::sqrt(dx * dx + dy * dy);
+                }
+                
+                auto newEllipse = std::make_unique<Ellipse>();
+                newEllipse->center = tempPoint1;
+                newEllipse->majorRadius = tempEllipseMajorRadius;
+                newEllipse->minorRadius = minorRadius;
+                newEllipse->layerName = doc.currentLayerName;
+                doc.addEntity(std::move(newEllipse));
+                
+                currentMode = Mode::IDLE;
+                statusMessage = "Elipse creada.";
+            }
+        }
+
         // --- MOVER ---
         else if (currentMode == Mode::MOVE) {
             if (statusMessage.find("base") != std::string::npos) {
@@ -958,6 +1001,17 @@ namespace cad {
             oss << "  3. Escribe número de lados\n";
             oss << "  4. Especifica radio\n\n";
             oss << "Ejemplo: POL -> 0,0 -> 6 -> 50\n";
+            return oss.str();
+        }
+        else if (upperTopic == "EL" || upperTopic == "ELLIPSE" || upperTopic == "ELIPSE") {
+            oss << "--- COMANDO: ELIPSE (EL) ---\n";
+            oss << "Dibuja una elipse especificando centro y ejes.\n";
+            oss << "Uso:\n";
+            oss << "  1. Escribe: EL\n";
+            oss << "  2. Especifica centro\n";
+            oss << "  3. Especifica punto final del eje mayor\n";
+            oss << "  4. Especifica radio del otro eje\n";
+            oss << "Ejemplo: EL -> 0,0 -> 100,0 -> 50\n";
             return oss.str();
         }
         else if (upperTopic == "LA" || upperTopic == "LAYER" || upperTopic == "CAPA") {

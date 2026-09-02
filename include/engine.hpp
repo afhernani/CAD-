@@ -14,6 +14,7 @@ namespace cad {
         DRAW_ARC,
         DRAW_POLYLINE,
         DRAW_POLYGON,
+        DRAW_ELLIPSE,
         LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
         COPY,
         ROTATE,
@@ -84,6 +85,9 @@ namespace cad {
         Entity* activeGripEntity = nullptr;
         int activeGripIndex = -1;
         std::unique_ptr<Entity> gripBackup; // Para restaurar si se pulsa ESC
+
+        // Variables temporales para elipse
+        double tempEllipseMajorRadius = 0.0;
 
     private:
         void executeCommand(std::string_view cmd);
