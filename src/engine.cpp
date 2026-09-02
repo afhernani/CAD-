@@ -364,9 +364,10 @@ namespace cad {
         }
         // --- CÍRCULO ---
         else if (currentMode == Mode::DRAW_CIRCLE) {
-            if (statusMessage.find("Centro") != std::string::npos) {
+            // Condición directa, sin variables intermedias
+            if (statusMessage.find("centro") != std::string::npos || statusMessage.find("Centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
-                statusMessage = "CIRCULO | Radio (número) o punto en el borde:";
+                statusMessage = "CIRCULO | Radio (numero) o punto en el borde:";
             } else {
                 double radius;
                 if (isScalar) {
@@ -376,24 +377,24 @@ namespace cad {
                     double dy = lastPoint.y - tempPoint1.y;
                     radius = std::sqrt(dx * dx + dy * dy);
                 }
-                
                 auto newCircle = std::make_unique<Circle>();
                 newCircle->center = tempPoint1;
                 newCircle->radius = radius;
                 newCircle->layerName = doc.currentLayerName;
                 doc.addEntity(std::move(newCircle));
-                
                 currentMode = Mode::IDLE;
-                statusMessage = "Círculo creado (radio: " + std::to_string(radius) + ")";
+                statusMessage = "Circulo creado (radio: " + std::to_string(radius) + ")";
             }
         }
         // --- ARCO ---
         else if (currentMode == Mode::DRAW_ARC) {
-            if (statusMessage.find("Centro") != std::string::npos) {
+            const double PI = 3.14159265358979323846; // Constante local a prueba de fallos en VS2019
+            
+            if (statusMessage.find("centro") != std::string::npos || statusMessage.find("Centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
-                statusMessage = "ARCO | Radio (número) o punto para definir radio:";
-            } 
-            else if (statusMessage.find("Radio") != std::string::npos) {
+                statusMessage = "ARCO | Radio (numero) o punto para definir radio:";
+            }
+            else if (statusMessage.find("radio") != std::string::npos || statusMessage.find("Radio") != std::string::npos) {
                 if (isScalar) {
                     tempArcRadius = scalarValue;
                 } else {
@@ -401,18 +402,18 @@ namespace cad {
                     double dy = lastPoint.y - tempPoint1.y;
                     tempArcRadius = std::sqrt(dx * dx + dy * dy);
                 }
-                statusMessage = "ARCO | Ángulo inicio (grados, 0=Este) o punto:";
+                statusMessage = "ARCO | Angulo inicio (grados, 0=Este) o punto:";
             }
-            else if (statusMessage.find("inicio") != std::string::npos) {
+            else if (statusMessage.find("inicio") != std::string::npos || statusMessage.find("Inicio") != std::string::npos) {
                 if (isScalar) {
                     tempArcStartAngle = scalarValue;
                 } else {
                     double dx = lastPoint.x - tempPoint1.x;
                     double dy = lastPoint.y - tempPoint1.y;
-                    tempArcStartAngle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+                    tempArcStartAngle = std::atan2(dy, dx) * 180.0 / PI;
                     if (tempArcStartAngle < 0) tempArcStartAngle += 360.0;
                 }
-                statusMessage = "ARCO | Ángulo final (grados) o punto:";
+                statusMessage = "ARCO | Angulo final (grados) o punto:";
             }
             else {
                 double endAngle;
@@ -421,10 +422,9 @@ namespace cad {
                 } else {
                     double dx = lastPoint.x - tempPoint1.x;
                     double dy = lastPoint.y - tempPoint1.y;
-                    endAngle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+                    endAngle = std::atan2(dy, dx) * 180.0 / PI;
                     if (endAngle < 0) endAngle += 360.0;
                 }
-
                 auto newArc = std::make_unique<Arc>();
                 newArc->center = tempPoint1;
                 newArc->radius = tempArcRadius;
@@ -432,7 +432,6 @@ namespace cad {
                 newArc->endAngle = endAngle;
                 newArc->layerName = doc.currentLayerName;
                 doc.addEntity(std::move(newArc));
-                
                 currentMode = Mode::IDLE;
                 statusMessage = "Arco creado.";
             }

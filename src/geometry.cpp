@@ -324,7 +324,7 @@ namespace cad {
         
         Point2D prev, curr;
         for (int i = 0; i <= sides; ++i) {
-            double angle = i * angleStep - std::numbers::pi / 2.0;
+            double angle = i * angleStep - std::numbers::pi / 2.0 + rotationOffset;
             curr.x = center.x + radius * std::cos(angle);
             curr.y = center.y + radius * std::sin(angle);
             
@@ -347,6 +347,7 @@ namespace cad {
     std::unique_ptr<Entity> Polygon::clone() const {
         auto c = std::make_unique<Polygon>();
         c->center = center; c->sides = sides; c->radius = radius;
+        c->rotationOffset = rotationOffset; 
         c->layerName = layerName;
         return c;
     }
@@ -484,11 +485,19 @@ namespace cad {
     // POLYGON
     std::vector<Point2D> Polygon::getGripPoints() const {
         const double PI = 3.14159265358979323846;
-        std::vector<Point2D> grips = {center};
+        std::vector<Point2D> grips;
+        
+        // Grip en el centro
+        grips.push_back(center);
+        
+        // Grips en los vértices (USANDO rotationOffset)
         double angleStep = 2.0 * PI / sides;
         for (int i = 0; i < sides; ++i) {
-            double angle = i * angleStep - PI / 2.0;
-            grips.push_back({center.x + radius * std::cos(angle), center.y + radius * std::sin(angle)});
+            double angle = i * angleStep - PI / 2.0 + rotationOffset;  // ← rotationOffset
+            grips.push_back({
+                center.x + radius * std::cos(angle),
+                center.y + radius * std::sin(angle)
+            });
         }
         return grips;
     }
