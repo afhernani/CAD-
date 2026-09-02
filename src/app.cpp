@@ -275,72 +275,77 @@ namespace cad {
             // --- ESCRITURA EN LÍNEA DE COMANDOS ---
             if (event.type == sf::Event::TextEntered && isTyping_) {
                 if (event.text.unicode == 13) { // Enter
-                    // Detectar si es comando HELP
-                    std::string upperInput(inputBuffer_);
-                    std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
-                    
-                    bool isHelpCommand = (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?") ||
-                                        (upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ");
-                    
-                    if (isHelpCommand) {
-                        // Extraer el tema (si existe)
-                        std::string topic = "";
-                        size_t spacePos = inputBuffer_.find(' ');
-                        if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
-                            topic = inputBuffer_.substr(spacePos + 1);
-                        }
-                        
-                        // Obtener texto de ayuda del engine
-                        std::string helpText = engine_.getHelpForTopic(topic);
-                        
-                        // Añadir el comando al historial
-                        commandHistory_.push_back(inputBuffer_);
-                        
-                        // Dividir el texto de ayuda en líneas y añadir cada una al historial
-                        std::string line;
-                        for (char c : helpText) {
-                            if (c == '\n') {
-                                if (!line.empty()) {
-                                    commandHistory_.push_back(line);
-                                }
-                                line.clear();
-                            } else {
-                                line += c;
-                            }
-                        }
-                        if (!line.empty()) {
-                            commandHistory_.push_back(line);
-                        }
-                        
-                        // Limitar historial
-                        if (commandHistory_.size() > 100) {
-                            int excess = commandHistory_.size() - 100;
-                            commandHistory_.erase(commandHistory_.begin(), 
-                                                commandHistory_.begin() + excess);
-                        }
-                        
-                        engine_.statusMessage = "Ayuda mostrada";
-                    }
-                    else {
-                        // Comando normal
-                        engine_.processInput(inputBuffer_);
-                        if (!inputBuffer_.empty()) {
+                    if (!inputBuffer_.empty()) {
+                        // 1. Guardar en el historial (solo lo que escribe el usuario, limpio)
+                        if (commandHistory_.empty() || commandHistory_.back() != inputBuffer_) {
                             commandHistory_.push_back(inputBuffer_);
-                            if (commandHistory_.size() > 100) {
-                                commandHistory_.erase(commandHistory_.begin());
+                        }
+                        
+                        // Limitar historial a 100 elementos (manteniendo los más recientes)
+                        if (commandHistory_.size() > 100) {
+                            commandHistory_.erase(commandHistory_.begin());
+                        }
+                        
+                        // 2. Resetear índices de navegación y autocompletado
+                        historyIndex_ = commandHistory_.size();
+                        autocompleteIndex_ = -1;
+                        autocompleteBase_.clear();
+                        
+                        // 3. Detectar si es comando HELP para manejarlo o dejar que el engine lo haga
+                        std::string upperInput(inputBuffer_);
+                        std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+                        
+                        if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
+                            upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
+                            
+                            std::string topic = "";
+                            size_t spacePos = inputBuffer_.find(' ');
+                            if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
+                                topic = inputBuffer_.substr(spacePos + 1);
                             }
+                            
+                            // El engine devuelve el texto, nosotros lo imprimimos en la consola visual
+                            std::string helpText = engine_.getHelpForTopic(topic);
+                            std::string line;
+                            for (char c : helpText) {
+                                if (c == '\n') {
+                                    if (!line.empty()) {
+                                        commandHistory_.push_back("  [AYUDA] " + line); // Prefijo para distinguir
+                                    }
+                                    line.clear();
+                                } else {
+                                    line += c;
+                                }
+                            }
+                            if (!line.empty()) {
+                                commandHistory_.push_back("  [AYUDA] " + line);
+                            }
+                            engine_.statusMessage = "Ayuda mostrada";
+                        }
+                        else {
+                            // Comando normal: enviar al engine
+                            engine_.processInput(inputBuffer_);
                         }
                     }
                     
+                    // Limpiar buffer y resetear scroll
                     inputBuffer_.clear();
                     commandScrollOffset_ = 0;
                 } 
                 else if (event.text.unicode == 8) { // Backspace
-                    if (!inputBuffer_.empty()) inputBuffer_.pop_back();
+                    if (!inputBuffer_.empty()) {
+                        inputBuffer_.pop_back();
+                        // Resetear autocompletado al borrar
+                        autocompleteIndex_ = -1;
+                        autocompleteBase_.clear();
+                    }
                 } 
                 else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
                     // SOLO caracteres ASCII imprimibles
                     inputBuffer_ += static_cast<char>(event.text.unicode);
+                    // Resetear autocompletado al escribir una letra nueva
+                    autocompleteIndex_ = -1;
+                    autocompleteBase_.clear();
                 }
             }
 
@@ -359,6 +364,73 @@ namespace cad {
             if (event.type == sf::Event::KeyPressed && 
                 event.key.code == sf::Keyboard::Delete) {
                 engine_.deleteSelected();
+            }
+
+            // --- TECLAS DE NAVEGACIÓN Y AUTOCOMPLETADO (KeyPressed) ---
+            if (event.type == sf::Event::KeyPressed && isTyping_) {
+                
+                // Flecha ARRIBA: Historial anterior
+                if (event.key.code == sf::Keyboard::Up) {
+                    if (!commandHistory_.empty()) {
+                        if (historyIndex_ > 0) {
+                            historyIndex_--;
+                        } else {
+                            historyIndex_ = commandHistory_.size() - 1;
+                        }
+                        inputBuffer_ = commandHistory_[historyIndex_];
+                        autocompleteIndex_ = -1;
+                        autocompleteBase_.clear();
+                    }
+                }
+                // Flecha ABAJO: Historial siguiente
+                else if (event.key.code == sf::Keyboard::Down) {
+                    if (!commandHistory_.empty()) {
+                        if (historyIndex_ < commandHistory_.size() - 1) {
+                            historyIndex_++;
+                            inputBuffer_ = commandHistory_[historyIndex_];
+                        } else {
+                            historyIndex_ = commandHistory_.size();
+                            inputBuffer_.clear(); // Volver a la línea vacía
+                        }
+                        autocompleteIndex_ = -1;
+                        autocompleteBase_.clear();
+                    }
+                }
+                // TAB: Autocompletar
+                else if (event.key.code == sf::Keyboard::Tab) {
+                    if (!inputBuffer_.empty()) {
+                        // Si es la primera vez que se pulsa Tab, guardamos la base escrita por el usuario
+                        if (autocompleteBase_.empty()) {
+                            autocompleteBase_ = inputBuffer_;
+                            std::transform(autocompleteBase_.begin(), autocompleteBase_.end(), autocompleteBase_.begin(), ::toupper);
+                            autocompleteIndex_ = 0;
+                        } else {
+                            // Si ya teníamos una base, simplemente avanzamos el índice
+                            autocompleteIndex_++;
+                        }
+
+                        auto allCmds = engine_.getAllCommands();
+                        std::vector<std::string> matches;
+                        
+                        // Buscar coincidencias que empiecen por la base ORIGINAL del usuario
+                        for (const auto& cmd : allCmds) {
+                            if (cmd.find(autocompleteBase_) == 0) {
+                                matches.push_back(cmd);
+                            }
+                        }
+
+                        if (!matches.empty()) {
+                            // Ciclar entre las coincidencias
+                            if (autocompleteIndex_ >= matches.size()) {
+                                autocompleteIndex_ = 0;
+                            }
+                            inputBuffer_ = matches[autocompleteIndex_];
+                        } else {
+                            autocompleteIndex_ = -1;
+                            autocompleteBase_.clear();
+                        }
+                    }
+                }
             }
         }
     }

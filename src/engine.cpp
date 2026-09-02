@@ -914,37 +914,45 @@ namespace cad {
         upperTopic.erase(upperTopic.find_last_not_of(' ') + 1);
 
         std::ostringstream oss;
-        oss << "\n========================================\n";
-        oss << "  CAD+ v0.4 - SISTEMA DE AYUDA\n";
-        oss << "========================================\n\n";
-
+        // Si no hay tema específico, mostrar la ayuda general completa
         if (upperTopic.empty()) {
-            oss << "COMANDOS DE DIBUJO:\n";
-            oss << "  L, LINEA      - Dibujar línea\n";
+            //std::ostringstream oss;
+            oss << "========================================\n";
+            oss << "  CAD+ v1.0 - LISTA DE COMANDOS\n";
+            oss << "========================================\n\n";
+            
+            oss << "[ DIBUJO ]\n";
+            oss << "  L, LINEA      - Dibujar línea recta\n";
             oss << "  C, CIRCULO    - Dibujar círculo\n";
             oss << "  A, ARCO       - Dibujar arco\n";
             oss << "  PL, POLILINEA - Dibujar polilínea\n";
-            oss << "  POL, POLIGONO - Dibujar polígono regular\n\n";
+            oss << "  POL, POLIGONO - Dibujar polígono regular\n";
+            oss << "  EL, ELIPSE    - Dibujar elipse\n\n";
             
-            oss << "COMANDOS DE EDICIÓN:\n";
+            oss << "[ MODIFICACION ]\n";
+            oss << "  M, MOVER      - Mover entidades\n";
+            oss << "  CO, COPIAR    - Copiar entidades\n";
+            oss << "  RO, ROTAR     - Rotar entidades\n";
+            oss << "  SC, ESCALAR   - Escalar entidades\n";
+            oss << "  SI, SIMETRIA  - Crear simetría (reflejo)\n";
+            oss << "  TR, RECORTAR  - Recortar entidades\n";
+            oss << "  EX, ALARGAR   - Alargar entidades\n\n";
+            
+            oss << "[ EDICION Y SISTEMA ]\n";
             oss << "  Z, BORRAR     - Borrar todo el dibujo\n";
-            oss << "  ESC           - Cancelar comando actual\n\n";
+            oss << "  LA, CAPA      - Gestionar capas (NEW, SET, ON, OFF, LIST)\n";
+            oss << "  DIST, MEDIR   - Medir distancia y ángulo\n";
+            oss << "  AYUDA, ?      - Mostrar esta ayuda\n\n";
             
-            oss << "COMANDOS DE CONSULTA:\n";
-            oss << "  DIST, MEDIR     - Medir distancia entre dos puntos\n\n";
-            
-            oss << "COMANDOS DE CAPAS:\n";
-            oss << "  LA, LAYER     - Gestionar capas (NEW, SET, ON, OFF, LIST)\n\n";
-            
-            oss << "COMANDOS DE VISTA:\n";
-            oss << "  AXIS, EJES    - Activar/desactivar ejes\n";
-            oss << "  Rueda ratón   - Zoom\n";
-            oss << "  Clic derecho  - Desplazar vista (Pan)\n\n";
-            
-            oss << "AYUDA:\n";
-            oss << "  HELP <comando> - Detalles de un comando\n";
-            oss << "  Ejemplo: HELP L, HELP LA\n\n";
-            
+            oss << "[ PROXIMAMENTE ]\n";
+            oss << "  AREA          - Calcular área y perímetro\n";
+            oss << "  LISTA         - Listar propiedades de entidades\n";
+            oss << "  GUARDAR       - Guardar dibujo en archivo\n";
+            oss << "  CARGAR        - Cargar dibujo desde archivo\n";
+            oss << "  DESHACER      - Deshacer última acción (Ctrl+Z)\n";
+            oss << "  REHACER       - Rehacer última acción (Ctrl+Y)\n";
+            oss << "========================================\n";
+            oss << "TIP: Usa TAB para autocompletar y flechas para el historial.\n";
             oss << "========================================\n";
             return oss.str();
         }
@@ -1047,5 +1055,17 @@ namespace cad {
         }
     }
 
+    std::vector<std::string> Engine::getAllCommands() const {
+        return {
+            // Dibujo
+            "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE",
+            // Modificación
+            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
+            // Edición y Sistema
+            "BORRAR", "CAPA", "MEDIR", "AYUDA",
+            // Futuras implementaciones (para la ayuda y autocompletado)
+            "AREA", "LISTA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR"
+        };
+    }
 
 } // namespace cad

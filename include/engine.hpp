@@ -88,6 +88,8 @@ namespace cad {
 
         // Variables temporales para elipse
         double tempEllipseMajorRadius = 0.0;
+        // Devuelve la lista completa de comandos (actuales y futuros)
+        std::vector<std::string> getAllCommands() const;
 
     private:
         void executeCommand(std::string_view cmd);

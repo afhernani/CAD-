@@ -91,6 +91,11 @@ namespace cad {
         void drawDrawingFeedback();
         // Dibuja los grips (pinzamientos) para las entidades seleccionadas
         void drawGrips();
+        // Variables para Historial y Autocompletado
+        int historyIndex_ = -1;
+        int autocompleteIndex_ = -1;
+        std::string autocompleteBase_;
+        
     };
 
 } // namespace cad
