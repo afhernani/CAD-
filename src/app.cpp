@@ -998,26 +998,56 @@ namespace cad {
             window_.draw(va);
         }
         // --- ELIPSE ---
-        else if (engine_.currentMode == Mode::DRAW_ELLIPSE && 
-                engine_.statusMessage.find("eje mayor") != std::string::npos) {
-            // Dibujar elipse fantasma
-            double dx = currentMouseWorldPos_.x - engine_.tempPoint1.x;
-            double dy = currentMouseWorldPos_.y - engine_.tempPoint1.y;
-            double majorRadius = std::sqrt(dx * dx + dy * dy);
-            
+        else if (engine_.currentMode == Mode::DRAW_ELLIPSE) {
             const int numPoints = 64;
-            sf::VertexArray va(sf::LineStrip, numPoints + 1);
             const double PI = 3.14159265358979323846;
             double angleStep = 2.0 * PI / numPoints;
             
-            for (int i = 0; i <= numPoints; ++i) {
-                double angle = i * angleStep;
-                double px = engine_.tempPoint1.x + majorRadius * std::cos(angle);
-                double py = engine_.tempPoint1.y + (majorRadius * 0.5) * std::sin(angle); // Ratio temporal 2:1
-                va[i].position = w2s(px, py);
-                va[i].color = feedbackColor;
+            // PASO 1: Esperando centro - dibujar un pequeño punto
+            if (engine_.statusMessage.find("centro") != std::string::npos || 
+                engine_.statusMessage.find("Centro") != std::string::npos) {
+                sf::CircleShape dot(3.0f);
+                dot.setFillColor(feedbackColor);
+                dot.setOrigin(3.0f, 3.0f);
+                dot.setPosition(worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y));
+                window_.draw(dot);
             }
-            window_.draw(va);
+            // PASO 2: Esperando eje mayor - dibujar línea desde centro hasta ratón
+            else if (engine_.statusMessage.find("eje mayor") != std::string::npos ||
+                    engine_.statusMessage.find("Eje mayor") != std::string::npos) {
+                sf::Vertex line[] = {
+                    sf::Vertex(worldToScreen(engine_.tempPoint1.x, engine_.tempPoint1.y), feedbackColor),
+                    sf::Vertex(worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y), feedbackColor)
+                };
+                window_.draw(line, 2, sf::Lines);
+            }
+            // PASO 3: Esperando eje menor - dibujar elipse completa
+            else {
+                // Calcular eje mayor (ya definido)
+                double dx = engine_.tempPoint2.x - engine_.tempPoint1.x;
+                double dy = engine_.tempPoint2.y - engine_.tempPoint1.y;
+                double majorRadius = std::sqrt(dx * dx + dy * dy);
+                double rotationAngle = std::atan2(dy, dx);
+                
+                // Calcular eje menor (del ratón)
+                double distToMouse = std::sqrt(
+                    std::pow(currentMouseWorldPos_.x - engine_.tempPoint1.x, 2) +
+                    std::pow(currentMouseWorldPos_.y - engine_.tempPoint1.y, 2)
+                );
+                double minorRadius = distToMouse;
+                
+                // Dibujar elipse
+                sf::VertexArray va(sf::LineStrip, numPoints + 1);
+                for (int i = 0; i <= numPoints; ++i) {
+                    double angle = i * angleStep;
+                    double rotatedAngle = angle + rotationAngle;
+                    double px = engine_.tempPoint1.x + majorRadius * std::cos(rotatedAngle);
+                    double py = engine_.tempPoint1.y + minorRadius * std::sin(rotatedAngle);
+                    va[i].position = worldToScreen(px, py);
+                    va[i].color = feedbackColor;
+                }
+                window_.draw(va);
+            }
         }
     }
 

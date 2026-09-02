@@ -485,34 +485,38 @@ namespace cad {
 
         // --- ELIPSE ---
         else if (currentMode == Mode::DRAW_ELLIPSE) {
-            if (statusMessage.find("centro") != std::string::npos) {
+            if (statusMessage.find("centro") != std::string::npos || 
+                statusMessage.find("Centro") != std::string::npos) {
                 tempPoint1 = lastPoint;
                 statusMessage = "ELIPSE | Punto final del eje mayor (o valor):";
             }
-            else if (statusMessage.find("eje mayor") != std::string::npos) {
-                if (isScalar) {
-                    tempEllipseMajorRadius = scalarValue;
-                } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    tempEllipseMajorRadius = std::sqrt(dx * dx + dy * dy);
-                }
+            else if (statusMessage.find("eje mayor") != std::string::npos ||
+                    statusMessage.find("Eje mayor") != std::string::npos) {
+                tempPoint2 = lastPoint;  // Guardar el punto del eje mayor
                 statusMessage = "ELIPSE | Radio del otro eje (o valor):";
             }
             else {
+                // Calcular eje mayor
+                double dx = tempPoint2.x - tempPoint1.x;
+                double dy = tempPoint2.y - tempPoint1.y;
+                double majorRadius = std::sqrt(dx * dx + dy * dy);
+                double rotationAngle = std::atan2(dy, dx);
+                
+                // Calcular eje menor
                 double minorRadius;
                 if (isScalar) {
                     minorRadius = scalarValue;
                 } else {
-                    double dx = lastPoint.x - tempPoint1.x;
-                    double dy = lastPoint.y - tempPoint1.y;
-                    minorRadius = std::sqrt(dx * dx + dy * dy);
+                    double dx2 = lastPoint.x - tempPoint1.x;
+                    double dy2 = lastPoint.y - tempPoint1.y;
+                    minorRadius = std::sqrt(dx2 * dx2 + dy2 * dy2);
                 }
                 
                 auto newEllipse = std::make_unique<Ellipse>();
                 newEllipse->center = tempPoint1;
-                newEllipse->majorRadius = tempEllipseMajorRadius;
+                newEllipse->majorRadius = majorRadius;
                 newEllipse->minorRadius = minorRadius;
+                newEllipse->rotationAngle = rotationAngle;
                 newEllipse->layerName = doc.currentLayerName;
                 doc.addEntity(std::move(newEllipse));
                 
