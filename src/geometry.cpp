@@ -681,6 +681,75 @@ namespace cad {
         }
     }
 
+    // --- Implementaciones de getSnapPoints ---
+
+    std::vector<Point2D> Line::getSnapPoints() const {
+        Point2D mid = {(p1.x + p2.x) / 2.0, (p1.y + p2.y) / 2.0};
+        return {p1, p2, mid}; // Extremos y Punto Medio
+    }
+
+    std::vector<Point2D> Circle::getSnapPoints() const {
+        return {center, 
+                {center.x + radius, center.y}, 
+                {center.x - radius, center.y},
+                {center.x, center.y + radius},
+                {center.x, center.y - radius}}; // Centro y 4 puntos cardinales
+    }
+
+    std::vector<Point2D> Arc::getSnapPoints() const {
+        const double PI = 3.14159265358979323846;
+        double sRad = startAngle * PI / 180.0;
+        double eRad = endAngle * PI / 180.0;
+        double midRad = (sRad + eRad) / 2.0;
+        // Normalizar ángulo medio si el arco cruza el 0/360
+        if (std::abs(eRad - sRad) > PI) midRad += PI;
+        
+        return {
+            center,
+            {center.x + radius * std::cos(sRad), center.y + radius * std::sin(sRad)},
+            {center.x + radius * std::cos(eRad), center.y + radius * std::sin(eRad)},
+            {center.x + radius * std::cos(midRad), center.y + radius * std::sin(midRad)}
+        };
+    }
+
+    std::vector<Point2D> Polyline::getSnapPoints() const {
+        std::vector<Point2D> snaps;
+        for (size_t i = 0; i < points.size(); ++i) {
+            snaps.push_back(points[i]); // Vértices
+            if (i + 1 < points.size()) {
+                // Punto medio del segmento
+                snaps.push_back({(points[i].x + points[i+1].x)/2.0, (points[i].y + points[i+1].y)/2.0});
+            }
+        }
+        return snaps;
+    }
+
+    std::vector<Point2D> Polygon::getSnapPoints() const {
+        const double PI = 3.14159265358979323846;
+        std::vector<Point2D> snaps = {center};
+        double angleStep = 2.0 * PI / sides;
+        for (int i = 0; i < sides; ++i) {
+            double a1 = i * angleStep - PI / 2.0 + rotationOffset;
+            double a2 = (i + 1) * angleStep - PI / 2.0 + rotationOffset;
+            double x1 = center.x + radius * std::cos(a1), y1 = center.y + radius * std::sin(a1);
+            double x2 = center.x + radius * std::cos(a2), y2 = center.y + radius * std::sin(a2);
+            snaps.push_back({x1, y1}); // Vértice
+            snaps.push_back({(x1+x2)/2.0, (y1+y2)/2.0}); // Punto medio del lado
+        }
+        return snaps;
+    }
+
+    std::vector<Point2D> Ellipse::getSnapPoints() const {
+        std::vector<Point2D> snaps = {center};
+        const double PI = 3.14159265358979323846;
+        // 4 puntos en los ejes
+        snaps.push_back(getPointOnEllipse(0.0));
+        snaps.push_back(getPointOnEllipse(PI / 2.0));
+        snaps.push_back(getPointOnEllipse(PI));
+        snaps.push_back(getPointOnEllipse(3 * PI / 2.0));
+        return snaps;
+    }
+    
     // --- Implementaciones JSON ---
 
     nlohmann::json Line::toJson() const {

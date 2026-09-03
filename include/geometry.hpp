@@ -27,8 +27,12 @@ namespace cad {
         virtual void rotate(const Point2D& center, double angleDeg) = 0;
         virtual void scale(const Point2D& basePoint, double factor) = 0;
         virtual void mirror(const Point2D& axisP1, const Point2D& axisP2) = 0;
+        
         // Métodos virtuales para grips y copia
         virtual std::vector<Point2D> getGripPoints() const = 0;
+        // Devuelve los puntos clave para Object Snaps (extremos, centros, puntos medios)
+        virtual std::vector<Point2D> getSnapPoints() const = 0;
+        
         virtual void moveGrip(int index, const Point2D& newPos) = 0;
         virtual void copyFrom(const Entity& src) = 0; // Para poder cancelar con ESC
         // Nuevos métodos para JSON
@@ -54,6 +58,7 @@ namespace cad {
         void extend(const Point2D& borderPoint);
         // Métodos para grips y copyfrom
         virtual std::vector<Point2D> getGripPoints() const override;
+        virtual std::vector<Point2D> getSnapPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
         virtual nlohmann::json toJson() const override;
@@ -75,6 +80,7 @@ namespace cad {
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
         // Métodos para grips y copyfrom
         virtual std::vector<Point2D> getGripPoints() const override;
+        virtual std::vector<Point2D> getSnapPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
         virtual nlohmann::json toJson() const override;
@@ -97,6 +103,7 @@ namespace cad {
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
         // Métodos para grips y copyfrom
         virtual std::vector<Point2D> getGripPoints() const override;
+        virtual std::vector<Point2D> getSnapPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
         virtual nlohmann::json toJson() const override;
@@ -116,6 +123,7 @@ namespace cad {
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
         // Métodos para grips y copyfrom
         virtual std::vector<Point2D> getGripPoints() const override;
+        virtual std::vector<Point2D> getSnapPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
         virtual nlohmann::json toJson() const override;
@@ -138,6 +146,7 @@ namespace cad {
         void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
         // Métodos para grips y copyfrom
         virtual std::vector<Point2D> getGripPoints() const override;
+        virtual std::vector<Point2D> getSnapPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
         virtual nlohmann::json toJson() const override;
@@ -172,6 +181,7 @@ namespace cad {
         
         // Para grips
         std::vector<Point2D> getGripPoints() const override;
+        std::vector<Point2D> getSnapPoints() const override;
         void moveGrip(int index, const Point2D& newPos) override;
         virtual nlohmann::json toJson() const override;
         

@@ -48,6 +48,7 @@ namespace cad {
         return ""; // El usuario canceló
     }
 
+
     App::App() {
         // Antes de window_.create()
         sf::ContextSettings settings;
@@ -638,16 +639,34 @@ namespace cad {
         // >>> AÑADIR ESTO: Feedback visual de dibujo <<<
         drawDrawingFeedback();
 
-        // Marcador de Object Snap
+        // Marcador de Object Snap con iconos diferentes
         if (isSnapped_) {
             sf::Vector2f screenPos = worldToScreen(snappedPoint_.x, snappedPoint_.y);
-            sf::RectangleShape marker(sf::Vector2f(8.f, 8.f));
-            marker.setFillColor(sf::Color::Transparent);
-            marker.setOutlineColor(sf::Color::Yellow);
-            marker.setOutlineThickness(1.5f);
-            marker.setOrigin(4.f, 4.f);
-            marker.setPosition(screenPos);
-            window_.draw(marker);
+            const float size = 8.0f;
+            
+            if (currentSnapType_ == SnapType::INTERSECTION) {
+                // Cruz para intersección
+                sf::Vertex line1[] = {
+                    sf::Vertex(sf::Vector2f(screenPos.x - size, screenPos.y), sf::Color::Yellow),
+                    sf::Vertex(sf::Vector2f(screenPos.x + size, screenPos.y), sf::Color::Yellow)
+                };
+                sf::Vertex line2[] = {
+                    sf::Vertex(sf::Vector2f(screenPos.x, screenPos.y - size), sf::Color::Yellow),
+                    sf::Vertex(sf::Vector2f(screenPos.x, screenPos.y + size), sf::Color::Yellow)
+                };
+                window_.draw(line1, 2, sf::Lines);
+                window_.draw(line2, 2, sf::Lines);
+            } 
+            else {
+                // Cuadrado para extremos, centros y puntos medios (podrías diferenciarlos más si quieres)
+                sf::RectangleShape marker(sf::Vector2f(size, size));
+                marker.setFillColor(sf::Color::Transparent);
+                marker.setOutlineColor(sf::Color::Yellow);
+                marker.setOutlineThickness(1.5f);
+                marker.setOrigin(size / 2.f, size / 2.f);
+                marker.setPosition(screenPos);
+                window_.draw(marker);
+            }
         }
     }
 
@@ -849,50 +868,61 @@ namespace cad {
 
     void App::findSnap() {
         isSnapped_ = false;
-        
-        float snapRadiusPixels = 10.0f;
-        float snapRadiusWorld = snapRadiusPixels / viewScale_;
-        float snapDistSq = snapRadiusWorld * snapRadiusWorld;
+        snappedPoint_ = {0.0, 0.0};
+        currentSnapType_ = SnapType::NONE;
 
-        // Recorremos todas las entidades polimórficamente
+        double tolerance = 10.0 / viewScale_;
+        double minDist = tolerance;
+
+        // Conversión explícita de sf::Vector2f a Point2D
+        Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+
+        // 1. Buscar snaps en puntos clave (Extremos, Centros, Puntos Medios)
         for (const auto& entity : engine_.doc.entities) {
-            // Intentamos convertir la entidad a una Línea
-            if (const auto* line = dynamic_cast<const Line*>(entity.get())) {
-                // Comprobar punto final 1 (p1)
-                float dx1 = currentMouseWorldPos_.x - line->p1.x;
-                float dy1 = currentMouseWorldPos_.y - line->p1.y;
-                if ((dx1 * dx1 + dy1 * dy1) < snapDistSq) {
-                    isSnapped_ = true;
-                    snappedPoint_ = line->p1;
-                    return;
-                }
+            const Layer* layer = engine_.doc.getLayer(entity->layerName);
+            if (!layer || !layer->visible) continue;
 
-                // Comprobar punto final 2 (p2)
-                float dx2 = currentMouseWorldPos_.x - line->p2.x;
-                float dy2 = currentMouseWorldPos_.y - line->p2.y;
-                if ((dx2 * dx2 + dy2 * dy2) < snapDistSq) {
+            auto snaps = entity->getSnapPoints();
+            for (const auto& pt : snaps) {
+                double dist = std::hypot(mousePos.x - pt.x, mousePos.y - pt.y);
+                if (dist < minDist) {
+                    minDist = dist;
+                    snappedPoint_ = pt;
                     isSnapped_ = true;
-                    snappedPoint_ = line->p2;
-                    return;
+                    currentSnapType_ = SnapType::ENDPOINT; // Por defecto
                 }
             }
-            else if (const auto* circle = dynamic_cast<const Circle*>(entity.get())) {
-                // Snap al centro del círculo
-                float dx = currentMouseWorldPos_.x - circle->center.x;
-                float dy = currentMouseWorldPos_.y - circle->center.y;
-                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = circle->center; return; }
+        }
+
+        // 2. Buscar Intersecciones entre entidades cercanas
+        for (size_t i = 0; i < engine_.doc.entities.size(); ++i) {
+            for (size_t j = i + 1; j < engine_.doc.entities.size(); ++j) {
+                auto& e1 = engine_.doc.entities[i];
+                auto& e2 = engine_.doc.entities[j];
+                
+                // Solo calcular si ambas están cerca del ratón (optimización)
+                if (e1->isNear(mousePos, tolerance * 2) && 
+                    e2->isNear(mousePos, tolerance * 2)) {
+                    
+                    // Calcular intersección si ambas son líneas
+                    if (auto l1 = dynamic_cast<Line*>(e1.get())) {
+                        if (auto l2 = dynamic_cast<Line*>(e2.get())) {
+                            // Usamos la función de geometry.hpp (por referencia)
+                            auto inter = lineLineIntersection(l1->p1, l1->p2, l2->p1, l2->p2);
+                            if (inter.intersects) {
+                                double dist = std::hypot(mousePos.x - inter.point.x, 
+                                                        mousePos.y - inter.point.y);
+                                if (dist < minDist) {
+                                    minDist = dist;
+                                    snappedPoint_ = inter.point;
+                                    isSnapped_ = true;
+                                    currentSnapType_ = SnapType::INTERSECTION;
+                                }
+                            }
+                        }
+                    }
+                }
             }
-            else if (const auto* arc = dynamic_cast<const Arc*>(entity.get())) {
-                float dx = currentMouseWorldPos_.x - arc->center.x;
-                float dy = currentMouseWorldPos_.y - arc->center.y;
-                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = arc->center; return; }
-            }
-            else if (const auto* poly = dynamic_cast<const Polygon*>(entity.get())) {
-                float dx = currentMouseWorldPos_.x - poly->center.x;
-                float dy = currentMouseWorldPos_.y - poly->center.y;
-                if ((dx * dx + dy * dy) < snapDistSq) { isSnapped_ = true; snappedPoint_ = poly->center; return; }
-            }
-            // Polyline requeriría iterar sobre sus points, lo añadimos si lo necesitas.
         }
     }
 

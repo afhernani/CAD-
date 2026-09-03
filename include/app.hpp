@@ -54,6 +54,9 @@ namespace cad {
         bool isSnapped_;
         Point2D snappedPoint_;
 
+        enum class SnapType { NONE, ENDPOINT, MIDPOINT, CENTER, INTERSECTION };
+        SnapType currentSnapType_ = SnapType::NONE;
+
         // --- Dimensiones ---
         static constexpr unsigned int WINDOW_WIDTH = 1280;
         static constexpr unsigned int WINDOW_HEIGHT = 720;
