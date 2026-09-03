@@ -492,6 +492,18 @@ namespace cad {
                     }
                 }
             }
+
+            // --- ATAJOS DE TECLADO: DESHACER / REHACER ---
+            if (event.type == sf::Event::KeyPressed) {
+                // Ctrl + Z (Deshacer)
+                if (event.key.code == sf::Keyboard::Z && event.key.control) {
+                    engine_.undo();
+                }
+                // Ctrl + Y (Rehacer)
+                else if (event.key.code == sf::Keyboard::Y && event.key.control) {
+                    engine_.redo();
+                }
+            }
         }
     }
 

@@ -24,6 +24,8 @@ namespace cad {
         MEASURE_DIST,
         TRIM,
         EXTEND,
+        UNDO,
+        REDO,
         GRIP_EDIT // << grips editables
     };
 
@@ -90,6 +92,14 @@ namespace cad {
         double tempEllipseMajorRadius = 0.0;
         // Devuelve la lista completa de comandos (actuales y futuros)
         std::vector<std::string> getAllCommands() const;
+
+        // Historial de estados para Deshacer / Rehacer
+        std::vector<std::vector<std::unique_ptr<Entity>>> undoStack;
+        std::vector<std::vector<std::unique_ptr<Entity>>> redoStack;
+
+        void saveState();   // Guarda el estado actual en la pila de deshacer
+        void undo();        // Retrocede un estado
+        void redo();        // Avanza un estado
 
     private:
         void executeCommand(std::string_view cmd);

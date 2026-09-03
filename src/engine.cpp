@@ -67,6 +67,7 @@ namespace cad {
                 auto newPoly = std::make_unique<Polyline>();
                 newPoly->points = tempPolylinePoints;
                 newPoly->layerName = doc.currentLayerName;
+                saveState();
                 doc.addEntity(std::move(newPoly));
                 statusMessage = "Polilínea terminada (" + 
                                 std::to_string(tempPolylinePoints.size()) + " puntos).";
@@ -117,9 +118,16 @@ namespace cad {
             statusMessage = "ELIPSE | Especificar centro:";
         }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
+            saveState();
             doc.clear();
             lastPoint = {0.0, 0.0};
             statusMessage = "Dibujo borrado.";
+        }
+        else if (upperCmd == "UNDO" || upperCmd == "DESHACER") {
+            undo();
+        }
+        else if (upperCmd == "REDO" || upperCmd == "REHACER") {
+            redo();
         }
         else if (upperCmd == "AXIS" || upperCmd == "EJES") {
             statusMessage = "Usa el boton en la barra de herramientas para activar/desactivar ejes";
@@ -267,6 +275,7 @@ namespace cad {
                     auto newPoly = std::make_unique<Polyline>();
                     newPoly->points = tempPolylinePoints;
                     newPoly->layerName = doc.currentLayerName;
+                    saveState();
                     doc.addEntity(std::move(newPoly));
                     statusMessage = "Polilinea terminada (" +
                         std::to_string(tempPolylinePoints.size()) + " puntos).";
@@ -310,6 +319,7 @@ namespace cad {
                     auto newPoly = std::make_unique<Polyline>();
                     newPoly->points = tempPolylinePoints;
                     newPoly->layerName = doc.currentLayerName;
+                    saveState();
                     doc.addEntity(std::move(newPoly));
                     statusMessage = "Polilínea cerrada.";
                 }
@@ -360,6 +370,10 @@ namespace cad {
                 newLine->p1 = tempPoint1;
                 newLine->p2 = tempPoint2;
                 newLine->layerName = doc.currentLayerName;
+                
+                // Ejemplo para Línea:
+                saveState(); // << AÑADIR ESTO
+                
                 doc.addEntity(std::move(newLine));
                 currentMode = Mode::IDLE;
                 statusMessage = "Listo";
@@ -384,6 +398,7 @@ namespace cad {
                 newCircle->center = tempPoint1;
                 newCircle->radius = radius;
                 newCircle->layerName = doc.currentLayerName;
+                saveState();
                 doc.addEntity(std::move(newCircle));
                 currentMode = Mode::IDLE;
                 statusMessage = "Circulo creado (radio: " + std::to_string(radius) + ")";
@@ -434,6 +449,7 @@ namespace cad {
                 newArc->startAngle = tempArcStartAngle;
                 newArc->endAngle = endAngle;
                 newArc->layerName = doc.currentLayerName;
+                saveState();
                 doc.addEntity(std::move(newArc));
                 currentMode = Mode::IDLE;
                 statusMessage = "Arco creado.";
@@ -470,6 +486,7 @@ namespace cad {
                 newPoly->sides = tempPolygonSides;
                 newPoly->radius = radius;
                 newPoly->layerName = doc.currentLayerName;
+                saveState();
                 doc.addEntity(std::move(newPoly));
                 
                 currentMode = Mode::IDLE;
@@ -517,6 +534,7 @@ namespace cad {
                 newEllipse->minorRadius = minorRadius;
                 newEllipse->rotationAngle = rotationAngle;
                 newEllipse->layerName = doc.currentLayerName;
+                saveState();
                 doc.addEntity(std::move(newEllipse));
                 
                 currentMode = Mode::IDLE;
@@ -551,6 +569,7 @@ namespace cad {
                 double dx = lastPoint.x - copyBasePoint.x;
                 double dy = lastPoint.y - copyBasePoint.y;
                 // Clonar y mover cada entidad seleccionada
+                saveState();
                 for (Entity* e : selectedEntities) {
                     auto copy = e->clone();
                     copy->move(dx, dy);
@@ -578,6 +597,7 @@ namespace cad {
                     double dy = lastPoint.y - rotateCenter.y;
                     angle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
                 }
+                saveState();
                 // Aplicar rotacion a todas las entidades seleccionadas.
                 for (Entity* e : selectedEntities) {
                     e->rotate(rotateCenter, angle);
@@ -599,6 +619,7 @@ namespace cad {
                 if (isScalar) {
                     factor = scalarValue;
                 } else {
+                    saveState();
                     // Si es un punto, calcular factor como distancia al base
                     // (simplificación: factor = distancia del punto al base)
                     double dx = lastPoint.x - scaleBasePoint.x;
@@ -624,6 +645,7 @@ namespace cad {
             } else {
                 Point2D axisP2 = lastPoint;
                 
+                saveState();
                 // Para cada entidad seleccionada, creamos una copia reflejada
                 // (Si no tienes el método clone(), puedes modificar las originales directamente)
                 for (Entity* e : selectedEntities) {
@@ -706,7 +728,7 @@ namespace cad {
                     Line* line = dynamic_cast<Line*>(toTrim);
                     Point2D closestCut;
                     double minDist = std::numeric_limits<double>::max();
-                    
+                    saveState();  // Guardar estado antes de recortar
                     // Encontrar el corte más cercano a la línea
                     for (Entity* boundary : trimBoundaries) {
                         if (auto* boundaryLine = dynamic_cast<Line*>(boundary)) {
@@ -766,7 +788,7 @@ namespace cad {
                     Line* line = dynamic_cast<Line*>(toExtend);
                     Point2D closestBorder;
                     double minDist = std::numeric_limits<double>::max();
-                    
+                    saveState();  // Guardar estado antes de alargar
                     for (Entity* boundary : extendBoundaries) {
                         if (auto* boundaryLine = dynamic_cast<Line*>(boundary)) {
                             auto inter = lineLineIntersection(line->p1, line->p2,
@@ -893,6 +915,7 @@ namespace cad {
             statusMessage = "Nada seleccionado.";
             return;
         }
+        saveState();  // Guardamos estado antes de borrar
         // Eliminamos del vector principal de entidades
         doc.entities.erase(
             std::remove_if(doc.entities.begin(), doc.entities.end(),
@@ -1063,10 +1086,79 @@ namespace cad {
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
             // Edición y Sistema
-            "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR",
+            "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR",
             // Futuras implementaciones (para la ayuda y autocompletado)
             "AREA", "LISTA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR"
         };
+    }
+
+    void Engine::saveState() {
+        // 1. Clonar todas las entidades actuales
+        std::vector<std::unique_ptr<Entity>> state;
+        for (const auto& e : doc.entities) {
+            state.push_back(e->clone());
+        }
+        
+        // 2. Guardar en la pila de deshacer
+        undoStack.push_back(std::move(state));
+        
+        // 3. Si hacemos una acción nueva, el historial de "rehacer" se borra
+        redoStack.clear();
+        
+        // 4. Limitar el historial a 50 estados para no consumir mucha memoria RAM
+        if (undoStack.size() > 50) {
+            undoStack.erase(undoStack.begin());
+        }
+    }
+
+    void Engine::undo() {
+        if (undoStack.empty()) {
+            statusMessage = "No hay nada que deshacer.";
+            return;
+        }
+        
+        // Guardar el estado actual en la pila de rehacer
+        std::vector<std::unique_ptr<Entity>> currentState;
+        for (const auto& e : doc.entities) {
+            currentState.push_back(e->clone());
+        }
+        redoStack.push_back(std::move(currentState));
+
+        // Restaurar el estado anterior
+        doc.entities.clear();
+        auto& prevState = undoStack.back();
+        for (auto& e : prevState) {
+            doc.entities.push_back(e->clone());
+        }
+        undoStack.pop_back();
+        
+        selectedEntities.clear(); // Limpiar selección al cambiar el estado
+        statusMessage = "Deshacer.";
+    }
+
+    void Engine::redo() {
+        if (redoStack.empty()) {
+            statusMessage = "No hay nada que rehacer.";
+            return;
+        }
+        
+        // Guardar el estado actual en la pila de deshacer
+        std::vector<std::unique_ptr<Entity>> currentState;
+        for (const auto& e : doc.entities) {
+            currentState.push_back(e->clone());
+        }
+        undoStack.push_back(std::move(currentState));
+
+        // Restaurar el estado siguiente
+        doc.entities.clear();
+        auto& nextState = redoStack.back();
+        for (auto& e : nextState) {
+            doc.entities.push_back(e->clone());
+        }
+        redoStack.pop_back();
+        
+        selectedEntities.clear();
+        statusMessage = "Rehacer.";
     }
 
 } // namespace cad
