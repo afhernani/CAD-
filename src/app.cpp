@@ -1287,14 +1287,59 @@ namespace cad {
                 window_.draw(va);
             }
         }
-        // --- COTA ---
+        // --- COTA (DIMENSION) ---
         else if (engine_.currentMode == Mode::DRAW_DIMENSION) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            
+            // PASO 2: Esperando el segundo punto (dibujar línea desde P1 hasta el ratón)
             if (engine_.statusMessage.find("Segundo") != std::string::npos) {
                 sf::Vertex line[] = {
                     sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
-                    sf::Vertex(worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y), feedbackColor)
+                    sf::Vertex(worldToScreen(mousePos.x, mousePos.y), feedbackColor)
                 };
                 window_.draw(line, 2, sf::Lines);
+            }
+            // PASO 3: Esperando la ubicación (dibujar la cota fantasma completa)
+            else if (engine_.statusMessage.find("Ubicación") != std::string::npos || 
+                    engine_.statusMessage.find("ubicación") != std::string::npos) {
+                
+                // Determinar si será horizontal o vertical (misma lógica que al crearla)
+                double cx = (engine_.tempDimP1.x + engine_.tempDimP2.x) / 2.0;
+                double cy = (engine_.tempDimP1.y + engine_.tempDimP2.y) / 2.0;
+                bool isHoriz = std::abs(mousePos.y - cy) > std::abs(mousePos.x - cx);
+                
+                // Calcular puntos de la cota fantasma
+                Point2D ext1, ext2, lineStart, lineEnd;
+                if (isHoriz) {
+                    double y = mousePos.y;
+                    ext1 = {engine_.tempDimP1.x, y}; ext2 = {engine_.tempDimP2.x, y};
+                    lineStart = {engine_.tempDimP1.x, y}; lineEnd = {engine_.tempDimP2.x, y};
+                } else {
+                    double x = mousePos.x;
+                    ext1 = {x, engine_.tempDimP1.y}; ext2 = {x, engine_.tempDimP2.y};
+                    lineStart = {x, engine_.tempDimP1.y}; lineEnd = {x, engine_.tempDimP2.y};
+                }
+                
+                sf::Color extColor(255, 255, 0, 100); // Amarillo más transparente para extensiones
+                
+                // Líneas de extensión
+                sf::Vertex extLine1[] = { 
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), extColor), 
+                    sf::Vertex(worldToScreen(ext1.x, ext1.y), extColor) 
+                };
+                sf::Vertex extLine2[] = { 
+                    sf::Vertex(worldToScreen(engine_.tempDimP2.x, engine_.tempDimP2.y), extColor), 
+                    sf::Vertex(worldToScreen(ext2.x, ext2.y), extColor) 
+                };
+                window_.draw(extLine1, 2, sf::Lines);
+                window_.draw(extLine2, 2, sf::Lines);
+                
+                // Línea de cota
+                sf::Vertex dimLine[] = { 
+                    sf::Vertex(worldToScreen(lineStart.x, lineStart.y), feedbackColor), 
+                    sf::Vertex(worldToScreen(lineEnd.x, lineEnd.y), feedbackColor) 
+                };
+                window_.draw(dimLine, 2, sf::Lines);
             }
         }
     }
