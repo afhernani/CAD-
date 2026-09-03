@@ -3,6 +3,7 @@
 #include <string>
 #include <functional>
 #include <vector>
+#include "json.hpp"
 
 namespace cad {
 
@@ -30,6 +31,9 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const = 0;
         virtual void moveGrip(int index, const Point2D& newPos) = 0;
         virtual void copyFrom(const Entity& src) = 0; // Para poder cancelar con ESC
+        // Nuevos métodos para JSON
+        virtual nlohmann::json toJson() const = 0;
+        static std::unique_ptr<Entity> fromJson(const nlohmann::json& j);
     };
 
     class Line : public Entity {
@@ -52,6 +56,7 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
+        virtual nlohmann::json toJson() const override;
     };
 
     class Circle : public Entity {
@@ -72,6 +77,7 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
+        virtual nlohmann::json toJson() const override;
     };
 
     class Arc : public Entity {
@@ -93,6 +99,7 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
+        virtual nlohmann::json toJson() const override;
     };
 
     class Polyline : public Entity {
@@ -111,6 +118,7 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
+        virtual nlohmann::json toJson() const override;
     };
 
     class Polygon : public Entity {
@@ -132,6 +140,7 @@ namespace cad {
         virtual std::vector<Point2D> getGripPoints() const override;
         virtual void moveGrip(int index, const Point2D& newPos) override;
         virtual void copyFrom(const Entity& src) override; // Para poder cancelar con ESC
+        virtual nlohmann::json toJson() const override;
     };
 
     // Funciones auxiliares de intersección
@@ -164,6 +173,7 @@ namespace cad {
         // Para grips
         std::vector<Point2D> getGripPoints() const override;
         void moveGrip(int index, const Point2D& newPos) override;
+        virtual nlohmann::json toJson() const override;
         
     private:
         // Convierte coordenadas polares de la elipse a cartesianas

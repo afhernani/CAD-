@@ -349,7 +349,6 @@ namespace cad {
             }
             lastPoint = p.value();
         }
-
         // --- LÍNEA ---
         if (currentMode == Mode::DRAW_LINE) {
             if (statusMessage.find("primer punto") != std::string::npos) {
@@ -943,6 +942,8 @@ namespace cad {
             oss << "  LA, CAPA      - Gestionar capas (NEW, SET, ON, OFF, LIST)\n";
             oss << "  DIST, MEDIR   - Medir distancia y ángulo\n";
             oss << "  AYUDA, ?      - Mostrar esta ayuda\n\n";
+            oss << "  SAVE, GUARDAR - Guardar dibujo en archivo JSON\n";
+            oss << "  LOAD, CARGAR  - Cargar dibujo desde archivo JSON\n";
             
             oss << "[ PROXIMAMENTE ]\n";
             oss << "  AREA          - Calcular área y perímetro\n";
@@ -1062,7 +1063,7 @@ namespace cad {
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
             // Edición y Sistema
-            "BORRAR", "CAPA", "MEDIR", "AYUDA",
+            "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR",
             // Futuras implementaciones (para la ayuda y autocompletado)
             "AREA", "LISTA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR"
         };

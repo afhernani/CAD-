@@ -64,4 +64,41 @@ namespace cad {
         return (it != layers.end()) ? &(it->second) : nullptr;
     }
 
+    void Document::saveToFile(const std::string& filename) {
+        nlohmann::json j;
+        j["version"] = "1.0";
+        j["currentLayer"] = currentLayerName;
+        
+        nlohmann::json entitiesArray = nlohmann::json::array();
+        for (const auto& e : entities) {
+            entitiesArray.push_back(e->toJson());
+        }
+        j["entities"] = entitiesArray;
+
+        std::ofstream o(filename);
+        if (o.is_open()) {
+            o << j.dump(4); // 4 espacios de indentación para que sea legible
+            o.close();
+        }
+    }
+
+    void Document::loadFromFile(const std::string& filename) {
+        std::ifstream i(filename);
+        if (!i.is_open()) return; // Archivo no encontrado
+        
+        nlohmann::json j;
+        i >> j;
+        i.close();
+
+        currentLayerName = j.value("currentLayer", "0");
+        entities.clear();
+        
+        if (j.contains("entities")) {
+            for (auto& je : j["entities"]) {
+                auto e = Entity::fromJson(je);
+                if (e) entities.push_back(std::move(e));
+            }
+        }
+    }
+
 } // namespace cad

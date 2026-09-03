@@ -5,6 +5,8 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <fstream>
+#include "json.hpp"
 
 namespace cad {
 
@@ -31,6 +33,11 @@ namespace cad {
         
         const Layer* getCurrentLayer() const;
         const Layer* getLayer(const std::string& name) const;
+
+        // ... (lo que ya tienes) ...
+        void saveToFile(const std::string& filename);
+        void loadFromFile(const std::string& filename);
+        
     };
 
 } // namespace cad

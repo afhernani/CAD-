@@ -4,8 +4,49 @@
 #include <chrono>
 #include <cmath>
 #include <iomanip>
+#include <windows.h>
+#include <commdlg.h>
 
 namespace cad {
+
+    // Muestra el diálogo "Guardar como" de Windows
+    std::string showSaveFileDialog() {
+        OPENFILENAMEA ofn;
+        char fileName[MAX_PATH] = "";
+        ZeroMemory(&ofn, sizeof(ofn));
+        
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = NULL;
+        ofn.lpstrFilter = "Archivos JSON\0*.json\0Todos los archivos\0*.*\0";
+        ofn.lpstrFile = fileName;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+        ofn.lpstrDefExt = "json";
+        
+        if (GetSaveFileNameA(&ofn)) {
+            return std::string(fileName);
+        }
+        return ""; // El usuario canceló
+    }
+
+    // Muestra el diálogo "Abrir" de Windows
+    std::string showOpenFileDialog() {
+        OPENFILENAMEA ofn;
+        char fileName[MAX_PATH] = "";
+        ZeroMemory(&ofn, sizeof(ofn));
+        
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = NULL;
+        ofn.lpstrFilter = "Archivos JSON\0*.json\0Todos los archivos\0*.*\0";
+        ofn.lpstrFile = fileName;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+        
+        if (GetOpenFileNameA(&ofn)) {
+            return std::string(fileName);
+        }
+        return ""; // El usuario canceló
+    }
 
     App::App() {
         // Antes de window_.create()
@@ -291,12 +332,33 @@ namespace cad {
                         autocompleteIndex_ = -1;
                         autocompleteBase_.clear();
                         
-                        // 3. Detectar si es comando HELP para manejarlo o dejar que el engine lo haga
+                        // 3. Detectar comandos especiales o enviar al engine
                         std::string upperInput(inputBuffer_);
                         std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
                         
-                        if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
-                            upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
+                        // >>> NUEVO: Interceptamos GUARDAR y CARGAR antes de que lleguen al engine <<<
+                        if (upperInput == "GUARDAR" || upperInput == "SAVE") {
+                            std::string path = showSaveFileDialog();
+                            if (!path.empty()) {
+                                engine_.doc.saveToFile(path);
+                                engine_.statusMessage = "Dibujo guardado en: " + path;
+                            } else {
+                                engine_.statusMessage = "Guardado cancelado.";
+                            }
+                        }
+                        else if (upperInput == "CARGAR" || upperInput == "LOAD") {
+                            std::string path = showOpenFileDialog();
+                            if (!path.empty()) {
+                                engine_.doc.loadFromFile(path);
+                                engine_.selectedEntities.clear();
+                                engine_.currentMode = Mode::IDLE; // Reseteamos cualquier modo activo
+                                engine_.statusMessage = "Dibujo cargado desde: " + path;
+                            } else {
+                                engine_.statusMessage = "Carga cancelada.";
+                            }
+                        }
+                        else if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
+                                upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
                             
                             std::string topic = "";
                             size_t spacePos = inputBuffer_.find(' ');
@@ -310,7 +372,7 @@ namespace cad {
                             for (char c : helpText) {
                                 if (c == '\n') {
                                     if (!line.empty()) {
-                                        commandHistory_.push_back("  [AYUDA] " + line); // Prefijo para distinguir
+                                        commandHistory_.push_back("  [AYUDA] " + line);
                                     }
                                     line.clear();
                                 } else {
@@ -323,7 +385,7 @@ namespace cad {
                             engine_.statusMessage = "Ayuda mostrada";
                         }
                         else {
-                            // Comando normal: enviar al engine
+                            // Comando normal: enviar al engine (Línea, Círculo, Mover, etc.)
                             engine_.processInput(inputBuffer_);
                         }
                     }
@@ -335,7 +397,6 @@ namespace cad {
                 else if (event.text.unicode == 8) { // Backspace
                     if (!inputBuffer_.empty()) {
                         inputBuffer_.pop_back();
-                        // Resetear autocompletado al borrar
                         autocompleteIndex_ = -1;
                         autocompleteBase_.clear();
                     }
@@ -343,7 +404,6 @@ namespace cad {
                 else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
                     // SOLO caracteres ASCII imprimibles
                     inputBuffer_ += static_cast<char>(event.text.unicode);
-                    // Resetear autocompletado al escribir una letra nueva
                     autocompleteIndex_ = -1;
                     autocompleteBase_.clear();
                 }
@@ -1149,4 +1209,5 @@ namespace cad {
             }
         }
     }
+
 } // namespace cad
