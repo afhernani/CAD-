@@ -539,20 +539,57 @@ namespace cad {
     }
 
     void App::drawGrid() {
-        sf::RectangleShape line;
-        line.setFillColor(sf::Color(50, 50, 50));
+        if (!engine_.gridEnabled) return;
+
+        // 1. Calcular el espaciado dinámico según el zoom (SIN modificar gridBaseSize_)
+        double currentGridSize = gridBaseSize_;
+        double pixelSpacing = currentGridSize * viewScale_;
         
-        // Rejilla que cubre todo el canvas (1280 x CANVAS_HEIGHT)
-        for (int i = 0; i <= WINDOW_WIDTH; i += 50) {
-            line.setSize(sf::Vector2f(1, CANVAS_HEIGHT));
-            line.setPosition(i, MENU_HEIGHT + TOOLBAR_HEIGHT);
-            window_.draw(line);
+        // Ajustar el tamaño local para que la separación visual sea siempre cómoda (entre 30px y 150px)
+        while (pixelSpacing < 30.0) { 
+            currentGridSize *= 10.0; 
+            pixelSpacing = currentGridSize * viewScale_; 
         }
-        for (int i = 0; i <= CANVAS_HEIGHT; i += 50) {
-            line.setSize(sf::Vector2f(WINDOW_WIDTH, 1));
-            line.setPosition(0, MENU_HEIGHT + TOOLBAR_HEIGHT + i);
-            window_.draw(line);
+        while (pixelSpacing > 150.0) { 
+            currentGridSize /= 10.0; 
+            pixelSpacing = currentGridSize * viewScale_; 
         }
+
+        // 2. Calcular los límites visibles en coordenadas del mundo
+        double left   = screenToWorld(0, 0).x;
+        double right  = screenToWorld(WINDOW_WIDTH, 0).x;
+        double top    = screenToWorld(0, 0).y;
+        double bottom = screenToWorld(0, WINDOW_HEIGHT).y;
+
+        if (left > right) std::swap(left, right);
+        if (top > bottom) std::swap(top, bottom);
+
+        // 3. Calcular el primer punto de la cuadrícula (alineado al origen 0,0)
+        // Usamos currentGridSize, no gridBaseSize_
+        double startX = std::floor(left / currentGridSize) * currentGridSize;
+        double startY = std::floor(top / currentGridSize) * currentGridSize;
+
+        // 4. Dibujar usando VertexArray
+        sf::Color gridColor(50, 50, 50); 
+        sf::VertexArray lines(sf::Lines);
+
+        // Líneas verticales
+        for (double x = startX; x <= right; x += currentGridSize) {
+            sf::Vector2f topPos = worldToScreen(x, top);
+            sf::Vector2f botPos = worldToScreen(x, bottom);
+            lines.append(sf::Vertex(topPos, gridColor));
+            lines.append(sf::Vertex(botPos, gridColor));
+        }
+
+        // Líneas horizontales
+        for (double y = startY; y <= bottom; y += currentGridSize) {
+            sf::Vector2f leftPos = worldToScreen(left, y);
+            sf::Vector2f rightPos = worldToScreen(right, y);
+            lines.append(sf::Vertex(leftPos, gridColor));
+            lines.append(sf::Vertex(rightPos, gridColor));
+        }
+
+        window_.draw(lines);
     }
 
     void App::drawAxes() {

@@ -101,6 +101,9 @@ namespace cad {
         void undo();        // Retrocede un estado
         void redo();        // Avanza un estado
 
+        bool gridEnabled = false;
+        void toggleGrid() { gridEnabled = !gridEnabled; }
+
     private:
         void executeCommand(std::string_view cmd);
         void processCoordinate(std::string_view coordStr);

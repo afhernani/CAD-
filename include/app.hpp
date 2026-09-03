@@ -49,6 +49,9 @@ namespace cad {
         bool showAxes_;
         sf::Vector2f currentMouseWorldPos_;
         sf::Vector2i currentMouseScreenPos_;  // Posición del ratón en píxeles de pantalla
+        
+        bool showGrid_ = false;        // Cuadrícula activada/desactivada
+        double gridBaseSize_ = 10.0;   // Tamaño base de la cuadrícula
 
         // --- Object Snaps ---
         bool isSnapped_;

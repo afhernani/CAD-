@@ -197,6 +197,10 @@ namespace cad {
             extendBoundaries.clear();
             statusMessage = "EXTEND | Seleccionar bordes (Enter para terminar):";
         }
+        else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
+            toggleGrid();
+            statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada.";
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -964,6 +968,7 @@ namespace cad {
             oss << "  Z, BORRAR     - Borrar todo el dibujo\n";
             oss << "  LA, CAPA      - Gestionar capas (NEW, SET, ON, OFF, LIST)\n";
             oss << "  DIST, MEDIR   - Medir distancia y ángulo\n";
+            oss << "  GRID, REJILLA   - Activar/desactivar cuadrícula de fondo\n";
             oss << "  AYUDA, ?      - Mostrar esta ayuda\n\n";
             oss << "  SAVE, GUARDAR - Guardar dibujo en archivo JSON\n";
             oss << "  LOAD, CARGAR  - Cargar dibujo desde archivo JSON\n";
@@ -1086,7 +1091,7 @@ namespace cad {
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
             // Edición y Sistema
-            "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR",
+            "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)
             "AREA", "LISTA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR"
         };
