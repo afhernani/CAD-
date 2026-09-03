@@ -179,18 +179,44 @@ namespace cad {
                 }
             }
 
-            // --- ZOOM (solo en canvas) ---
+            // --- ZOOM CENTRADO EN EL CURSOR (solo en canvas) ---
             if (event.type == sf::Event::MouseWheelScrolled) {
+                int mx = event.mouseWheelScroll.x;
                 int my = event.mouseWheelScroll.y;
+                
+                // Comprobar si el ratón está sobre el área de dibujo (Canvas)
                 if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && 
                     my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    if (event.mouseWheelScroll.delta > 0) viewScale_ *= 1.1f; 
-                    else if (event.mouseWheelScroll.delta < 0) viewScale_ /= 1.1f;
                     
+                    // 1. Guardar la posición del mundo bajo el ratón ANTES del zoom
+                    sf::Vector2f tempPos = screenToWorld(static_cast<float>(mx), static_cast<float>(my));
+                    Point2D worldPosBeforeZoom = {tempPos.x, tempPos.y};
+
+                    // 2. Aplicar el Zoom
+                    float zoomFactor = 1.1f;
+                    if (event.mouseWheelScroll.delta > 0) {
+                        viewScale_ *= zoomFactor; // Zoom In
+                    } else if (event.mouseWheelScroll.delta < 0) {
+                        viewScale_ /= zoomFactor; // Zoom Out
+                    }
+                    
+                    // Limitar el zoom para que no se rompa
                     if (viewScale_ < 0.01f) viewScale_ = 0.01f;
                     if (viewScale_ > 100.0f) viewScale_ = 100.0f;
-                    //sincronizar con engine para trim y extend
+                    
+                    // Sincronizar con el engine (para TRIM/EXTEND)
                     engine_.viewScale = viewScale_;
+
+                    // 3. Calcular dónde estaría ese punto del mundo AHORA con el nuevo zoom
+                    sf::Vector2f screenPosAfterZoom = worldToScreen(worldPosBeforeZoom.x, worldPosBeforeZoom.y);
+
+                    // 4. Ajustar la cámara (Pan) para compensar el desplazamiento
+                    // La diferencia entre donde está el ratón y donde quedó el punto es lo que debemos mover
+                    float dx = static_cast<float>(mx) - screenPosAfterZoom.x;
+                    float dy = static_cast<float>(my) - screenPosAfterZoom.y;
+
+                    viewPanX_ += dx / viewScale_;
+                    viewPanY_ -= dy / viewScale_; // Restamos porque en SFML Y crece hacia abajo, pero en CAD hacia arriba
                 }
             }
 
