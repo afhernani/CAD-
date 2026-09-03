@@ -11,6 +11,7 @@ namespace cad {
     public:
         App();
         void run();
+        void drawDimensionTexts();
 
     private:
         sf::RenderWindow window_;

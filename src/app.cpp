@@ -555,6 +555,7 @@ namespace cad {
             drawAxes();
         }
         drawEntities();
+        drawDimensionTexts();
         drawCrosshair();
 
         // Dibujar la interfaz
@@ -1286,6 +1287,16 @@ namespace cad {
                 window_.draw(va);
             }
         }
+        // --- COTA ---
+        else if (engine_.currentMode == Mode::DRAW_DIMENSION) {
+            if (engine_.statusMessage.find("Segundo") != std::string::npos) {
+                sf::Vertex line[] = {
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+                    sf::Vertex(worldToScreen(currentMouseWorldPos_.x, currentMouseWorldPos_.y), feedbackColor)
+                };
+                window_.draw(line, 2, sf::Lines);
+            }
+        }
     }
 
     void App::drawGrips() {
@@ -1311,6 +1322,36 @@ namespace cad {
                 grip.setOrigin(size / 2.f, size / 2.f);
                 grip.setPosition(screenPos);
                 window_.draw(grip);
+            }
+        }
+    }
+
+    void App::drawDimensionTexts() {
+        // IMPORTANTE: Cambia 'font_' por el nombre de la variable de fuente que uses en tu App
+        // Si no tienes ninguna, el texto no se dibujará, pero no dará error.
+        
+        for (const auto& entity : engine_.doc.entities) {
+            if (auto* dim = dynamic_cast<Dimension*>(entity.get())) {
+                // Formatear el valor a 2 decimales
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << dim->value;
+                
+                // Calcular la posición del texto (centro de la línea de cota)
+                double textX = dim->isHorizontal ? (dim->p1.x + dim->p2.x) / 2.0 : dim->location.x;
+                double textY = dim->isHorizontal ? dim->location.y : (dim->p1.y + dim->p2.y) / 2.0;
+                
+                sf::Vector2f screenPos = worldToScreen(textX, textY);
+
+                // Dibujar el texto (Asegúrate de que 'font_' existe en tu clase App)
+                sf::Text text;
+                text.setFont(font_); // <--- DESCOMENTA Y USA TU FUENTE REAL
+                text.setString(oss.str());
+                text.setCharacterSize(12);
+                text.setFillColor(sf::Color::White);
+                text.setOrigin(text.getLocalBounds().width / 2.f, text.getLocalBounds().height / 2.f);
+                text.setPosition(screenPos);
+                
+                window_.draw(text);
             }
         }
     }

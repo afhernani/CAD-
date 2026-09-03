@@ -836,4 +836,159 @@ namespace cad {
         return nullptr; // Tipo desconocido
     }
 
+    // --- DIMENSION ---
+
+    void Dimension::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
+                        const sf::Color& color, float viewScale) const {
+        // Calcular puntos de extensión y línea de cota
+        Point2D ext1, ext2, lineStart, lineEnd;
+        
+        if (isHorizontal) {
+            double y = location.y;
+            ext1 = {p1.x, y}; ext2 = {p2.x, y};
+            lineStart = {p1.x, y}; lineEnd = {p2.x, y};
+        } else {
+            double x = location.x;
+            ext1 = {x, p1.y}; ext2 = {x, p2.y};
+            lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+        }
+
+        sf::Color dimColor = color;
+        dimColor.a = 200; // Ligeramente transparente para las líneas de extensión
+
+        // Líneas de extensión (desde p1/p2 hasta la línea de cota)
+        sf::Vertex extLine1[] = { sf::Vertex(w2s(p1.x, p1.y), dimColor), sf::Vertex(w2s(ext1.x, ext1.y), dimColor) };
+        sf::Vertex extLine2[] = { sf::Vertex(w2s(p2.x, p2.y), dimColor), sf::Vertex(w2s(ext2.x, ext2.y), dimColor) };
+        window.draw(extLine1, 2, sf::Lines);
+        window.draw(extLine2, 2, sf::Lines);
+
+        // Línea de cota
+        sf::Vertex dimLine[] = { sf::Vertex(w2s(lineStart.x, lineStart.y), color), sf::Vertex(w2s(lineEnd.x, lineEnd.y), color) };
+        window.draw(dimLine, 2, sf::Lines);
+
+        // Ticks (marcas) en los extremos de la línea de cota (líneas perpendiculares pequeñas)
+        float tickSize = 5.0f; // Tamaño fijo en píxeles
+        sf::Vector2f sPos = w2s(lineStart.x, lineStart.y);
+        sf::Vector2f ePos = w2s(lineEnd.x, lineEnd.y);
+        
+        if (isHorizontal) {
+            sf::Vertex tick1[] = { sf::Vertex(sf::Vector2f(sPos.x, sPos.y - tickSize), color), sf::Vertex(sf::Vector2f(sPos.x, sPos.y + tickSize), color) };
+            sf::Vertex tick2[] = { sf::Vertex(sf::Vector2f(ePos.x, ePos.y - tickSize), color), sf::Vertex(sf::Vector2f(ePos.x, ePos.y + tickSize), color) };
+            window.draw(tick1, 2, sf::Lines);
+            window.draw(tick2, 2, sf::Lines);
+        } else {
+            sf::Vertex tick1[] = { sf::Vertex(sf::Vector2f(sPos.x - tickSize, sPos.y), color), sf::Vertex(sf::Vector2f(sPos.x + tickSize, sPos.y), color) };
+            sf::Vertex tick2[] = { sf::Vertex(sf::Vector2f(ePos.x - tickSize, ePos.y), color), sf::Vertex(sf::Vector2f(ePos.x + tickSize, ePos.y), color) };
+            window.draw(tick1, 2, sf::Lines);
+            window.draw(tick2, 2, sf::Lines);
+        }
+    }
+
+    bool Dimension::isNear(const Point2D& point, double tolerance) const {
+        // Simplificación: comprobar si está cerca de la línea de cota o las de extensión
+        Point2D ext1, ext2, lineStart, lineEnd;
+        if (isHorizontal) {
+            double y = location.y;
+            ext1 = {p1.x, y}; ext2 = {p2.x, y};
+            lineStart = {p1.x, y}; lineEnd = {p2.x, y};
+        } else {
+            double x = location.x;
+            ext1 = {x, p1.y}; ext2 = {x, p2.y};
+            lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+        }
+        
+        double d1 = distToSegment(point, p1, ext1);
+        double d2 = distToSegment(point, p2, ext2);
+        double d3 = distToSegment(point, lineStart, lineEnd);
+        
+        return (d1 <= tolerance || d2 <= tolerance || d3 <= tolerance);
+    }
+
+    void Dimension::move(double dx, double dy) {
+        p1.x += dx; p1.y += dy;
+        p2.x += dx; p2.y += dy;
+        location.x += dx; location.y += dy;
+    }
+
+    void Dimension::rotate(const Point2D& center, double angleDeg) {
+        double rad = angleDeg * std::numbers::pi / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        
+        auto rotatePoint = [&](Point2D& p) {
+            double dx = p.x - center.x, dy = p.y - center.y;
+            p.x = center.x + dx * cosA - dy * sinA;
+            p.y = center.y + dx * sinA + dy * cosA;
+        };
+        
+        rotatePoint(p1); rotatePoint(p2); rotatePoint(location);
+        // Recalcular isHorizontal tras rotar (simplificación: mantener el valor actual)
+    }
+
+    void Dimension::scale(const Point2D& base, double factor) {
+        p1.x = base.x + (p1.x - base.x) * factor; p1.y = base.y + (p1.y - base.y) * factor;
+        p2.x = base.x + (p2.x - base.x) * factor; p2.y = base.y + (p2.y - base.y) * factor;
+        location.x = base.x + (location.x - base.x) * factor; location.y = base.y + (location.y - base.y) * factor;
+        value *= factor;
+    }
+
+    void Dimension::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        p1 = mirrorPoint(p1, axisP1, axisP2);
+        p2 = mirrorPoint(p2, axisP1, axisP2);
+        location = mirrorPoint(location, axisP1, axisP2);
+    }
+
+    std::unique_ptr<Entity> Dimension::clone() const {
+        auto c = std::make_unique<Dimension>();
+        c->p1 = p1; c->p2 = p2; c->location = location;
+        c->value = value; c->isHorizontal = isHorizontal;
+        c->layerName = layerName;
+        return c;
+    }
+
+    void Dimension::copyFrom(const Entity& src) {
+        auto& d = dynamic_cast<const Dimension&>(src);
+        p1 = d.p1; p2 = d.p2; location = d.location;
+        value = d.value; isHorizontal = d.isHorizontal;
+        layerName = d.layerName;
+    }
+
+    std::vector<Point2D> Dimension::getGripPoints() const {
+        return {p1, p2, location};
+    }
+
+    void Dimension::moveGrip(int index, const Point2D& newPos) {
+        if (index == 0) { p1 = newPos; }
+        else if (index == 1) { p2 = newPos; }
+        else if (index == 2) { location = newPos; }
+        
+        // Recalcular valor
+        if (isHorizontal) value = std::abs(p2.x - p1.x);
+        else value = std::abs(p2.y - p1.y);
+    }
+
+    std::vector<Point2D> Dimension::getSnapPoints() const {
+        return {p1, p2, location};
+    }
+
+    nlohmann::json Dimension::toJson() const {
+        return {{"type", "Dimension"}, 
+                {"p1", {{"x", p1.x}, {"y", p1.y}}}, 
+                {"p2", {{"x", p2.x}, {"y", p2.y}}}, 
+                {"location", {{"x", location.x}, {"y", location.y}}},
+                {"value", value}, {"isHorizontal", isHorizontal}, {"layer", layerName}};
+    }
+
+    // Añadir en Entity::fromJson:
+    // else if (type == "Dimension") {
+    //     auto e = std::make_unique<Dimension>();
+    //     e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
+    //     e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
+    //     e->location = {j["location"]["x"].get<double>(), j["location"]["y"].get<double>()};
+    //     e->value = j["value"].get<double>();
+    //     e->isHorizontal = j["isHorizontal"].get<bool>();
+    //     e->layerName = layer;
+    //     return e;
+    // }
+
+
 } // namespace cad

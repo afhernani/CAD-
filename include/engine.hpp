@@ -14,7 +14,7 @@ namespace cad {
         DRAW_ARC,
         DRAW_POLYLINE,
         DRAW_POLYGON,
-        DRAW_ELLIPSE,
+        DRAW_ELLIPSE, DRAW_DIMENSION,
         LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
         COPY,
         ROTATE,
@@ -104,6 +104,8 @@ namespace cad {
         bool gridEnabled = false;
         void toggleGrid() { gridEnabled = !gridEnabled; }
 
+        Point2D tempDimP1, tempDimP2;
+        
     private:
         void executeCommand(std::string_view cmd);
         void processCoordinate(std::string_view coordStr);

@@ -117,6 +117,10 @@ namespace cad {
             currentMode = Mode::DRAW_ELLIPSE;
             statusMessage = "ELIPSE | Especificar centro:";
         }
+        else if (upperCmd == "DIM" || upperCmd == "COTA" || upperCmd == "ACOTAR") {
+            currentMode = Mode::DRAW_DIMENSION;
+            statusMessage = "COTA | Primer punto:";
+        }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
             saveState();
             doc.clear();
@@ -545,7 +549,36 @@ namespace cad {
                 statusMessage = "Elipse creada.";
             }
         }
-
+        // --- COTA (DIMENSION) ---
+        else if (currentMode == Mode::DRAW_DIMENSION) {
+            if (statusMessage.find("Primer") != std::string::npos) {
+                tempDimP1 = lastPoint;
+                statusMessage = "COTA | Segundo punto:";
+            }
+            else if (statusMessage.find("Segundo") != std::string::npos) {
+                tempDimP2 = lastPoint;
+                statusMessage = "COTA | Ubicación de la línea de cota:";
+            }
+            else {
+                Point2D loc = lastPoint;
+                // Determinar si es horizontal o vertical
+                double cx = (tempDimP1.x + tempDimP2.x) / 2.0;
+                double cy = (tempDimP1.y + tempDimP2.y) / 2.0;
+                bool isHoriz = std::abs(loc.y - cy) > std::abs(loc.x - cx);
+                
+                double val = isHoriz ? std::abs(tempDimP2.x - tempDimP1.x) : std::abs(tempDimP2.y - tempDimP1.y);
+                
+                auto newDim = std::make_unique<Dimension>();
+                newDim->p1 = tempDimP1; newDim->p2 = tempDimP2;
+                newDim->location = loc; newDim->isHorizontal = isHoriz;
+                newDim->value = val; newDim->layerName = doc.currentLayerName;
+                
+                saveState(); // Para deshacer
+                doc.addEntity(std::move(newDim));
+                currentMode = Mode::IDLE;
+                statusMessage = "Cota creada.";
+            }
+        }
         // --- MOVER ---
         else if (currentMode == Mode::MOVE) {
             if (statusMessage.find("base") != std::string::npos) {
@@ -955,6 +988,9 @@ namespace cad {
             oss << "  POL, POLIGONO - Dibujar polígono regular\n";
             oss << "  EL, ELIPSE    - Dibujar elipse\n\n";
             
+            oss << "[ COTA ]\n";
+            oss << "  DIM, COTA     - Dibujar cota (dimensión)\n\n";
+            
             oss << "[ MODIFICACION ]\n";
             oss << "  M, MOVER      - Mover entidades\n";
             oss << "  CO, COPIAR    - Copiar entidades\n";
@@ -1087,7 +1123,7 @@ namespace cad {
     std::vector<std::string> Engine::getAllCommands() const {
         return {
             // Dibujo
-            "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE",
+            "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM",
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
             // Edición y Sistema
