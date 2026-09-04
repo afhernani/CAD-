@@ -839,7 +839,7 @@ namespace cad {
     // --- DIMENSION ---
 
     void Dimension::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
-                        const sf::Color& color, float viewScale) const {
+                     const sf::Color& color, float viewScale) const {
         // Calcular puntos de extensión y línea de cota
         Point2D ext1, ext2, lineStart, lineEnd;
         
@@ -866,22 +866,37 @@ namespace cad {
         sf::Vertex dimLine[] = { sf::Vertex(w2s(lineStart.x, lineStart.y), color), sf::Vertex(w2s(lineEnd.x, lineEnd.y), color) };
         window.draw(dimLine, 2, sf::Lines);
 
-        // Ticks (marcas) en los extremos de la línea de cota (líneas perpendiculares pequeñas)
-        float tickSize = 5.0f; // Tamaño fijo en píxeles
+        // >>> FLECHAS PROFESIONALES (Tamaño fijo en píxeles) <<<
+        float arrowLen = 8.0f;
+        float arrowWidth = 3.0f;
+        
         sf::Vector2f sPos = w2s(lineStart.x, lineStart.y);
         sf::Vector2f ePos = w2s(lineEnd.x, lineEnd.y);
-        
-        if (isHorizontal) {
-            sf::Vertex tick1[] = { sf::Vertex(sf::Vector2f(sPos.x, sPos.y - tickSize), color), sf::Vertex(sf::Vector2f(sPos.x, sPos.y + tickSize), color) };
-            sf::Vertex tick2[] = { sf::Vertex(sf::Vector2f(ePos.x, ePos.y - tickSize), color), sf::Vertex(sf::Vector2f(ePos.x, ePos.y + tickSize), color) };
-            window.draw(tick1, 2, sf::Lines);
-            window.draw(tick2, 2, sf::Lines);
-        } else {
-            sf::Vertex tick1[] = { sf::Vertex(sf::Vector2f(sPos.x - tickSize, sPos.y), color), sf::Vertex(sf::Vector2f(sPos.x + tickSize, sPos.y), color) };
-            sf::Vertex tick2[] = { sf::Vertex(sf::Vector2f(ePos.x - tickSize, ePos.y), color), sf::Vertex(sf::Vector2f(ePos.x + tickSize, ePos.y), color) };
-            window.draw(tick1, 2, sf::Lines);
-            window.draw(tick2, 2, sf::Lines);
+
+        // Calcular vector dirección normalizado
+        sf::Vector2f dir = ePos - sPos;
+        float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+        if (len > 0) {
+            dir.x /= len;
+            dir.y /= len;
         }
+        sf::Vector2f perp = {-dir.y, dir.x};
+
+        // Flecha en el punto de inicio
+        sf::Vertex arrow1[] = {
+            sf::Vertex(sPos, color),
+            sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen + perp.x * arrowWidth, sPos.y + dir.y * arrowLen + perp.y * arrowWidth), color),
+            sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen - perp.x * arrowWidth, sPos.y + dir.y * arrowLen - perp.y * arrowWidth), color)
+        };
+        window.draw(arrow1, 3, sf::Triangles);
+
+        // Flecha en el punto final
+        sf::Vertex arrow2[] = {
+            sf::Vertex(ePos, color),
+            sf::Vertex(sf::Vector2f(ePos.x - dir.x * arrowLen + perp.x * arrowWidth, ePos.y - dir.y * arrowLen + perp.y * arrowWidth), color),
+            sf::Vertex(sf::Vector2f(ePos.x - dir.x * arrowLen - perp.x * arrowWidth, ePos.y - dir.y * arrowLen - perp.y * arrowWidth), color)
+        };
+        window.draw(arrow2, 3, sf::Triangles);
     }
 
     bool Dimension::isNear(const Point2D& point, double tolerance) const {

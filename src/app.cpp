@@ -1372,9 +1372,6 @@ namespace cad {
     }
 
     void App::drawDimensionTexts() {
-        // IMPORTANTE: Cambia 'font_' por el nombre de la variable de fuente que uses en tu App
-        // Si no tienes ninguna, el texto no se dibujará, pero no dará error.
-        
         for (const auto& entity : engine_.doc.entities) {
             if (auto* dim = dynamic_cast<Dimension*>(entity.get())) {
                 // Formatear el valor a 2 decimales
@@ -1387,15 +1384,27 @@ namespace cad {
                 
                 sf::Vector2f screenPos = worldToScreen(textX, textY);
 
-                // Dibujar el texto (Asegúrate de que 'font_' existe en tu clase App)
+                // Preparar el texto
                 sf::Text text;
-                text.setFont(font_); // <--- DESCOMENTA Y USA TU FUENTE REAL
+                text.setFont(font_);
                 text.setString(oss.str());
                 text.setCharacterSize(12);
                 text.setFillColor(sf::Color::White);
-                text.setOrigin(text.getLocalBounds().width / 2.f, text.getLocalBounds().height / 2.f);
+
+                // Calcular los límites del texto para dibujar el fondo opaco
+                sf::FloatRect bounds = text.getLocalBounds();
+                float padding = 4.0f; // Un poco de espacio alrededor del texto
+
+                // 1. Dibujar el fondo opaco (mismo color que el fondo del canvas: 30,30,30)
+                sf::RectangleShape bg(sf::Vector2f(bounds.width + padding * 2, bounds.height + padding));
+                bg.setFillColor(sf::Color(30, 30, 30)); 
+                bg.setOrigin(bounds.width / 2.f + padding, bounds.height / 2.f);
+                bg.setPosition(screenPos);
+                window_.draw(bg);
+
+                // 2. Dibujar el texto encima
+                text.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
                 text.setPosition(screenPos);
-                
                 window_.draw(text);
             }
         }
