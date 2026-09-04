@@ -832,6 +832,17 @@ namespace cad {
             e->layerName = layer;
             return e;
         }
+        // >>> ASEGÚRATE DE QUE ESTE BLOQUE ESTÉ AQUÍ Y DESCOMENTADO <<<
+        else if (type == "Dimension") {
+            auto e = std::make_unique<Dimension>();
+            e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
+            e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
+            e->location = {j["location"]["x"].get<double>(), j["location"]["y"].get<double>()};
+            e->value = j["value"].get<double>();
+            e->isHorizontal = j["isHorizontal"].get<bool>();
+            e->layerName = layer;
+            return e;
+        }
         
         return nullptr; // Tipo desconocido
     }
