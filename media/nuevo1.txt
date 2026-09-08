@@ -1,0 +1,108 @@
+
+// Vértice = tempDimP3 (intersección calculada)
+                Point2D vertex = engine_.tempDimP3;
+                
+                // Calcular radio del arco (distancia vértice → cursor)
+                double arcRadius = std::hypot(mousePos.x - vertex.x, mousePos.y - vertex.y);
+                
+                // Calcular ángulos de las dos líneas respecto al vértice
+                double angle1 = std::atan2(engine_.tempDimP2.y - vertex.y, 
+                                        engine_.tempDimP2.x - vertex.x);
+                double angle2 = std::atan2(mousePos.y - vertex.y, 
+                                        mousePos.x - vertex.x);
+                
+                // Dibujar líneas guía desde el vértice (extendidas)
+                sf::Color guideColor(255, 255, 0, 100); // Amarillo semitransparente
+                double extLen = arcRadius * 1.5;
+                
+                sf::Vertex guide1[] = {
+                    sf::Vertex(worldToScreen(vertex.x, vertex.y), guideColor),
+                    sf::Vertex(worldToScreen(vertex.x + std::cos(angle1) * extLen, 
+                                            vertex.y + std::sin(angle1) * extLen), guideColor)
+                };
+                sf::Vertex guide2[] = {
+                    sf::Vertex(worldToScreen(vertex.x, vertex.y), guideColor),
+                    sf::Vertex(worldToScreen(vertex.x + std::cos(angle2) * extLen, 
+                                            vertex.y + std::sin(angle2) * extLen), guideColor)
+                };
+                window_.draw(guide1, 2, sf::Lines);
+                window_.draw(guide2, 2, sf::Lines);
+                
+                // Dibujar el arco de cota
+                const int numPoints = 64;
+                sf::VertexArray arc(sf::LineStrip, numPoints);
+                
+                // Asegurar que el arco va de angle1 a angle2 en la dirección correcta
+                double startAngle = angle1;
+                double endAngle = angle2;
+                
+                // Normalizar para que el arco no dé la vuelta completa
+                double diff = endAngle - startAngle;
+                while (diff < 0) diff += 2 * PI;
+                while (diff >= 2 * PI) diff -= 2 * PI;
+                
+                double step = diff / (numPoints - 1);
+                for (int i = 0; i < numPoints; ++i) {
+                    double angle = startAngle + i * step;
+                    double px = vertex.x + arcRadius * std::cos(angle);
+                    double py = vertex.y + arcRadius * std::sin(angle);
+                    arc[i].position = worldToScreen(px, py);
+                    arc[i].color = sf::Color(255, 255, 0); // Amarillo
+                }
+                window_.draw(arc);
+                
+                // Dibujar flechas en los extremos del arco
+                float arrowSize = 6.0f;
+                // Flecha en inicio
+                sf::Vector2f p1Screen = worldToScreen(
+                    vertex.x + arcRadius * std::cos(startAngle),
+                    vertex.y + arcRadius * std::sin(startAngle));
+                sf::CircleShape arrowStart(arrowSize);
+                arrowStart.setFillColor(sf::Color(255, 255, 0));
+                arrowStart.setOrigin(arrowSize, arrowSize);
+                arrowStart.setPosition(p1Screen);
+                window_.draw(arrowStart);
+                
+                // Flecha en final
+                sf::Vector2f p2Screen = worldToScreen(
+                    vertex.x + arcRadius * std::cos(endAngle),
+                    vertex.y + arcRadius * std::sin(endAngle));
+                sf::CircleShape arrowEnd(arrowSize);
+                arrowEnd.setFillColor(sf::Color(255, 255, 0));
+                arrowEnd.setOrigin(arrowSize, arrowSize);
+                arrowEnd.setPosition(p2Screen);
+                window_.draw(arrowEnd);
+                
+                // Mostrar el valor del ángulo junto al cursor
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << engine_.tempDimAngle << "°";
+                sf::Text txt;
+                txt.setFont(font_);
+                txt.setString(toSfString(oss.str()));
+                txt.setCharacterSize(14);
+                txt.setFillColor(sf::Color(255, 255, 0));
+                sf::Vector2f mouseScreen = worldToScreen(mousePos.x, mousePos.y);
+                txt.setPosition(mouseScreen.x + 15.f, mouseScreen.y - 25.f);
+                window_.draw(txt);
+
+
+
+
+
+
+
+
+
+
+----------
+
+sf::Vertex line1[] = {
+            sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+            sf::Vertex(worldToScreen(engine_.tempDimP2.x, engine_.tempDimP2.y), feedbackColor)
+        };
+        sf::Vertex line2[] = {
+            sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+            sf::Vertex(worldToScreen(mousePos.x, mousePos.y), feedbackColor)
+        };
+        window_.draw(line1, 2, sf::Lines);
+        window_.draw(line2, 2, sf::Lines);

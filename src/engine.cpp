@@ -60,7 +60,6 @@ namespace cad {
                 return;
             }
         }
-
         // ENTER vacío en polilínea -> terminar sin cerrar
         if (cleanInput.empty() && currentMode == Mode::DRAW_POLYLINE) {
             if (tempPolylinePoints.size() >= 2) {
@@ -83,7 +82,36 @@ namespace cad {
             executeCommand(cleanInput);
         } else if (currentMode == Mode::LAYER_COMMAND) {
             processLayerCommand(cleanInput);
-        } else {
+        }
+        // >>> Gestionar el menú de opciones de COTA <<<
+        else if (currentMode == Mode::DIM_OPTIONS) {
+            std::string upperInput = cleanInput;
+            std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+            
+            if (upperInput == "A" || upperInput == "ALINEADA") {
+                currentDimType = DimType::ALIGNED;
+                currentMode = Mode::DRAW_DIM_ALIGNED;
+                statusMessage = "COTA ALINEADA | Selecciona línea o primer punto:";
+            } else if (upperInput == "R" || upperInput == "RADIO") {
+                currentDimType = DimType::RADIUS;
+                currentMode = Mode::DRAW_DIM_RADIUS;
+                statusMessage = "COTA RADIO | Selecciona círculo o arco:";
+            } else if (upperInput == "D" || upperInput == "DIAMETRO") {
+                currentDimType = DimType::DIAMETER;
+                currentMode = Mode::DRAW_DIM_DIAMETER;
+                statusMessage = "COTA DIÁMETRO | Selecciona círculo o arco:";
+            } else if (upperInput == "AN" || upperInput == "ANGULO") {
+                currentDimType = DimType::ANGULAR;
+                currentMode = Mode::DRAW_DIM_ANGULAR;
+                statusMessage = "COTA ANGULAR | Selecciona la primera línea:";
+            } else {
+                // Por defecto (Enter o cualquier otra cosa): Horizontal/Vertical
+                currentDimType = DimType::HORIZONTAL;
+                currentMode = Mode::DRAW_DIMENSION;
+                statusMessage = "COTA | Primer punto:";
+            }
+        } 
+        else {
             processCoordinate(cleanInput);
         }
     }
@@ -118,9 +146,16 @@ namespace cad {
             statusMessage = "ELIPSE | Especificar centro:";
         }
         else if (upperCmd == "DIM" || upperCmd == "COTA" || upperCmd == "ACOTAR") {
-            currentMode = Mode::DRAW_DIMENSION;
-            statusMessage = "COTA | Primer punto:";
+            currentMode = Mode::DIM_OPTIONS;
+            currentDimType = DimType::HORIZONTAL; // Reseteamos al valor por defecto
+            statusMessage = "COTA | [Alineada/Radio/Diámetro/Ángulo] <Horizontal>:";
         }
+        else if (upperCmd == "Q" || upperCmd == "QUIT" || upperCmd == "SALIR") {
+            statusMessage = "Usa el botón de cerrar ventana para salir.";
+        }
+        // else if (upperCmd == "ESC" || upperCmd == "CANCEL" || upperCmd == "CANCELAR") {
+        //     cancelCommand();
+        // }
         else if (upperCmd == "Z" || upperCmd == "BORRAR") {
             saveState();
             doc.clear();
@@ -577,6 +612,271 @@ namespace cad {
                 doc.addEntity(std::move(newDim));
                 currentMode = Mode::IDLE;
                 statusMessage = "Cota creada.";
+            }
+        }
+        // --- COTA ALINEADA (permite seleccionar línea o picar puntos) ---
+        else if (currentMode == Mode::DRAW_DIM_ALIGNED) {
+            if (statusMessage.find("Primer") != std::string::npos) {
+                // Intentar detectar una línea cercana al clic
+                Entity* foundLine = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            foundLine = entity.get();
+                            tempDimP1 = line->p1;
+                            tempDimP2 = line->p2;
+                            break;
+                        }
+                    }
+                }
+                if (foundLine) {
+                    // Línea detectada: saltar directamente a pedir ubicación
+                    statusMessage = "COTA ALINEADA | Ubicación:";
+                } else {
+                    // No hay línea: modo manual, pedir primer punto
+                    tempDimP1 = lastPoint;
+                    statusMessage = "COTA ALINEADA | Segundo punto:";
+                }
+            }
+            else if (statusMessage.find("Segundo") != std::string::npos) {
+                tempDimP2 = lastPoint;
+                statusMessage = "COTA ALINEADA | Ubicación:";
+            }
+            else {
+                // Crear la cota
+                Point2D loc = lastPoint;
+                double val = std::hypot(tempDimP2.x - tempDimP1.x, tempDimP2.y - tempDimP1.y);
+                auto newDim = std::make_unique<Dimension>();
+                newDim->p1 = tempDimP1; newDim->p2 = tempDimP2;
+                newDim->location = loc;
+                newDim->isAligned = true;
+                newDim->type = DimType::ALIGNED;
+                newDim->value = val;
+                newDim->layerName = doc.currentLayerName;
+                saveState();
+                doc.addEntity(std::move(newDim));
+                currentMode = Mode::IDLE;
+                statusMessage = "Cota alineada creada.";
+            }
+        }
+        // --- COTA RADIO ---
+        else if (currentMode == Mode::DRAW_DIM_RADIUS) {
+            // PASO 1: Seleccionar círculo
+            if (statusMessage.find("Selecciona") != std::string::npos || 
+                statusMessage.find("Centro") != std::string::npos) {
+                
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* circle = dynamic_cast<Circle*>(entity.get())) {
+                        double dist = std::hypot(lastPoint.x - circle->center.x, lastPoint.y - circle->center.y);
+                        if (dist < minDist || std::abs(dist - circle->radius) < minDist) {
+                            found = entity.get();
+                            tempDimP1 = circle->center; 
+                            // Guardamos el radio en tempDimP2.x temporalmente
+                            tempDimP2 = {circle->radius, 0.0}; 
+                            break;
+                        }
+                    }
+                    else if (auto* arc = dynamic_cast<Arc*>(entity.get())) {
+                        double distCenter = std::hypot(lastPoint.x - arc->center.x,
+                                                    lastPoint.y - arc->center.y);
+                        // Detectar si clicamos cerca del centro o del borde del arco
+                        if (distCenter < minDist || std::abs(distCenter - arc->radius) < minDist) {
+                            found = entity.get();
+                            tempDimP1 = arc->center;
+                            // Usar el ángulo medio del arco para el punto de referencia
+                            double midAngle = (arc->startAngle + arc->endAngle) / 2.0;
+                            double rad = midAngle * std::numbers::pi / 180.0;
+                            tempDimP2 = {arc->radius, 0.0}; // Guardamos el radio en tempDimP2.x
+                            break;
+                        }
+                    }
+                }
+                
+                if (found) statusMessage = "COTA RADIO | Ubicación de la cota:";
+                else statusMessage = "COTA RADIO | No se encontró figura. Centro manual:";
+            } 
+            // PASO 2: Colocar cota (Calcular dirección hacia el clic)
+            else {
+                double radius = tempDimP2.x; // Recuperamos el radio guardado
+                
+                // Calcular vector dirección desde el centro hacia donde hizo clic el usuario
+                double dx = lastPoint.x - tempDimP1.x;
+                double dy = lastPoint.y - tempDimP1.y;
+                double len = std::hypot(dx, dy);
+                
+                Point2D borderPoint;
+                if (len > 0) {
+                    // Normalizar y multiplicar por radio para obtener el punto exacto en el borde
+                    borderPoint = { tempDimP1.x + (dx / len) * radius, tempDimP1.y + (dy / len) * radius };
+                } else {
+                    borderPoint = { tempDimP1.x + radius, tempDimP1.y }; // Fallback si clicó en el centro
+                }
+
+                auto newDim = std::make_unique<Dimension>();
+                newDim->p1 = tempDimP1;      // Centro
+                newDim->p2 = borderPoint;    // Punto en el borde (dirección del ratón)
+                newDim->location = lastPoint; // Donde va el texto
+                newDim->type = DimType::RADIUS;
+                newDim->value = radius;
+                newDim->layerName = doc.currentLayerName;
+                
+                saveState();
+                doc.addEntity(std::move(newDim));
+                currentMode = Mode::IDLE;
+                statusMessage = "Cota de radio creada.";
+            }
+        }
+        // --- COTA DIÁMETRO ---
+        else if (currentMode == Mode::DRAW_DIM_DIAMETER) {
+            // PASO 1: Seleccionar círculo o arco
+            if (statusMessage.find("Selecciona") != std::string::npos || 
+                statusMessage.find("Centro") != std::string::npos) {
+                
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                
+                for (auto& entity : doc.entities) {
+                    if (auto* circle = dynamic_cast<Circle*>(entity.get())) {
+                        double dist = std::hypot(lastPoint.x - circle->center.x, lastPoint.y - circle->center.y);
+                        if (dist < minDist || std::abs(dist - circle->radius) < minDist) {
+                            found = entity.get();
+                            tempDimP1 = circle->center; 
+                            // Guardamos el radio en tempDimP2.x temporalmente
+                            tempDimP2 = {circle->radius, 0.0}; 
+                            break;
+                        }
+                    }
+                    else if (auto* arc = dynamic_cast<Arc*>(entity.get())) {
+                        double distCenter = std::hypot(lastPoint.x - arc->center.x, lastPoint.y - arc->center.y);
+                        if (distCenter < minDist || std::abs(distCenter - arc->radius) < minDist) {
+                            found = entity.get();
+                            tempDimP1 = arc->center;
+                            // Guardamos el radio en tempDimP2.x
+                            tempDimP2 = {arc->radius, 0.0}; 
+                            break;
+                        }
+                    }
+                }
+                
+                if (found) {
+                    statusMessage = "COTA DIÁMETRO | Ubicación de la cota:";
+                } else {
+                    statusMessage = "COTA DIÁMETRO | No se encontró figura. Centro manual:";
+                }
+            } 
+            // PASO 2: Colocar cota (La línea debe pasar por el centro)
+            else {
+                double radius = tempDimP2.x; // Recuperamos el radio guardado
+                Point2D center = tempDimP1;  // Recuperamos el centro
+                
+                // Calcular vector dirección desde el centro hacia donde hizo clic el usuario
+                double dx = lastPoint.x - center.x;
+                double dy = lastPoint.y - center.y;
+                double len = std::hypot(dx, dy);
+                
+                // Normalizar la dirección (evitar división por cero)
+                double nx = (len > 0) ? (dx / len) : 1.0;
+                double ny = (len > 0) ? (dy / len) : 0.0;
+                
+                // Calcular los dos puntos opuestos en el borde de la figura
+                Point2D p1_border = { center.x + nx * radius, center.y + ny * radius };
+                Point2D p2_border = { center.x - nx * radius, center.y - ny * radius };
+
+                auto newDim = std::make_unique<Dimension>();
+                newDim->p1 = p1_border;      // Un extremo del diámetro
+                newDim->p2 = p2_border;      // El extremo opuesto (la línea pasará por el centro)
+                newDim->location = lastPoint; // Donde va el texto
+                newDim->type = DimType::DIAMETER;
+                newDim->value = radius * 2.0;
+                newDim->layerName = doc.currentLayerName;
+                
+                saveState();
+                doc.addEntity(std::move(newDim));
+                currentMode = Mode::IDLE;
+                statusMessage = "Cota de diámetro creada.";
+            }
+        }
+        // --- COTA ANGULAR ---
+        else if (currentMode == Mode::DRAW_DIM_ANGULAR) {
+            // PASO 1: Seleccionar primera línea
+            if (statusMessage.find("primera") != std::string::npos ||
+                statusMessage.find("Primera") != std::string::npos) {
+                
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            tempDimP1 = line->p1; // Guardar puntos de línea 1
+                            tempDimP2 = line->p2;
+                            break;
+                        }
+                    }
+                }
+                if (found) {
+                    statusMessage = "COTA ANGULAR | Selecciona la segunda línea:";
+                } else {
+                    statusMessage = "COTA ANGULAR | No es una línea. Selecciona la primera línea:";
+                }
+            }
+            // PASO 2: Seleccionar segunda línea y calcular intersección
+            else if (statusMessage.find("segunda") != std::string::npos ||
+                    statusMessage.find("Segunda") != std::string::npos) {
+                
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            auto inter = lineLineIntersection(tempDimP1, tempDimP2, line->p1, line->p2);
+                            if (inter.intersects) {
+                                // GUARDAR CORRECTAMENTE:
+                                tempDimP1 = inter.point;           // Vértice (centro del arco)
+                                tempDimP2 = tempDimP2;             // Punto dirección línea 1
+                                tempDimP2_line2 = line->p2;        // Punto dirección línea 2
+                                
+                                // Calcular ángulo
+                                double dx1 = tempDimP2.x - tempDimP1.x;
+                                double dy1 = tempDimP2.y - tempDimP1.y;
+                                double dx2 = line->p2.x - tempDimP1.x;
+                                double dy2 = line->p2.y - tempDimP1.y;
+                                double angle = std::atan2(dy2, dx2) - std::atan2(dy1, dx1);
+                                if (angle < 0) angle += 2 * std::numbers::pi;
+                                tempDimAngle = angle * 180.0 / std::numbers::pi;
+                                
+                                statusMessage = "COTA ANGULAR | Ubicación del arco de cota:";
+                            } else {
+                                statusMessage = "COTA ANGULAR | Líneas paralelas. Intenta de nuevo.";
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (!found && statusMessage.find("paralelas") == std::string::npos &&
+                    statusMessage.find("Ubicación") == std::string::npos) {
+                    statusMessage = "COTA ANGULAR | No es una línea. Selecciona la segunda línea:";
+                }
+            }
+            // PASO 3: Colocar el arco
+            else {
+                auto newDim = std::make_unique<Dimension>();
+                newDim->location = tempDimP1;          // VÉRTICE (centro del arco)
+                newDim->p1 = tempDimP2;                // Dirección línea 1
+                newDim->p2 = tempDimP2_line2;          // Dirección línea 2
+                newDim->p3 = lastPoint;                // Solo para radio
+                newDim->type = DimType::ANGULAR;
+                newDim->value = tempDimAngle;
+                newDim->layerName = doc.currentLayerName;
+                
+                saveState();
+                doc.addEntity(std::move(newDim));
+                currentMode = Mode::IDLE;
+                statusMessage = "Cota angular creada.";
             }
         }
         // --- MOVER ---
@@ -1123,7 +1423,7 @@ namespace cad {
     std::vector<std::string> Engine::getAllCommands() const {
         return {
             // Dibujo
-            "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM",
+            "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
             // Edición y Sistema

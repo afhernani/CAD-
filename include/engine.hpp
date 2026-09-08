@@ -14,7 +14,8 @@ namespace cad {
         DRAW_ARC,
         DRAW_POLYLINE,
         DRAW_POLYGON,
-        DRAW_ELLIPSE, DRAW_DIMENSION,
+        DRAW_ELLIPSE, DRAW_DIMENSION, DIM_OPTIONS, DRAW_DIM_ALIGNED,
+        DRAW_DIM_RADIUS, DRAW_DIM_DIAMETER, DRAW_DIM_ANGULAR,
         LAYER_COMMAND, // Nuevo modo para gestionar subcomandos de capa
         COPY,
         ROTATE,
@@ -104,7 +105,9 @@ namespace cad {
         bool gridEnabled = false;
         void toggleGrid() { gridEnabled = !gridEnabled; }
 
-        Point2D tempDimP1, tempDimP2;
+        Point2D tempDimP1, tempDimP2, tempDimP3, tempDimP2_line2; // Puntos temporales para cota angular
+        double tempDimAngle = 0.0; // Angulo calculado para cota angular.
+        DimType currentDimType = DimType::HORIZONTAL;
         
     private:
         void executeCommand(std::string_view cmd);

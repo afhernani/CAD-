@@ -1342,6 +1342,282 @@ namespace cad {
                 window_.draw(dimLine, 2, sf::Lines);
             }
         }
+        // --- COTA ALINEADA (DAL) ---
+        else if (engine_.currentMode == Mode::DRAW_DIM_ALIGNED) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            if (engine_.statusMessage.find("Segundo") != std::string::npos) {
+                sf::Vertex line[] = {
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+                    sf::Vertex(worldToScreen(mousePos.x, mousePos.y), feedbackColor)
+                };
+                window_.draw(line, 2, sf::Lines);
+            }
+            else if (engine_.statusMessage.find("Ubicación") != std::string::npos) {
+                double dx = engine_.tempDimP2.x - engine_.tempDimP1.x;
+                double dy = engine_.tempDimP2.y - engine_.tempDimP1.y;
+                double len = std::sqrt(dx*dx + dy*dy);
+                if (len > 0) {
+                    double nx = -dy / len; double ny = dx / len;
+                    double vx = mousePos.x - engine_.tempDimP1.x; double vy = mousePos.y - engine_.tempDimP1.y;
+                    double offset = vx * nx + vy * ny;
+                    sf::Vector2f sPos = worldToScreen(engine_.tempDimP1.x + nx * offset, engine_.tempDimP1.y + ny * offset);
+                    sf::Vector2f ePos = worldToScreen(engine_.tempDimP2.x + nx * offset, engine_.tempDimP2.y + ny * offset);
+                    sf::Vertex line[] = { sf::Vertex(sPos, feedbackColor), sf::Vertex(ePos, feedbackColor) };
+                    window_.draw(line, 2, sf::Lines);
+                }
+            }
+        }
+        // --- COTA RADIO ---
+        else if (engine_.currentMode == Mode::DRAW_DIM_RADIUS) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            
+            // PASO 1: Esperando selección de entidad → dibujar indicador
+            if (engine_.statusMessage.find("Centro") != std::string::npos ||
+                engine_.statusMessage.find("centro") != std::string::npos ||
+                engine_.statusMessage.find("Selecciona") != std::string::npos) {
+                // Dibujar un círculo pequeño en el cursor para indicar selección
+                sf::CircleShape dot(4.0f);
+                dot.setFillColor(feedbackColor);
+                dot.setOrigin(4.0f, 4.0f);
+                dot.setPosition(worldToScreen(mousePos.x, mousePos.y));
+                window_.draw(dot);
+            }
+            // PASO 2: Entidad ya seleccionada → mostrar círculo + línea + valor
+            else {
+                // Círculo guía
+                double radius = std::sqrt(std::pow(mousePos.x - engine_.tempDimP1.x, 2) +
+                                        std::pow(mousePos.y - engine_.tempDimP1.y, 2));
+                // circulo guía.
+                sf::CircleShape circle(static_cast<float>(radius * viewScale_));
+                circle.setFillColor(sf::Color::Transparent);
+                circle.setOutlineColor(feedbackColor);
+                circle.setOutlineThickness(1.5f);
+                circle.setOrigin(static_cast<float>(radius * viewScale_),
+                                static_cast<float>(radius * viewScale_));
+                circle.setPosition(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y));
+                window_.draw(circle);
+                
+                // Línea desde centro hasta cursor
+                sf::Vertex line[] = {
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+                    sf::Vertex(worldToScreen(mousePos.x, mousePos.y), feedbackColor)
+                };
+                window_.draw(line, 2, sf::Lines);
+                
+                // Texto con valor del radio
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << "R=" << radius;
+                sf::Text txt;
+                txt.setFont(font_);
+                txt.setString(toSfString(oss.str()));
+                txt.setCharacterSize(14);
+                txt.setFillColor(sf::Color::Yellow);
+                sf::Vector2f mouseScreen = worldToScreen(mousePos.x, mousePos.y);
+                txt.setPosition(mouseScreen.x + 10.f, mouseScreen.y - 20.f);
+                window_.draw(txt);
+            }
+        }
+        // --- COTA DIÁMETRO (Feedback similar) ---
+        else if (engine_.currentMode == Mode::DRAW_DIM_DIAMETER) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            
+            if (engine_.statusMessage.find("Selecciona") != std::string::npos ||
+                engine_.statusMessage.find("selecciona") != std::string::npos) {
+                sf::CircleShape indicator(5.0f);
+                indicator.setFillColor(feedbackColor);
+                indicator.setOrigin(5.0f, 5.0f);
+                indicator.setPosition(worldToScreen(mousePos.x, mousePos.y));
+                window_.draw(indicator);
+            }
+            else {
+                double radius = std::sqrt(std::pow(mousePos.x - engine_.tempDimP1.x, 2) +
+                                        std::pow(mousePos.y - engine_.tempDimP1.y, 2));
+                
+                sf::CircleShape circle(static_cast<float>(radius * viewScale_));
+                circle.setFillColor(sf::Color::Transparent);
+                circle.setOutlineColor(feedbackColor);
+                circle.setOutlineThickness(1.5f);
+                circle.setOrigin(static_cast<float>(radius * viewScale_),
+                                static_cast<float>(radius * viewScale_));
+                circle.setPosition(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y));
+                window_.draw(circle);
+                
+                // Línea de diámetro en dirección del ratón
+                double dx = mousePos.x - engine_.tempDimP1.x;
+                double dy = mousePos.y - engine_.tempDimP1.y;
+                double len = std::hypot(dx, dy);
+                double nx = (len > 0) ? (dx / len) : 1.0;
+                double ny = (len > 0) ? (dy / len) : 0.0;
+                sf::Vertex line[] = {
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x - nx * radius, engine_.tempDimP1.y - ny * radius), feedbackColor),
+                    sf::Vertex(worldToScreen(engine_.tempDimP1.x + nx * radius, engine_.tempDimP1.y + ny * radius), feedbackColor)
+                };
+                window_.draw(line, 2, sf::Lines);
+                
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << "Ø=" << (radius * 2.0);
+                sf::Text txt;
+                txt.setFont(font_);
+                txt.setString(toSfString(oss.str()));
+                txt.setCharacterSize(14);
+                txt.setFillColor(sf::Color::Yellow);
+                sf::Vector2f mouseScreen = worldToScreen(mousePos.x, mousePos.y);
+                txt.setPosition(mouseScreen.x + 10.f, mouseScreen.y - 20.f);
+                window_.draw(txt);
+            }
+        }
+        // --- COTA ANGULAR --- feedback visual más complejo
+        else if (engine_.currentMode == Mode::DRAW_DIM_ANGULAR) {
+            const double PI = 3.14159265358979323846;
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            
+            // PASO 1 & 2: Esperando primera o segunda línea
+            if (engine_.statusMessage.find("primera") != std::string::npos ||
+                engine_.statusMessage.find("segunda") != std::string::npos) {
+                
+                // Dibujar línea 1 si ya existe
+                if (engine_.statusMessage.find("segunda") != std::string::npos) {
+                    sf::Vertex line1[] = {
+                        sf::Vertex(worldToScreen(engine_.tempDimP1.x, engine_.tempDimP1.y), feedbackColor),
+                        sf::Vertex(worldToScreen(engine_.tempDimP2.x, engine_.tempDimP2.y), feedbackColor)
+                    };
+                    window_.draw(line1, 2, sf::Lines);
+                    
+                    // Calcular intersección DINÁMICA entre Línea 1 y la línea imaginaria al ratón
+                    auto inter = lineLineIntersection(
+                        engine_.tempDimP1, engine_.tempDimP2, 
+                        engine_.tempDimP1, mousePos
+                    );
+                    
+                    Point2D dynamicVertex = inter.intersects ? inter.point : engine_.tempDimP1;
+                    
+                    // Calcular ángulos respecto a este vértice dinámico
+                    double angle1 = std::atan2(engine_.tempDimP2.y - dynamicVertex.y, 
+                                            engine_.tempDimP2.x - dynamicVertex.x);
+                    double angle2 = std::atan2(mousePos.y - dynamicVertex.y, 
+                                            mousePos.x - dynamicVertex.x);
+                    
+                    // Radio proporcional a la distancia para que se vea bien
+                    double distToMouse = std::hypot(mousePos.x - dynamicVertex.x, mousePos.y - dynamicVertex.y);
+                    double arcRadius = std::min(distToMouse * 0.3, 50.0); 
+                    
+                    // Dibujar líneas guía extendidas desde el vértice dinámico
+                    sf::Color guideColor(255, 255, 0, 100);
+                    double extLen = arcRadius * 2.0;
+                    sf::Vertex guide1[] = {
+                        sf::Vertex(worldToScreen(dynamicVertex.x, dynamicVertex.y), guideColor),
+                        sf::Vertex(worldToScreen(dynamicVertex.x + std::cos(angle1) * extLen, 
+                                                dynamicVertex.y + std::sin(angle1) * extLen), guideColor)
+                    };
+                    sf::Vertex guide2[] = {
+                        sf::Vertex(worldToScreen(dynamicVertex.x, dynamicVertex.y), guideColor),
+                        sf::Vertex(worldToScreen(dynamicVertex.x + std::cos(angle2) * extLen, 
+                                                dynamicVertex.y + std::sin(angle2) * extLen), guideColor)
+                    };
+                    window_.draw(guide1, 2, sf::Lines);
+                    window_.draw(guide2, 2, sf::Lines);
+                    
+                    // Dibujar el arco dinámico
+                    const int numPoints = 32;
+                    sf::VertexArray arc(sf::LineStrip, numPoints);
+                    double diff = angle2 - angle1;
+                    while (diff < 0) diff += 2 * PI;
+                    while (diff >= 2 * PI) diff -= 2 * PI;
+                    double step = diff / (numPoints - 1);
+                    
+                    for (int i = 0; i < numPoints; ++i) {
+                        double angle = angle1 + i * step;
+                        double px = dynamicVertex.x + arcRadius * std::cos(angle);
+                        double py = dynamicVertex.y + arcRadius * std::sin(angle);
+                        arc[i].position = worldToScreen(px, py);
+                        arc[i].color = sf::Color(255, 255, 0);
+                    }
+                    window_.draw(arc);
+                }
+            }
+            
+            // PASO 3: Esperando ubicación del arco (YA TENEMOS LAS DOS LÍNEAS Y EL VÉRTICE DEFINITIVO)
+            else if (engine_.statusMessage.find("Ubicación") != std::string::npos ||
+                    engine_.statusMessage.find("ubicación") != std::string::npos) {
+                
+                // AHORA SÍ TENEMOS EL VÉRTICE CALCULADO EN ENGINE (tempDimP3)
+                // Y LOS PUNTOS DE DIRECCIÓN (tempDimP2 y tempDimP2_line2)
+                Point2D vertex = engine_.tempDimP1; 
+                
+                // Calcular radio del arco (distancia vértice → cursor)
+                double arcRadius = std::hypot(mousePos.x - vertex.x, mousePos.y - vertex.y);
+                
+                // Calcular ángulos de las dos líneas REALES respecto al vértice
+                // Usamos tempDimP2 (punto línea 1) y tempDimP2_line2 (punto línea 2)
+                double angle1 = std::atan2(engine_.tempDimP2.y - vertex.y, engine_.tempDimP2.x - vertex.x);
+                double angle2 = std::atan2(engine_.tempDimP2_line2.y - vertex.y, engine_.tempDimP2_line2.x - vertex.x);
+                
+                // Dibujar líneas guía desde el VÉRTICE REAL
+                sf::Color guideColor(255, 255, 0, 100);
+                double extLen = arcRadius * 1.5;
+                sf::Vertex guide1[] = {
+                    sf::Vertex(worldToScreen(vertex.x, vertex.y), guideColor),
+                    sf::Vertex(worldToScreen(vertex.x + std::cos(angle1) * extLen, 
+                                            vertex.y + std::sin(angle1) * extLen), guideColor)
+                };
+                sf::Vertex guide2[] = {
+                    sf::Vertex(worldToScreen(vertex.x, vertex.y), guideColor),
+                    sf::Vertex(worldToScreen(vertex.x + std::cos(angle2) * extLen, 
+                                            vertex.y + std::sin(angle2) * extLen), guideColor)
+                };
+                window_.draw(guide1, 2, sf::Lines);
+                window_.draw(guide2, 2, sf::Lines);
+                
+                // Dibujar el arco de cota centrado en el VÉRTICE REAL
+                const int numPoints = 64;
+                sf::VertexArray arc(sf::LineStrip, numPoints);
+                double diff = angle2 - angle1;
+                while (diff < 0) diff += 2 * PI;
+                while (diff >= 2 * PI) diff -= 2 * PI;
+                double step = diff / (numPoints - 1);
+                
+                for (int i = 0; i < numPoints; ++i) {
+                    double angle = angle1 + i * step;
+                    double px = vertex.x + arcRadius * std::cos(angle);
+                    double py = vertex.y + arcRadius * std::sin(angle);
+                    arc[i].position = worldToScreen(px, py);
+                    arc[i].color = sf::Color(255, 255, 0);
+                }
+                window_.draw(arc);
+                
+                // Flechas en extremos
+                float arrowSize = 3.0f;
+                sf::Vector2f p1Screen = worldToScreen(
+                    vertex.x + arcRadius * std::cos(angle1), 
+                    vertex.y + arcRadius * std::sin(angle1));
+                sf::CircleShape arrowStart(arrowSize);
+                arrowStart.setFillColor(sf::Color(255, 255, 0));
+                arrowStart.setOrigin(arrowSize, arrowSize);
+                arrowStart.setPosition(p1Screen);
+                window_.draw(arrowStart);
+                
+                sf::Vector2f p2Screen = worldToScreen(
+                    vertex.x + arcRadius * std::cos(angle2), 
+                    vertex.y + arcRadius * std::sin(angle2));
+                sf::CircleShape arrowEnd(arrowSize);
+                arrowEnd.setFillColor(sf::Color(255, 255, 0));
+                arrowEnd.setOrigin(arrowSize, arrowSize);
+                arrowEnd.setPosition(p2Screen);
+                window_.draw(arrowEnd);
+                
+                // Texto del ángulo
+                std::ostringstream oss;
+                oss << std::fixed << std::setprecision(2) << engine_.tempDimAngle << "°";
+                sf::Text txt;
+                txt.setFont(font_);
+                txt.setString(toSfString(oss.str()));
+                txt.setCharacterSize(14);
+                txt.setFillColor(sf::Color(255, 255, 0));
+                sf::Vector2f mouseScreen = worldToScreen(mousePos.x, mousePos.y);
+                txt.setPosition(mouseScreen.x + 15.f, mouseScreen.y - 25.f);
+                window_.draw(txt);
+            }
+        }
     }
 
     void App::drawGrips() {
@@ -1372,37 +1648,80 @@ namespace cad {
     }
 
     void App::drawDimensionTexts() {
+        const double PI = 3.14159265358979323846;
         for (const auto& entity : engine_.doc.entities) {
             if (auto* dim = dynamic_cast<Dimension*>(entity.get())) {
-                // Formatear el valor a 2 decimales
                 std::ostringstream oss;
                 oss << std::fixed << std::setprecision(2) << dim->value;
-                
-                // Calcular la posición del texto (centro de la línea de cota)
-                double textX = dim->isHorizontal ? (dim->p1.x + dim->p2.x) / 2.0 : dim->location.x;
-                double textY = dim->isHorizontal ? dim->location.y : (dim->p1.y + dim->p2.y) / 2.0;
-                
+
+                double textX, textY;
+                float rotation = 0.0f;
+
+                if (dim->type == DimType::ALIGNED || dim->isAligned) {
+                    // Texto en el centro de la línea de cota, rotado
+                    double dx = dim->p2.x - dim->p1.x;
+                    double dy = dim->p2.y - dim->p1.y;
+                    double len = std::sqrt(dx*dx + dy*dy);
+                    if (len == 0) continue;
+                    double nx = -dy / len;
+                    double ny = dx / len;
+                    double vx = dim->location.x - dim->p1.x;
+                    double vy = dim->location.y - dim->p1.y;
+                    double offset = vx * nx + vy * ny;
+                    double midX = (dim->p1.x + dim->p2.x) / 2.0 + nx * offset;
+                    double midY = (dim->p1.y + dim->p2.y) / 2.0 + ny * offset;
+                    textX = midX;
+                    textY = midY;
+                    rotation = std::atan2(dy, dx) * 180.0f / (float)PI;
+                    // Invertir texto si queda boca abajo
+                    if (rotation > 90.0f && rotation < 270.0f) rotation -= 180.0f;
+                }
+                else if (dim->type == DimType::ANGULAR) {
+                    const double PI = 3.14159265358979323846;
+                    double arcRadius = std::hypot(dim->p3.x - dim->location.x, dim->p3.y - dim->location.y);
+                    if (arcRadius < 1.0) arcRadius = 10.0;
+                    
+                    double angle1 = std::atan2(dim->p1.y - dim->location.y, dim->p1.x - dim->location.x);
+                    double angle2 = std::atan2(dim->p2.y - dim->location.y, dim->p2.x - dim->location.x);
+                    
+                    double diff = angle2 - angle1;
+                    while (diff < 0) diff += 2 * PI;
+                    while (diff >= 2 * PI) diff -= 2 * PI;
+                    
+                    double midAngle = angle1 + diff / 2.0;
+                    double textRadius = arcRadius * 1.3; // Texto un poco más afuera del arco
+                    textX = dim->location.x + textRadius * std::cos(midAngle);
+                    textY = dim->location.y + textRadius * std::sin(midAngle);
+                }
+                else if (dim->type == DimType::RADIUS || dim->type == DimType::DIAMETER) {
+                    // Texto cerca del punto medio entre centro y borde
+                    textX = (dim->p1.x + dim->p2.x) / 2.0;
+                    textY = (dim->p1.y + dim->p2.y) / 2.0;
+                }
+                else {
+                    textX = dim->isHorizontal ? (dim->p1.x + dim->p2.x) / 2.0 : dim->location.x;
+                    textY = dim->isHorizontal ? dim->location.y : (dim->p1.y + dim->p2.y) / 2.0;
+                }
+
                 sf::Vector2f screenPos = worldToScreen(textX, textY);
 
-                // Preparar el texto
                 sf::Text text;
                 text.setFont(font_);
                 text.setString(oss.str());
                 text.setCharacterSize(12);
                 text.setFillColor(sf::Color::White);
+                text.setRotation(rotation);
 
-                // Calcular los límites del texto para dibujar el fondo opaco
                 sf::FloatRect bounds = text.getLocalBounds();
-                float padding = 4.0f; // Un poco de espacio alrededor del texto
+                float padding = 4.0f;
 
-                // 1. Dibujar el fondo opaco (mismo color que el fondo del canvas: 30,30,30)
                 sf::RectangleShape bg(sf::Vector2f(bounds.width + padding * 2, bounds.height + padding));
-                bg.setFillColor(sf::Color(30, 30, 30)); 
+                bg.setFillColor(sf::Color(30, 30, 30));
                 bg.setOrigin(bounds.width / 2.f + padding, bounds.height / 2.f);
                 bg.setPosition(screenPos);
+                bg.setRotation(rotation);
                 window_.draw(bg);
 
-                // 2. Dibujar el texto encima
                 text.setOrigin(bounds.width / 2.f, bounds.height / 2.f);
                 text.setPosition(screenPos);
                 window_.draw(text);

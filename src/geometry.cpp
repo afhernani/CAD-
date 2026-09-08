@@ -832,15 +832,21 @@ namespace cad {
             e->layerName = layer;
             return e;
         }
-        // >>> ASEGÚRATE DE QUE ESTE BLOQUE ESTÉ AQUÍ Y DESCOMENTADO <<<
+        // >>> COTA <<<
         else if (type == "Dimension") {
             auto e = std::make_unique<Dimension>();
             e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
             e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
             e->location = {j["location"]["x"].get<double>(), j["location"]["y"].get<double>()};
             e->value = j["value"].get<double>();
-            e->isHorizontal = j["isHorizontal"].get<bool>();
+            e->isHorizontal = j.value("isHorizontal", false);
             e->layerName = layer;
+            // Cargar tipo de cota
+            e->type = static_cast<DimType>(j.value("dimType", 0));
+            e->isAligned = j.value("isAligned", false);
+            if (j.contains("p3")) {
+                e->p3 = {j["p3"]["x"].get<double>(), j["p3"]["y"].get<double>()};
+            }
             return e;
         }
         
@@ -848,60 +854,147 @@ namespace cad {
     }
 
     // --- DIMENSION ---
-
     void Dimension::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
                      const sf::Color& color, float viewScale) const {
+        const double PI = 3.14159265358979323846;
         // Calcular puntos de extensión y línea de cota
         Point2D ext1, ext2, lineStart, lineEnd;
         
-        if (isHorizontal) {
-            double y = location.y;
-            ext1 = {p1.x, y}; ext2 = {p2.x, y};
-            lineStart = {p1.x, y}; lineEnd = {p2.x, y};
-        } else {
-            double x = location.x;
-            ext1 = {x, p1.y}; ext2 = {x, p2.y};
-            lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+        // 1. Determinar geometría según el tipo
+        if (type == DimType::ALIGNED || isAligned) {
+            double dx = p2.x - p1.x;
+            double dy = p2.y - p1.y;
+            double len = std::sqrt(dx*dx + dy*dy);
+            if (len == 0) return;
+            
+            double nx = -dy / len; 
+            double ny = dx / len;
+            double vx = location.x - p1.x; 
+            double vy = location.y - p1.y;
+            double offset = vx * nx + vy * ny;
+            
+            lineStart = {p1.x + nx * offset, p1.y + ny * offset};
+            lineEnd   = {p2.x + nx * offset, p2.y + ny * offset};
+            ext1 = p1; ext2 = p2;
+        }
+        else if (type == DimType::RADIUS || type == DimType::DIAMETER) {
+            lineStart = p1; // Centro
+            lineEnd = p2;   // Borde
+            ext1 = p1; ext2 = p2;
+        }
+        // else if (type == DimType::DIAMETER ) {
+        //     lineStart = {p1.x - value/2, p1.y};
+        //     lineEnd = {p1.x + value/2, p1.y};
+        //     ext1 = lineStart;
+        //     ext2 = lineEnd;
+        // }
+        else if (type == DimType::ANGULAR) {
+            const double PI = 3.14159265358979323846;
+    
+            // location = vértice, p1 = punto línea 1, p2 = punto línea 2, p3 = punto de clic
+            double arcRadius = std::hypot(p3.x - location.x, p3.y - location.y);
+            if (arcRadius < 1.0) arcRadius = 10.0;
+            
+            // Ángulos desde el vértice hacia las dos líneas
+            double angle1 = std::atan2(p1.y - location.y, p1.x - location.x);
+            double angle2 = std::atan2(p2.y - location.y, p2.x - location.x);
+            
+            // Dibujar el ARCO
+            const int numPoints = 64;
+            sf::VertexArray arc(sf::LineStrip, numPoints);
+
+            // Normalizar para que el arco vaya en la dirección correcta
+            double diff = angle2 - angle1;
+            while (diff < 0) diff += 2 * PI;
+            while (diff >= 2 * PI) diff -= 2 * PI;
+            
+            double step = diff / (numPoints - 1);
+            
+            for (int i = 0; i < numPoints; ++i) {
+                double angle = angle1 + i * step;
+                double px = location.x + arcRadius * std::cos(angle);
+                double py = location.y + arcRadius * std::sin(angle);
+                arc[i].position = w2s(px, py);
+                arc[i].color = color;
+            }
+            window.draw(arc);
+            
+            // Líneas de extensión desde el vértice hasta los extremos del arco
+            sf::Color extColor = color;
+            extColor.a = 150;
+            Point2D ext1End = {location.x + arcRadius * std::cos(angle1), location.y + arcRadius * std::sin(angle1)};
+            Point2D ext2End = {location.x + arcRadius * std::cos(angle2), location.y + arcRadius * std::sin(angle2)};
+            sf::Vertex ext1[] = { sf::Vertex(w2s(location.x, location.y), extColor), sf::Vertex(w2s(ext1End.x, ext1End.y), extColor) };
+            sf::Vertex ext2[] = { sf::Vertex(w2s(location.x, location.y), extColor), sf::Vertex(w2s(ext2End.x, ext2End.y), extColor) };
+            window.draw(ext1, 2, sf::Lines);
+            window.draw(ext2, 2, sf::Lines);
+            
+            // Flechas en los extremos del arco
+            float arrowSize = 4.0f;
+            sf::CircleShape arrow1(arrowSize);
+            arrow1.setFillColor(color);
+            arrow1.setOrigin(arrowSize, arrowSize);
+            arrow1.setPosition(w2s(ext1End.x, ext1End.y));
+            window.draw(arrow1);
+            
+            sf::CircleShape arrow2(arrowSize);
+            arrow2.setFillColor(color);
+            arrow2.setOrigin(arrowSize, arrowSize);
+            arrow2.setPosition(w2s(ext2End.x, ext2End.y));
+            window.draw(arrow2);
+            
+            return; // Salir para no dibujar línea recta ni flechas triangulares
+        }
+        else {
+            // HORIZONTAL / VERTICAL por defecto
+            if (isHorizontal) {
+                double y = location.y;
+                ext1 = {p1.x, y}; ext2 = {p2.x, y};
+                lineStart = {p1.x, y}; lineEnd = {p2.x, y};
+            } else {
+                double x = location.x;
+                ext1 = {x, p1.y}; ext2 = {x, p2.y};
+                lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+            }
         }
 
+        // --- DIBUJO ---
         sf::Color dimColor = color;
-        dimColor.a = 200; // Ligeramente transparente para las líneas de extensión
+        dimColor.a = 150; 
 
-        // Líneas de extensión (desde p1/p2 hasta la línea de cota)
-        sf::Vertex extLine1[] = { sf::Vertex(w2s(p1.x, p1.y), dimColor), sf::Vertex(w2s(ext1.x, ext1.y), dimColor) };
-        sf::Vertex extLine2[] = { sf::Vertex(w2s(p2.x, p2.y), dimColor), sf::Vertex(w2s(ext2.x, ext2.y), dimColor) };
-        window.draw(extLine1, 2, sf::Lines);
-        window.draw(extLine2, 2, sf::Lines);
+        // Líneas de extensión
+        if (type != DimType::ANGULAR && type != DimType::RADIUS && type != DimType::DIAMETER) {
+            sf::Vertex extLine1[] = { sf::Vertex(w2s(p1.x, p1.y), dimColor), sf::Vertex(w2s(ext1.x, ext1.y), dimColor) };
+            sf::Vertex extLine2[] = { sf::Vertex(w2s(p2.x, p2.y), dimColor), sf::Vertex(w2s(ext2.x, ext2.y), dimColor) };
+            window.draw(extLine1, 2, sf::Lines);
+            window.draw(extLine2, 2, sf::Lines);
+        }
 
-        // Línea de cota
+        // Línea de cota (o líder para radio)
         sf::Vertex dimLine[] = { sf::Vertex(w2s(lineStart.x, lineStart.y), color), sf::Vertex(w2s(lineEnd.x, lineEnd.y), color) };
         window.draw(dimLine, 2, sf::Lines);
 
-        // >>> FLECHAS PROFESIONALES (Tamaño fijo en píxeles) <<<
+        // Flechas (Tamaño fijo en píxeles)
         float arrowLen = 8.0f;
         float arrowWidth = 3.0f;
-        
         sf::Vector2f sPos = w2s(lineStart.x, lineStart.y);
         sf::Vector2f ePos = w2s(lineEnd.x, lineEnd.y);
-
-        // Calcular vector dirección normalizado
         sf::Vector2f dir = ePos - sPos;
         float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
-        if (len > 0) {
-            dir.x /= len;
-            dir.y /= len;
-        }
+        if (len > 0) { dir.x /= len; dir.y /= len; }
         sf::Vector2f perp = {-dir.y, dir.x};
 
-        // Flecha en el punto de inicio
-        sf::Vertex arrow1[] = {
-            sf::Vertex(sPos, color),
-            sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen + perp.x * arrowWidth, sPos.y + dir.y * arrowLen + perp.y * arrowWidth), color),
-            sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen - perp.x * arrowWidth, sPos.y + dir.y * arrowLen - perp.y * arrowWidth), color)
-        };
-        window.draw(arrow1, 3, sf::Triangles);
+        // Flecha inicio no dibujar en cota de RADIO
+        if (type != DimType::RADIUS) {
+            sf::Vertex arrow1[] = {
+                sf::Vertex(sPos, color),
+                sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen + perp.x * arrowWidth, sPos.y + dir.y * arrowLen + perp.y * arrowWidth), color),
+                sf::Vertex(sf::Vector2f(sPos.x + dir.x * arrowLen - perp.x * arrowWidth, sPos.y + dir.y * arrowLen - perp.y * arrowWidth), color)
+            };
+            window.draw(arrow1, 3, sf::Triangles);
+        }
 
-        // Flecha en el punto final
+        // Flecha final
         sf::Vertex arrow2[] = {
             sf::Vertex(ePos, color),
             sf::Vertex(sf::Vector2f(ePos.x - dir.x * arrowLen + perp.x * arrowWidth, ePos.y - dir.y * arrowLen + perp.y * arrowWidth), color),
@@ -913,20 +1006,65 @@ namespace cad {
     bool Dimension::isNear(const Point2D& point, double tolerance) const {
         // Simplificación: comprobar si está cerca de la línea de cota o las de extensión
         Point2D ext1, ext2, lineStart, lineEnd;
-        if (isHorizontal) {
-            double y = location.y;
-            ext1 = {p1.x, y}; ext2 = {p2.x, y};
-            lineStart = {p1.x, y}; lineEnd = {p2.x, y};
-        } else {
-            double x = location.x;
-            ext1 = {x, p1.y}; ext2 = {x, p2.y};
-            lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+
+        if (type == DimType::ALIGNED || isAligned) {
+            double dx = p2.x - p1.x, dy = p2.y - p1.y;
+            double len = std::sqrt(dx*dx + dy*dy);
+            if (len == 0) return false;
+            double nx = -dy / len, ny = dx / len;
+            double vx = location.x - p1.x, vy = location.y - p1.y;
+            double offset = vx * nx + vy * ny;
+            lineStart = {p1.x + nx * offset, p1.y + ny * offset};
+            lineEnd   = {p2.x + nx * offset, p2.y + ny * offset};
+            ext1 = p1; ext2 = p2;
+        }
+        else if (type == DimType::RADIUS || type == DimType::DIAMETER) {
+            lineStart = p1; lineEnd = p2;
+            ext1 = p1; ext2 = p2;
+        }
+        else if (type == DimType::ANGULAR) {
+            const double PI = 3.14159265358979323846;
+            double arcRadius = std::hypot(p3.x - location.x, p3.y - location.y);
+            double angle1 = std::atan2(p1.y - location.y, p1.x - location.x);
+            double angle2 = std::atan2(p2.y - location.y, p2.x - location.x);
+            
+            // Comprobar distancia al arco
+            double distToCenter = std::hypot(point.x - location.x, point.y - location.y);
+            double distToArc = std::abs(distToCenter - arcRadius);
+            
+            // Comprobar si el ángulo del punto está entre angle1 y angle2
+            double angleP = std::atan2(point.y - location.y, point.x - location.x);
+            double diff = angle2 - angle1;
+            while (diff < 0) diff += 2 * PI;
+            double diffP = angleP - angle1;
+            while (diffP < 0) diffP += 2 * PI;
+            
+            if (distToArc <= tolerance && diffP <= diff) return true;
+            
+            // También comprobar líneas de extensión
+            Point2D ext1End = {location.x + arcRadius * std::cos(angle1),
+                            location.y + arcRadius * std::sin(angle1)};
+            Point2D ext2End = {location.x + arcRadius * std::cos(angle2),
+                            location.y + arcRadius * std::sin(angle2)};
+            double d1 = distToSegment(point, location, ext1End);
+            double d2 = distToSegment(point, location, ext2End);
+            return (d1 <= tolerance || d2 <= tolerance);
+        }
+        else {
+            if (isHorizontal) {
+                double y = location.y;
+                ext1 = {p1.x, y}; ext2 = {p2.x, y};
+                lineStart = {p1.x, y}; lineEnd = {p2.x, y};
+            } else {
+                double x = location.x;
+                ext1 = {x, p1.y}; ext2 = {x, p2.y};
+                lineStart = {x, p1.y}; lineEnd = {x, p2.y};
+            }
         }
         
         double d1 = distToSegment(point, p1, ext1);
         double d2 = distToSegment(point, p2, ext2);
         double d3 = distToSegment(point, lineStart, lineEnd);
-        
         return (d1 <= tolerance || d2 <= tolerance || d3 <= tolerance);
     }
 
@@ -966,7 +1104,10 @@ namespace cad {
     std::unique_ptr<Entity> Dimension::clone() const {
         auto c = std::make_unique<Dimension>();
         c->p1 = p1; c->p2 = p2; c->location = location;
+        c->p3 = p3;
         c->value = value; c->isHorizontal = isHorizontal;
+        c->type = type;
+        c->isAligned = isAligned;
         c->layerName = layerName;
         return c;
     }
@@ -974,22 +1115,86 @@ namespace cad {
     void Dimension::copyFrom(const Entity& src) {
         auto& d = dynamic_cast<const Dimension&>(src);
         p1 = d.p1; p2 = d.p2; location = d.location;
+        p3 = d.p3;
         value = d.value; isHorizontal = d.isHorizontal;
+        type = d.type;
+        isAligned = d.isAligned;
         layerName = d.layerName;
     }
 
     std::vector<Point2D> Dimension::getGripPoints() const {
-        return {p1, p2, location};
+        std::vector<Point2D> grips;
+        if (type == DimType::ANGULAR) {
+            const double PI = 3.14159265358979323846;
+            double arcRadius = std::hypot(p3.x - location.x, p3.y - location.y);
+            double angle1 = std::atan2(p1.y - location.y, p1.x - location.x);
+            double angle2 = std::atan2(p2.y - location.y, p2.x - location.x);
+            // Grips: vértice, y los dos extremos del arco
+            grips.push_back(location);  // Vértice
+            grips.push_back({location.x + arcRadius * std::cos(angle1),
+                            location.y + arcRadius * std::sin(angle1)});
+            grips.push_back({location.x + arcRadius * std::cos(angle2),
+                            location.y + arcRadius * std::sin(angle2)});
+            grips.push_back(p3);  // Punto de clic (radio)
+        }
+        else if (type == DimType::RADIUS || type == DimType::DIAMETER) {
+            // Para radio/diámetro: centro, punto en borde, y ubicación del texto
+            grips.push_back(p1);  // Centro
+            grips.push_back(p2);  // Punto en el borde
+            grips.push_back(location);  // Ubicación de la cota
+        }
+        else if (type == DimType::ALIGNED || isAligned) {
+            // Para alineada: los dos puntos medidos y la ubicación
+            grips.push_back(p1);
+            grips.push_back(p2);
+            grips.push_back(location);
+        }
+        else {
+            // Horizontal/Vertical
+            grips.push_back(p1);
+            grips.push_back(p2);
+            grips.push_back(location);
+        }
+        
+        return grips;
     }
 
     void Dimension::moveGrip(int index, const Point2D& newPos) {
-        if (index == 0) { p1 = newPos; }
-        else if (index == 1) { p2 = newPos; }
-        else if (index == 2) { location = newPos; }
+        if (index == 0) { 
+            p1 = newPos; 
+        }
+        else if (index == 1) { 
+            p2 = newPos; 
+        }
+        else if (index == 2) { 
+            location = newPos; 
+        }
+        else if (index == 3) {
+            p3 = newPos;
+        }
         
-        // Recalcular valor
-        if (isHorizontal) value = std::abs(p2.x - p1.x);
-        else value = std::abs(p2.y - p1.y);
+        // Recalcular valor según el tipo
+        if (type == DimType::RADIUS || type == DimType::DIAMETER) {
+            value = std::hypot(p2.x - p1.x, p2.y - p1.y);
+            if (type == DimType::DIAMETER) value *= 2.0;
+        }
+        else if (type == DimType::ALIGNED || isAligned) {
+            value = std::hypot(p2.x - p1.x, p2.y - p1.y);
+        }
+        else if (type == DimType::ANGULAR) {
+            const double PI = 3.14159265358979323846;
+            double angle1 = std::atan2(p1.y - location.y, p1.x - location.x);
+            double angle2 = std::atan2(p2.y - location.y, p2.x - location.x);
+            double angle = angle2 - angle1;
+            if (angle < 0) angle += 2 * PI;
+            value = angle * 180.0 / PI;
+        }
+        else {
+            if (isHorizontal) 
+                value = std::abs(p2.x - p1.x);
+            else 
+                value = std::abs(p2.y - p1.y);
+        }
     }
 
     std::vector<Point2D> Dimension::getSnapPoints() const {
@@ -997,24 +1202,14 @@ namespace cad {
     }
 
     nlohmann::json Dimension::toJson() const {
-        return {{"type", "Dimension"}, 
-                {"p1", {{"x", p1.x}, {"y", p1.y}}}, 
-                {"p2", {{"x", p2.x}, {"y", p2.y}}}, 
+        return {{"type", "Dimension"},
+                {"dimType", static_cast<int>(type)},
+                {"isAligned", isAligned},
+                {"p1", {{"x", p1.x}, {"y", p1.y}}},
+                {"p2", {{"x", p2.x}, {"y", p2.y}}},
+                {"p3", {{"x", p3.x}, {"y", p3.y}}},
                 {"location", {{"x", location.x}, {"y", location.y}}},
                 {"value", value}, {"isHorizontal", isHorizontal}, {"layer", layerName}};
     }
-
-    // Añadir en Entity::fromJson:
-    // else if (type == "Dimension") {
-    //     auto e = std::make_unique<Dimension>();
-    //     e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
-    //     e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
-    //     e->location = {j["location"]["x"].get<double>(), j["location"]["y"].get<double>()};
-    //     e->value = j["value"].get<double>();
-    //     e->isHorizontal = j["isHorizontal"].get<bool>();
-    //     e->layerName = layer;
-    //     return e;
-    // }
-
 
 } // namespace cad
