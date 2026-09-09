@@ -616,7 +616,7 @@ namespace cad {
         }
         // --- COTA ALINEADA (permite seleccionar línea o picar puntos) ---
         else if (currentMode == Mode::DRAW_DIM_ALIGNED) {
-            if (statusMessage.find("Primer") != std::string::npos) {
+            if (statusMessage.find("primer") != std::string::npos) {
                 // Intentar detectar una línea cercana al clic
                 Entity* foundLine = nullptr;
                 double minDist = 10.0 / viewScale;
