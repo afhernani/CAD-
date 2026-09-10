@@ -15,6 +15,8 @@ namespace cad {
         tempPolygonSides = 0;
         tempArcRadius = 0.0;
         tempArcStartAngle = 0.0;
+        tempOffsetDistance = 0.0;
+        tempOffsetEntity = nullptr;
         statusMessage = "Comando cancelado.";
     }
 
@@ -235,6 +237,10 @@ namespace cad {
             extendSelectingBoundaries = true;
             extendBoundaries.clear();
             statusMessage = "EXTEND | Seleccionar bordes (Enter para terminar):";
+        }
+        else if (upperCmd == "OF" || upperCmd == "OFFSET" || upperCmd == "DESPLAZAR") {
+            currentMode = Mode::OFFSET;
+            statusMessage = "OFFSET | Especificar distancia de desplazamiento:";
         }
         else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
             toggleGrid();
@@ -1148,6 +1154,103 @@ namespace cad {
                 }
             }
         }
+        // --- OFFSET ---
+        else if (currentMode == Mode::OFFSET) {
+            // PASO 1: Esperando distancia
+            if (statusMessage.find("distancia") != std::string::npos ||
+                statusMessage.find("Distancia") != std::string::npos) {
+                if (isScalar) {
+                    tempOffsetDistance = scalarValue;
+                    statusMessage = "OFFSET | Seleccionar entidad a desplazar:";
+                } else {
+                    // Si no es escalar, usar como primer punto para medir distancia
+                    tempOffsetP1 = lastPoint;
+                    statusMessage = "OFFSET | Segundo punto para definir distancia:";
+                }
+            }
+            // PASO 1b: Segundo punto para distancia
+            else if (statusMessage.find("Segundo") != std::string::npos ||
+                    statusMessage.find("segundo") != std::string::npos) {
+                double dx = lastPoint.x - tempOffsetP1.x;
+                double dy = lastPoint.y - tempOffsetP1.y;
+                tempOffsetDistance = std::sqrt(dx * dx + dy * dy);
+                statusMessage = "OFFSET | Seleccionar entidad a desplazar:";
+            }
+            // PASO 2: Seleccionar entidad
+            else if (statusMessage.find("Seleccionar") != std::string::npos ||
+                    statusMessage.find("seleccionar") != std::string::npos) {
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (entity->isNear(lastPoint, minDist)) {
+                        found = entity.get();
+                        tempOffsetEntity = entity.get();
+                        break;
+                    }
+                }
+                if (found) {
+                    statusMessage = "OFFSET | Indicar lado del desplazamiento:";
+                } else {
+                    statusMessage = "OFFSET | No se encontró entidad. Intenta de nuevo:";
+                }
+            }
+            // PASO 3: Indicar lado y crear entidad paralela
+            else {
+                if (tempOffsetEntity) {
+                    saveState();
+                    
+                    // Crear entidad paralela según el tipo
+                    if (auto* line = dynamic_cast<Line*>(tempOffsetEntity)) {
+                        // Calcular línea paralela
+                        double dx = line->p2.x - line->p1.x;
+                        double dy = line->p2.y - line->p1.y;
+                        double len = std::sqrt(dx * dx + dy * dy);
+                        if (len > 0) {
+                            // Normal perpendicular
+                            double nx = -dy / len;
+                            double ny = dx / len;
+                            
+                            // Determinar lado según clic
+                            double vx = lastPoint.x - line->p1.x;
+                            double vy = lastPoint.y - line->p1.y;
+                            double side = vx * nx + vy * ny;
+                            double sign = (side >= 0) ? 1.0 : -1.0;
+                            
+                            auto newLine = std::make_unique<Line>();
+                            newLine->p1 = {line->p1.x + nx * tempOffsetDistance * sign,
+                                        line->p1.y + ny * tempOffsetDistance * sign};
+                            newLine->p2 = {line->p2.x + nx * tempOffsetDistance * sign,
+                                        line->p2.y + ny * tempOffsetDistance * sign};
+                            newLine->layerName = doc.currentLayerName;
+                            doc.addEntity(std::move(newLine));
+                        }
+                    }
+                    else if (auto* circle = dynamic_cast<Circle*>(tempOffsetEntity)) {
+                        // Círculo concéntrico con radio modificado
+                        auto newCircle = std::make_unique<Circle>();
+                        newCircle->center = circle->center;
+                        newCircle->radius = circle->radius + tempOffsetDistance;
+                        if (newCircle->radius < 0) newCircle->radius = std::abs(newCircle->radius);
+                        newCircle->layerName = doc.currentLayerName;
+                        doc.addEntity(std::move(newCircle));
+                    }
+                    else if (auto* arc = dynamic_cast<Arc*>(tempOffsetEntity)) {
+                        // Arco concéntrico con radio modificado
+                        auto newArc = std::make_unique<Arc>();
+                        newArc->center = arc->center;
+                        newArc->radius = arc->radius + tempOffsetDistance;
+                        newArc->startAngle = arc->startAngle;
+                        newArc->endAngle = arc->endAngle;
+                        if (newArc->radius < 0) newArc->radius = std::abs(newArc->radius);
+                        newArc->layerName = doc.currentLayerName;
+                        doc.addEntity(std::move(newArc));
+                    }
+                    
+                    statusMessage = "OFFSET | Entidad desplazada. Seleccionar otra entidad o ESC para terminar:";
+                    tempOffsetEntity = nullptr; // Resetear para permitir seleccionar otra
+                }
+            }
+        }
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -1425,7 +1528,7 @@ namespace cad {
             // Dibujo
             "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
-            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR",
+            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET",
             // Edición y Sistema
             "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)

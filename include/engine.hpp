@@ -26,7 +26,7 @@ namespace cad {
         TRIM,
         EXTEND,
         UNDO,
-        REDO,
+        REDO, OFFSET, 
         GRIP_EDIT // << grips editables
     };
 
@@ -108,6 +108,10 @@ namespace cad {
         Point2D tempDimP1, tempDimP2, tempDimP3, tempDimP2_line2; // Puntos temporales para cota angular
         double tempDimAngle = 0.0; // Angulo calculado para cota angular.
         DimType currentDimType = DimType::HORIZONTAL;
+        // Variables para OFFSET
+        double tempOffsetDistance = 0.0;
+        Point2D tempOffsetP1;
+        Entity* tempOffsetEntity = nullptr;
         
     private:
         void executeCommand(std::string_view cmd);

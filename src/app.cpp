@@ -1618,6 +1618,78 @@ namespace cad {
                 window_.draw(txt);
             }
         }
+        // --- OFFSET ---
+        else if (engine_.currentMode == Mode::OFFSET) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            
+            // Si ya tenemos distancia y entidad seleccionada, mostrar preview
+            if (engine_.statusMessage.find("lado") != std::string::npos ||
+                engine_.statusMessage.find("Lado") != std::string::npos) {
+                
+                if (engine_.tempOffsetEntity) {
+                    sf::Color previewColor(255, 255, 0, 128); // Amarillo semitransparente
+                    
+                    if (auto* line = dynamic_cast<Line*>(engine_.tempOffsetEntity)) {
+                        double dx = line->p2.x - line->p1.x;
+                        double dy = line->p2.y - line->p1.y;
+                        double len = std::sqrt(dx * dx + dy * dy);
+                        if (len > 0) {
+                            double nx = -dy / len;
+                            double ny = dx / len;
+                            
+                            double vx = mousePos.x - line->p1.x;
+                            double vy = mousePos.y - line->p1.y;
+                            double side = vx * nx + vy * ny;
+                            double sign = (side >= 0) ? 1.0 : -1.0;
+                            
+                            double px1 = line->p1.x + nx * engine_.tempOffsetDistance * sign;
+                            double py1 = line->p1.y + ny * engine_.tempOffsetDistance * sign;
+                            double px2 = line->p2.x + nx * engine_.tempOffsetDistance * sign;
+                            double py2 = line->p2.y + ny * engine_.tempOffsetDistance * sign;
+                            
+                            sf::Vertex linePreview[] = {
+                                sf::Vertex(worldToScreen(px1, py1), previewColor),
+                                sf::Vertex(worldToScreen(px2, py2), previewColor)
+                            };
+                            window_.draw(linePreview, 2, sf::Lines);
+                        }
+                    }
+                    else if (auto* circle = dynamic_cast<Circle*>(engine_.tempOffsetEntity)) {
+                        double newRadius = circle->radius + engine_.tempOffsetDistance;
+                        if (newRadius < 0) newRadius = std::abs(newRadius);
+                        
+                        sf::CircleShape circlePreview(static_cast<float>(newRadius * viewScale_));
+                        circlePreview.setFillColor(sf::Color::Transparent);
+                        circlePreview.setOutlineColor(previewColor);
+                        circlePreview.setOutlineThickness(1.5f);
+                        circlePreview.setOrigin(static_cast<float>(newRadius * viewScale_),
+                                            static_cast<float>(newRadius * viewScale_));
+                        circlePreview.setPosition(worldToScreen(circle->center.x, circle->center.y));
+                        window_.draw(circlePreview);
+                    }
+                    else if (auto* arc = dynamic_cast<Arc*>(engine_.tempOffsetEntity)) {
+                        const double PI = 3.14159265358979323846;
+                        double newRadius = arc->radius + engine_.tempOffsetDistance;
+                        if (newRadius < 0) newRadius = std::abs(newRadius);
+                        
+                        const int numPoints = 64;
+                        sf::VertexArray va(sf::LineStrip, numPoints);
+                        double startRad = arc->startAngle * PI / 180.0;
+                        double endRad = arc->endAngle * PI / 180.0;
+                        double step = (endRad - startRad) / (numPoints - 1);
+                        
+                        for (int i = 0; i < numPoints; ++i) {
+                            double angle = startRad + i * step;
+                            double px = arc->center.x + newRadius * std::cos(angle);
+                            double py = arc->center.y + newRadius * std::sin(angle);
+                            va[i].position = worldToScreen(px, py);
+                            va[i].color = previewColor;
+                        }
+                        window_.draw(va);
+                    }
+                }
+            }
+        }
     }
 
     void App::drawGrips() {
