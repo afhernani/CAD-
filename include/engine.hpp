@@ -26,7 +26,7 @@ namespace cad {
         TRIM,
         EXTEND,
         UNDO,
-        REDO, OFFSET, FILLET,
+        REDO, OFFSET, FILLET, CHAMFER,
         GRIP_EDIT // << grips editables
     };
 
@@ -116,6 +116,11 @@ namespace cad {
         double tempFilletRadius = 0.0;
         Line* tempFilletLine1 = nullptr;
         Line* tempFilletLine2 = nullptr;
+        // Variables para CHAMFER
+        double tempChamferDist1 = 0.0;
+        double tempChamferDist2 = 0.0;
+        Line* tempChamferLine1 = nullptr;
+        Line* tempChamferLine2 = nullptr;
         
     private:
         void executeCommand(std::string_view cmd);

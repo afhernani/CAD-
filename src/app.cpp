@@ -423,6 +423,7 @@ namespace cad {
                         // Buffer vacío: solo enviar si estamos en un modo que termina con Enter
                         if (engine_.currentMode == Mode::OFFSET || 
                             engine_.currentMode == Mode::FILLET ||
+                            engine_.currentMode == Mode::CHAMFER ||
                             engine_.currentMode == Mode::TRIM || 
                             engine_.currentMode == Mode::EXTEND) {
                             engine_.processInput("");  // Enter vacío para terminar
@@ -1792,6 +1793,70 @@ namespace cad {
                                 window_.draw(arc);
                             }
                         }
+                    }
+                }
+            }
+        }
+        // --- CHAMFER (CHAFLÁN) ---
+        else if (engine_.currentMode == Mode::CHAMFER) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            sf::Color highlightColor(0, 255, 0, 150);
+            
+            // Resaltar línea 1 si está seleccionada
+            if (engine_.tempChamferLine1) {
+                sf::Vertex l1[] = {
+                    sf::Vertex(worldToScreen(engine_.tempChamferLine1->p1.x, engine_.tempChamferLine1->p1.y), highlightColor),
+                    sf::Vertex(worldToScreen(engine_.tempChamferLine1->p2.x, engine_.tempChamferLine1->p2.y), highlightColor)
+                };
+                window_.draw(l1, 2, sf::Lines);
+            }
+            
+            // Si estamos en paso 4 (esperando segunda línea), mostrar preview
+            if (engine_.statusMessage.find("segunda línea") != std::string::npos || 
+                engine_.statusMessage.find("Segunda línea") != std::string::npos) {
+                // Buscar línea bajo el ratón
+                Entity* hoverLine = nullptr;
+                double minDist = 10.0 / viewScale_;
+                for (auto& entity : engine_.doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(mousePos, minDist)) {
+                            hoverLine = entity.get();
+                            break;
+                        }
+                    }
+                }
+                
+                if (hoverLine && engine_.tempChamferLine1) {
+                    auto inter = lineLineIntersection(engine_.tempChamferLine1->p1, engine_.tempChamferLine1->p2,
+                                                    static_cast<Line*>(hoverLine)->p1, static_cast<Line*>(hoverLine)->p2);
+                    if (inter.intersects) {
+                        Point2D I = inter.point;
+                        auto normalize = [](Point2D a, Point2D b) {
+                            double dx = b.x - a.x, dy = b.y - a.y;
+                            double len = std::sqrt(dx*dx + dy*dy);
+                            return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0};
+                        };
+                        
+                        double d1a = std::hypot(engine_.tempChamferLine1->p1.x - I.x, engine_.tempChamferLine1->p1.y - I.y);
+                        double d1b = std::hypot(engine_.tempChamferLine1->p2.x - I.x, engine_.tempChamferLine1->p2.y - I.y);
+                        Point2D end1 = (d1a < d1b) ? engine_.tempChamferLine1->p1 : engine_.tempChamferLine1->p2;
+                        
+                        double d2a = std::hypot(static_cast<Line*>(hoverLine)->p1.x - I.x, static_cast<Line*>(hoverLine)->p1.y - I.y);
+                        double d2b = std::hypot(static_cast<Line*>(hoverLine)->p2.x - I.x, static_cast<Line*>(hoverLine)->p2.y - I.y);
+                        Point2D end2 = (d2a < d2b) ? static_cast<Line*>(hoverLine)->p1 : static_cast<Line*>(hoverLine)->p2;
+                        
+                        Point2D v1 = normalize(I, end1);
+                        Point2D v2 = normalize(I, end2);
+                        
+                        Point2D T1 = {I.x + v1.x * engine_.tempChamferDist1, I.y + v1.y * engine_.tempChamferDist1};
+                        Point2D T2 = {I.x + v2.x * engine_.tempChamferDist2, I.y + v2.y * engine_.tempChamferDist2};
+                        
+                        // Dibujar línea de chaflán preview
+                        sf::Vertex chamferLine[] = {
+                            sf::Vertex(worldToScreen(T1.x, T1.y), sf::Color(255, 255, 0, 200)),
+                            sf::Vertex(worldToScreen(T2.x, T2.y), sf::Color(255, 255, 0, 200))
+                        };
+                        window_.draw(chamferLine, 2, sf::Lines);
                     }
                 }
             }

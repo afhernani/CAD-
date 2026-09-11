@@ -20,6 +20,12 @@ namespace cad {
         tempFilletRadius = 0.0;
         tempFilletLine1 = nullptr;
         tempFilletLine2 = nullptr;
+        // Reset variables for chamfer
+        tempChamferDist1 = 0.0;
+        tempChamferDist2 = 0.0;
+        tempChamferLine1 = nullptr;
+        tempChamferLine2 = nullptr;
+        
         statusMessage = "Comando cancelado.";
     }
 
@@ -82,7 +88,8 @@ namespace cad {
                 currentMode = Mode::IDLE;
             }
             else if (currentMode == Mode::TRIM || currentMode == Mode::EXTEND || 
-                    currentMode == Mode::OFFSET || currentMode == Mode::FILLET) {
+                    currentMode == Mode::OFFSET || currentMode == Mode::FILLET ||
+                    currentMode == Mode::CHAMFER) {
                 // Delegamos la lógica de terminación/cancelación a processCoordinate
                 processCoordinate("");
             }
@@ -257,6 +264,12 @@ namespace cad {
             tempFilletLine2 = nullptr;
             statusMessage = "FILLET | Especificar radio (0 para esquina viva):";
         }
+        else if (upperCmd == "CHA" || upperCmd == "CHAMFER" || upperCmd == "CHAFLAN") {
+            currentMode = Mode::CHAMFER;
+            tempChamferLine1 = nullptr;
+            tempChamferLine2 = nullptr;
+            statusMessage = "CHAFLAN | Especificar primera distancia (0 para esquina viva):";
+        }
         else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
             toggleGrid();
             statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada.";
@@ -381,6 +394,14 @@ namespace cad {
                 tempFilletLine1 = nullptr;
                 tempFilletLine2 = nullptr;
                 statusMessage = "FILLET cancelado.";
+            }
+            else if (currentMode == Mode::CHAMFER) {
+                currentMode = Mode::IDLE;
+                tempChamferDist1 = 0.0;
+                tempChamferDist2 = 0.0;
+                tempChamferLine1 = nullptr;
+                tempChamferLine2 = nullptr;
+                statusMessage = "CHAFLAN cancelado.";
             }
             // else {
             //     cancelCommand();
@@ -1417,6 +1438,108 @@ namespace cad {
                 tempFilletLine2 = nullptr;
             }
         }
+        // --- CHAMFER (CHAFLÁN) ---
+        else if (currentMode == Mode::CHAMFER) {
+            // PASO 4: Segunda línea (debe ir ANTES que PASO 2)
+            if (statusMessage.find("Segunda línea") != std::string::npos ||
+                statusMessage.find("segunda línea") != std::string::npos) {
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            tempChamferLine2 = line;
+                            break;
+                        }
+                    }
+                }
+                
+                if (found && tempChamferLine1) {
+                    auto inter = lineLineIntersection(tempChamferLine1->p1, tempChamferLine1->p2,
+                                                    tempChamferLine2->p1, tempChamferLine2->p2);
+                    if (inter.intersects) {
+                        saveState();
+                        Point2D I = inter.point;
+                        auto normalize = [](Point2D a, Point2D b) {
+                            double dx = b.x - a.x, dy = b.y - a.y;
+                            double len = std::sqrt(dx*dx + dy*dy);
+                            return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0};
+                        };
+                        double d1a = std::hypot(tempChamferLine1->p1.x - I.x, tempChamferLine1->p1.y - I.y);
+                        double d1b = std::hypot(tempChamferLine1->p2.x - I.x, tempChamferLine1->p2.y - I.y);
+                        Point2D& end1 = (d1a < d1b) ? tempChamferLine1->p1 : tempChamferLine1->p2;
+                        
+                        double d2a = std::hypot(tempChamferLine2->p1.x - I.x, tempChamferLine2->p1.y - I.y);
+                        double d2b = std::hypot(tempChamferLine2->p2.x - I.x, tempChamferLine2->p2.y - I.y);
+                        Point2D& end2 = (d2a < d2b) ? tempChamferLine2->p1 : tempChamferLine2->p2;
+                        
+                        Point2D v1 = normalize(I, end1);
+                        Point2D v2 = normalize(I, end2);
+                        
+                        Point2D T1 = {I.x + v1.x * tempChamferDist1, I.y + v1.y * tempChamferDist1};
+                        Point2D T2 = {I.x + v2.x * tempChamferDist2, I.y + v2.y * tempChamferDist2};
+                        
+                        end1 = T1;
+                        end2 = T2;
+                        
+                        if (tempChamferDist1 > 0.001 || tempChamferDist2 > 0.001) {
+                            auto newLine = std::make_unique<Line>();
+                            newLine->p1 = T1;
+                            newLine->p2 = T2;
+                            newLine->layerName = doc.currentLayerName;
+                            doc.addEntity(std::move(newLine));
+                        }
+                        statusMessage = "CHAFLAN | Selecciona la primera línea (o Enter para terminar):";
+                    } else {
+                        statusMessage = "CHAFLAN | Líneas paralelas. Selecciona la primera línea:";
+                    }
+                    // Resetear SOLO si tuvo éxito
+                    tempChamferLine1 = nullptr;
+                    tempChamferLine2 = nullptr;
+                } else {
+                    // CORRECCIÓN: Si falla, NO reseteamos tempChamferLine1 para que el usuario pueda intentarlo de nuevo
+                    statusMessage = "CHAFLAN | No se detectó la línea. Intenta seleccionar la segunda línea de nuevo:";
+                }
+            }
+            // PASO 3: Primera línea
+            else if (statusMessage.find("primera línea") != std::string::npos ||
+                    statusMessage.find("Primera línea") != std::string::npos) {
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            tempChamferLine1 = line;
+                            break;
+                        }
+                    }
+                }
+                if (found) statusMessage = "CHAFLAN | Segunda línea:";
+                else statusMessage = "CHAFLAN | No es una línea. Selecciona la primera línea:";
+            }
+            // PASO 1: Primera distancia
+            else if (statusMessage.find("Primera distancia") != std::string::npos ||
+                    statusMessage.find("primera distancia") != std::string::npos) {
+                if (isScalar) {
+                    tempChamferDist1 = scalarValue;
+                    statusMessage = "CHAFLAN | Segunda distancia:";
+                } else {
+                    statusMessage = "CHAFLAN | Valor no válido. Primera distancia:";
+                }
+            }
+            // PASO 2: Segunda distancia
+            else if (statusMessage.find("Segunda distancia") != std::string::npos ||
+                    statusMessage.find("segunda distancia") != std::string::npos) {
+                if (isScalar) {
+                    tempChamferDist2 = scalarValue;
+                    statusMessage = "CHAFLAN | Primera línea:";
+                } else {
+                    statusMessage = "CHAFLAN | Valor no válido. Segunda distancia:";
+                }
+            }
+        }
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -1694,7 +1817,8 @@ namespace cad {
             // Dibujo
             "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
-            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", "DESPLAZAR",
+            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", 
+            "DESPLAZAR", "CHAFLAN", "CHAMFER", "DESPLAZAR",
             // Edición y Sistema
             "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)
