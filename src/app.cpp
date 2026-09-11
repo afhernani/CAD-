@@ -344,6 +344,8 @@ namespace cad {
             if (event.type == sf::Event::TextEntered && isTyping_) {
                 if (event.text.unicode == 13) { // Enter
                     if (!inputBuffer_.empty()) {
+                        // enviar siempre al engine, que lo usará para terminar el porceso.
+                        //engine_.processInput(inputBuffer_);
                         // 1. Guardar en el historial (solo lo que escribe el usuario, limpio)
                         if (commandHistory_.empty() || commandHistory_.back() != inputBuffer_) {
                             commandHistory_.push_back(inputBuffer_);
@@ -353,12 +355,13 @@ namespace cad {
                         if (commandHistory_.size() > 100) {
                             commandHistory_.erase(commandHistory_.begin());
                         }
-                        
-                        // 2. Resetear índices de navegación y autocompletado
-                        historyIndex_ = commandHistory_.size();
-                        autocompleteIndex_ = -1;
-                        autocompleteBase_.clear();
-                        
+                    }
+                    // 2. Resetear índices de navegación y autocompletado
+                    historyIndex_ = commandHistory_.size();
+                    autocompleteIndex_ = -1;
+                    autocompleteBase_.clear();
+
+                    if (!inputBuffer_.empty()) {   
                         // 3. Detectar comandos especiales o enviar al engine
                         std::string upperInput(inputBuffer_);
                         std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
@@ -416,7 +419,16 @@ namespace cad {
                             engine_.processInput(inputBuffer_);
                         }
                     }
-                    
+                    else {
+                        // Buffer vacío: solo enviar si estamos en un modo que termina con Enter
+                        if (engine_.currentMode == Mode::OFFSET || 
+                            engine_.currentMode == Mode::FILLET ||
+                            engine_.currentMode == Mode::TRIM || 
+                            engine_.currentMode == Mode::EXTEND) {
+                            engine_.processInput("");  // Enter vacío para terminar
+                        }
+                        // Para otros modos (LÍNEA, CÍRCULO, etc.), NO hacer nada con Enter vacío
+                    }
                     // Limpiar buffer y resetear scroll
                     inputBuffer_.clear();
                     commandScrollOffset_ = 0;
@@ -1686,6 +1698,100 @@ namespace cad {
                             va[i].color = previewColor;
                         }
                         window_.draw(va);
+                    }
+                }
+            }
+        }
+        // --- FILLET (EMPALME) ---
+        else if (engine_.currentMode == Mode::FILLET) {
+            Point2D mousePos = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+            sf::Color highlightColor(0, 255, 0, 150); // Verde semitransparente
+            
+            // Resaltar línea 1 si está seleccionada
+            if (engine_.tempFilletLine1) {
+                sf::Vertex l1[] = {
+                    sf::Vertex(worldToScreen(engine_.tempFilletLine1->p1.x, engine_.tempFilletLine1->p1.y), highlightColor),
+                    sf::Vertex(worldToScreen(engine_.tempFilletLine1->p2.x, engine_.tempFilletLine1->p2.y), highlightColor)
+                };
+                window_.draw(l1, 2, sf::Lines);
+            }
+            
+            // Si estamos en paso 3 (esperando segunda línea), mostrar preview del arco
+            if (engine_.statusMessage.find("segunda") != std::string::npos || engine_.statusMessage.find("Segunda") != std::string::npos) {
+                // Buscar línea bajo el ratón para previsualizar
+                Entity* hoverLine = nullptr;
+                double minDist = 10.0 / viewScale_;
+                for (auto& entity : engine_.doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(mousePos, minDist)) {
+                            hoverLine = entity.get();
+                            break;
+                        }
+                    }
+                }
+                
+                if (hoverLine && engine_.tempFilletLine1) {
+                    auto inter = lineLineIntersection(engine_.tempFilletLine1->p1, engine_.tempFilletLine1->p2,
+                                                    static_cast<Line*>(hoverLine)->p1, static_cast<Line*>(hoverLine)->p2);
+                    if (inter.intersects) {
+                        Point2D I = inter.point;
+                        // Calcular vectores y ángulo (lógica simplificada para preview)
+                        auto normalize = [](Point2D a, Point2D b) {
+                            double dx = b.x - a.x, dy = b.y - a.y;
+                            double len = std::sqrt(dx*dx + dy*dy);
+                            return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0};
+                        };
+                        
+                        double d1a = std::hypot(engine_.tempFilletLine1->p1.x - I.x, engine_.tempFilletLine1->p1.y - I.y);
+                        double d1b = std::hypot(engine_.tempFilletLine1->p2.x - I.x, engine_.tempFilletLine1->p2.y - I.y);
+                        Point2D end1 = (d1a < d1b) ? engine_.tempFilletLine1->p1 : engine_.tempFilletLine1->p2;
+                        
+                        double d2a = std::hypot(static_cast<Line*>(hoverLine)->p1.x - I.x, static_cast<Line*>(hoverLine)->p1.y - I.y);
+                        double d2b = std::hypot(static_cast<Line*>(hoverLine)->p2.x - I.x, static_cast<Line*>(hoverLine)->p2.y - I.y);
+                        Point2D end2 = (d2a < d2b) ? static_cast<Line*>(hoverLine)->p1 : static_cast<Line*>(hoverLine)->p2;
+                        
+                        Point2D v1 = normalize(I, end1);
+                        Point2D v2 = normalize(I, end2);
+                        
+                        double cosAngle = v1.x * v2.x + v1.y * v2.y;
+                        if (cosAngle > 1.0) cosAngle = 1.0;
+                        if (cosAngle < -1.0) cosAngle = -1.0;
+                        double angle = std::acos(cosAngle);
+                        
+                        if (angle > 0.001 && engine_.tempFilletRadius > 0.001) {
+                            double d = engine_.tempFilletRadius / std::tan(angle / 2.0);
+                            Point2D T1 = {I.x + v1.x * d, I.y + v1.y * d};
+                            Point2D T2 = {I.x + v2.x * d, I.y + v2.y * d};
+                            
+                            Point2D bisector = {v1.x + v2.x, v1.y + v2.y};
+                            double bisLen = std::sqrt(bisector.x*bisector.x + bisector.y*bisector.y);
+                            if (bisLen > 0) {
+                                bisector.x /= bisLen; bisector.y /= bisLen;
+                                double h = engine_.tempFilletRadius / std::sin(angle / 2.0);
+                                Point2D center = {I.x + bisector.x * h, I.y + bisector.y * h};
+                                
+                                // Dibujar arco preview
+                                const int numPoints = 32;
+                                sf::VertexArray arc(sf::LineStrip, numPoints);
+                                double a1 = std::atan2(T1.y - center.y, T1.x - center.x);
+                                double a2 = std::atan2(T2.y - center.y, T2.x - center.x);
+                                double diff = a2 - a1;
+                                while (diff < 0) diff += 2 * 3.14159265;
+                                while (diff >= 2 * 3.14159265) diff -= 2 * 3.14159265;
+                                if (diff > 3.14159265) std::swap(a1, a2);
+                                diff = a2 - a1;
+                                while (diff < 0) diff += 2 * 3.14159265;
+                                
+                                double step = diff / (numPoints - 1);
+                                for (int i = 0; i < numPoints; ++i) {
+                                    double a = a1 + i * step;
+                                    arc[i].position = worldToScreen(center.x + engine_.tempFilletRadius * std::cos(a),
+                                                                    center.y + engine_.tempFilletRadius * std::sin(a));
+                                    arc[i].color = sf::Color(255, 255, 0, 200);
+                                }
+                                window_.draw(arc);
+                            }
+                        }
                     }
                 }
             }

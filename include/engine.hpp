@@ -26,7 +26,7 @@ namespace cad {
         TRIM,
         EXTEND,
         UNDO,
-        REDO, OFFSET, 
+        REDO, OFFSET, FILLET,
         GRIP_EDIT // << grips editables
     };
 
@@ -112,6 +112,10 @@ namespace cad {
         double tempOffsetDistance = 0.0;
         Point2D tempOffsetP1;
         Entity* tempOffsetEntity = nullptr;
+        // Variables para FILLET
+        double tempFilletRadius = 0.0;
+        Line* tempFilletLine1 = nullptr;
+        Line* tempFilletLine2 = nullptr;
         
     private:
         void executeCommand(std::string_view cmd);

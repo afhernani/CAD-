@@ -17,6 +17,9 @@ namespace cad {
         tempArcStartAngle = 0.0;
         tempOffsetDistance = 0.0;
         tempOffsetEntity = nullptr;
+        tempFilletRadius = 0.0;
+        tempFilletLine1 = nullptr;
+        tempFilletLine2 = nullptr;
         statusMessage = "Comando cancelado.";
     }
 
@@ -62,24 +65,30 @@ namespace cad {
                 return;
             }
         }
-        // ENTER vacío en polilínea -> terminar sin cerrar
-        if (cleanInput.empty() && currentMode == Mode::DRAW_POLYLINE) {
-            if (tempPolylinePoints.size() >= 2) {
-                auto newPoly = std::make_unique<Polyline>();
-                newPoly->points = tempPolylinePoints;
-                newPoly->layerName = doc.currentLayerName;
-                saveState();
-                doc.addEntity(std::move(newPoly));
-                statusMessage = "Polilínea terminada (" + 
-                                std::to_string(tempPolylinePoints.size()) + " puntos).";
-            } else {
-                statusMessage = "Polilínea cancelada (puntos insuficientes).";
+        // >>> MANEJO CENTRALIZADO DEL ENTER VACÍO <<<
+        if (cleanInput.empty()) {
+            if (currentMode == Mode::DRAW_POLYLINE) {
+                if (tempPolylinePoints.size() >= 2) {
+                    auto newPoly = std::make_unique<Polyline>();
+                    newPoly->points = tempPolylinePoints;
+                    newPoly->layerName = doc.currentLayerName;
+                    saveState();
+                    doc.addEntity(std::move(newPoly));
+                    statusMessage = "Polilínea terminada (" + std::to_string(tempPolylinePoints.size()) + " puntos).";
+                } else {
+                    statusMessage = "Polilínea cancelada (puntos insuficientes).";
+                }
+                tempPolylinePoints.clear();
+                currentMode = Mode::IDLE;
             }
-            tempPolylinePoints.clear();
-            currentMode = Mode::IDLE;
+            else if (currentMode == Mode::TRIM || currentMode == Mode::EXTEND || 
+                    currentMode == Mode::OFFSET || currentMode == Mode::FILLET) {
+                // Delegamos la lógica de terminación/cancelación a processCoordinate
+                processCoordinate("");
+            }
+            // Para modo IDLE u otros, simplemente ignoramos el Enter vacío y no hacemos nada
             return;
         }
-
         if (currentMode == Mode::IDLE) {
             executeCommand(cleanInput);
         } else if (currentMode == Mode::LAYER_COMMAND) {
@@ -242,6 +251,12 @@ namespace cad {
             currentMode = Mode::OFFSET;
             statusMessage = "OFFSET | Especificar distancia de desplazamiento:";
         }
+        else if (upperCmd == "F" || upperCmd == "FILLET" || upperCmd == "EMPALME") {
+            currentMode = Mode::FILLET;
+            tempFilletLine1 = nullptr;
+            tempFilletLine2 = nullptr;
+            statusMessage = "FILLET | Especificar radio (0 para esquina viva):";
+        }
         else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
             toggleGrid();
             statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada.";
@@ -354,6 +369,22 @@ namespace cad {
                     statusMessage = "EXTEND cancelado.";
                 }
             }
+            else if (currentMode == Mode::OFFSET) {
+                currentMode = Mode::IDLE;
+                tempOffsetDistance = 0.0;
+                tempOffsetEntity = nullptr;
+                statusMessage = "OFFSET terminado.";
+            }
+            else if (currentMode == Mode::FILLET) {
+                currentMode = Mode::IDLE;
+                tempFilletRadius = 0.0;
+                tempFilletLine1 = nullptr;
+                tempFilletLine2 = nullptr;
+                statusMessage = "FILLET cancelado.";
+            }
+            // else {
+            //     cancelCommand();
+            // }
             // Para otros modos: no hacer nada, mantener estado
             return;
         }
@@ -1156,8 +1187,16 @@ namespace cad {
         }
         // --- OFFSET ---
         else if (currentMode == Mode::OFFSET) {
-            // PASO 1: Esperando distancia
-            if (statusMessage.find("distancia") != std::string::npos ||
+            // PASO 1: Segundo punto para distancia
+            if (statusMessage.find("Segundo") != std::string::npos ||
+                    statusMessage.find("segundo") != std::string::npos) {
+                double dx = lastPoint.x - tempOffsetP1.x;
+                double dy = lastPoint.y - tempOffsetP1.y;
+                tempOffsetDistance = std::sqrt(dx * dx + dy * dy);
+                statusMessage = "OFFSET | Seleccionar entidad a desplazar:";
+            }
+            // PASO 1b: Esperando distancia
+            else if (statusMessage.find("distancia") != std::string::npos ||
                 statusMessage.find("Distancia") != std::string::npos) {
                 if (isScalar) {
                     tempOffsetDistance = scalarValue;
@@ -1167,14 +1206,6 @@ namespace cad {
                     tempOffsetP1 = lastPoint;
                     statusMessage = "OFFSET | Segundo punto para definir distancia:";
                 }
-            }
-            // PASO 1b: Segundo punto para distancia
-            else if (statusMessage.find("Segundo") != std::string::npos ||
-                    statusMessage.find("segundo") != std::string::npos) {
-                double dx = lastPoint.x - tempOffsetP1.x;
-                double dy = lastPoint.y - tempOffsetP1.y;
-                tempOffsetDistance = std::sqrt(dx * dx + dy * dy);
-                statusMessage = "OFFSET | Seleccionar entidad a desplazar:";
             }
             // PASO 2: Seleccionar entidad
             else if (statusMessage.find("Seleccionar") != std::string::npos ||
@@ -1249,6 +1280,141 @@ namespace cad {
                     statusMessage = "OFFSET | Entidad desplazada. Seleccionar otra entidad o ESC para terminar:";
                     tempOffsetEntity = nullptr; // Resetear para permitir seleccionar otra
                 }
+            }
+        }
+        // --- FILLET (EMPALME) ---
+        else if (currentMode == Mode::FILLET) {
+            // PASO 1: Radio
+            if (statusMessage.find("radio") != std::string::npos || statusMessage.find("Radio") != std::string::npos) {
+                if (isScalar) {
+                    tempFilletRadius = scalarValue;
+                    statusMessage = "FILLET | Seleccionar primera línea:";
+                } else {
+                    statusMessage = "FILLET | Valor no válido. Especificar radio:";
+                }
+            }
+            // PASO 2: Primera línea
+            else if (statusMessage.find("primera") != std::string::npos || statusMessage.find("Primera") != std::string::npos) {
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            tempFilletLine1 = line;
+                            break;
+                        }
+                    }
+                }
+                if (found) statusMessage = "FILLET | Seleccionar segunda línea:";
+                else statusMessage = "FILLET | No es una línea. Seleccionar primera línea:";
+            }
+            // PASO 3: Segunda línea y calcular empalme
+            else if (statusMessage.find("segunda") != std::string::npos || statusMessage.find("Segunda") != std::string::npos) {
+                Entity* found = nullptr;
+                double minDist = 10.0 / viewScale;
+                for (auto& entity : doc.entities) {
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        if (line->isNear(lastPoint, minDist)) {
+                            found = entity.get();
+                            tempFilletLine2 = line;
+                            break;
+                        }
+                    }
+                }
+                
+                if (found && tempFilletLine1 && tempFilletLine2) {
+                    // Calcular intersección
+                    auto inter = lineLineIntersection(tempFilletLine1->p1, tempFilletLine1->p2, 
+                                                    tempFilletLine2->p1, tempFilletLine2->p2);
+                    if (inter.intersects) {
+                        saveState();
+                        Point2D I = inter.point;
+                        
+                        // Vectores dirección de las líneas (normalizados)
+                        auto normalize = [](Point2D a, Point2D b) {
+                            double dx = b.x - a.x, dy = b.y - a.y;
+                            double len = std::sqrt(dx*dx + dy*dy);
+                            return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0};
+                        };
+                        
+                        // Determinar qué extremos de las líneas están más cerca de la intersección
+                        // (Asumimos que el usuario quiere fillet en los extremos cercanos a I)
+                        double d1a = std::hypot(tempFilletLine1->p1.x - I.x, tempFilletLine1->p1.y - I.y);
+                        double d1b = std::hypot(tempFilletLine1->p2.x - I.x, tempFilletLine1->p2.y - I.y);
+                        Point2D& end1 = (d1a < d1b) ? tempFilletLine1->p1 : tempFilletLine1->p2;
+                        Point2D& far1 = (d1a < d1b) ? tempFilletLine1->p2 : tempFilletLine1->p1;
+                        
+                        double d2a = std::hypot(tempFilletLine2->p1.x - I.x, tempFilletLine2->p1.y - I.y);
+                        double d2b = std::hypot(tempFilletLine2->p2.x - I.x, tempFilletLine2->p2.y - I.y);
+                        Point2D& end2 = (d2a < d2b) ? tempFilletLine2->p1 : tempFilletLine2->p2;
+                        Point2D& far2 = (d2a < d2b) ? tempFilletLine2->p2 : tempFilletLine2->p1;
+                        
+                        // Vectores desde I hacia los extremos a recortar
+                        Point2D v1 = normalize(I, end1);
+                        Point2D v2 = normalize(I, end2);
+                        
+                        // Ángulo entre los vectores
+                        double cosAngle = v1.x * v2.x + v1.y * v2.y;
+                        // Limitar para evitar errores de precisión
+                        if (cosAngle > 1.0) cosAngle = 1.0;
+                        if (cosAngle < -1.0) cosAngle = -1.0;
+                        double angle = std::acos(cosAngle);
+                        
+                        if (angle > 0.001) { // Si no son paralelas
+                            // Distancia desde I a los puntos tangentes
+                            double d = tempFilletRadius / std::tan(angle / 2.0);
+                            
+                            // Nuevos extremos de las líneas (puntos tangentes)
+                            Point2D T1 = {I.x + v1.x * d, I.y + v1.y * d};
+                            Point2D T2 = {I.x + v2.x * d, I.y + v2.y * d};
+                            
+                            // Actualizar líneas originales (recortar)
+                            end1 = T1;
+                            end2 = T2;
+                            
+                            // Dibujar arco si radio > 0
+                            if (tempFilletRadius > 0.001) {
+                                // Centro del arco: en la bisectriz
+                                Point2D bisector = {v1.x + v2.x, v1.y + v2.y};
+                                double bisLen = std::sqrt(bisector.x*bisector.x + bisector.y*bisector.y);
+                                if (bisLen > 0) {
+                                    bisector.x /= bisLen; bisector.y /= bisLen;
+                                    double h = tempFilletRadius / std::sin(angle / 2.0);
+                                    Point2D center = {I.x + bisector.x * h, I.y + bisector.y * h};
+                                    
+                                    // Calcular ángulos inicio/fin para el arco
+                                    double a1 = std::atan2(T1.y - center.y, T1.x - center.x);
+                                    double a2 = std::atan2(T2.y - center.y, T2.x - center.x);
+                                    
+                                    // Asegurar que el arco vaya en la dirección correcta (el más corto)
+                                    double diff = a2 - a1;
+                                    while (diff < 0) diff += 2 * std::numbers::pi;
+                                    while (diff >= 2 * std::numbers::pi) diff -= 2 * std::numbers::pi;
+                                    if (diff > std::numbers::pi) std::swap(a1, a2);
+                                    
+                                    auto newArc = std::make_unique<Arc>();
+                                    newArc->center = center;
+                                    newArc->radius = tempFilletRadius;
+                                    newArc->startAngle = a1 * 180.0 / std::numbers::pi;
+                                    newArc->endAngle = a2 * 180.0 / std::numbers::pi;
+                                    newArc->layerName = doc.currentLayerName;
+                                    doc.addEntity(std::move(newArc));
+                                }
+                            }
+                            statusMessage = "FILLET | Empalme creado. Seleccionar primera línea o ESC:";
+                        } else {
+                            statusMessage = "FILLET | Líneas paralelas. Seleccionar primera línea:";
+                        }
+                    } else {
+                        statusMessage = "FILLET | Líneas paralelas. Seleccionar primera línea:";
+                    }
+                } else {
+                    statusMessage = "FILLET | No es una línea. Seleccionar segunda línea:";
+                }
+                // Resetear para permitir múltiples empalmes
+                tempFilletLine1 = nullptr;
+                tempFilletLine2 = nullptr;
             }
         }
     }
@@ -1528,7 +1694,7 @@ namespace cad {
             // Dibujo
             "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
-            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET",
+            "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", "DESPLAZAR",
             // Edición y Sistema
             "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)
