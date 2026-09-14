@@ -65,7 +65,8 @@ namespace cad {
         std::string getHelpForTopic(std::string_view topic) {
             return getHelpText(topic);
         }
-        
+        std::string getEntityList() const;
+    
         std::vector<Entity*> selectedEntities; // Punteros a entidades seleccionadas
 
         void clearSelection();

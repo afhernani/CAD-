@@ -102,6 +102,13 @@ namespace cad {
         int historyIndex_ = -1;
         int autocompleteIndex_ = -1;
         std::string autocompleteBase_;
+
+        // >>> AÑADIR ESTO PARA LISTA DE ENTIDADES <<<
+        bool showEntityListPanel_ = false;
+        std::string entityListText_;
+        int entityListScrollOffset_ = 0;
+        void drawEntityListPanel();
+        void updateEntityList();
         
     };
 

@@ -289,6 +289,11 @@ namespace cad {
             toggleGrid();
             statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada.";
         }
+        else if (upperCmd == "LIST" || upperCmd == "LISTA") {
+            // El comando LISTA activa/desactiva el panel de propiedades
+            // La lógica de toggle está en App
+            statusMessage = "LISTA | Panel de propiedades activado/desactivado";
+        }
         else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
             //std::string helpText = getHelpText("");
             // Aquí necesitamos pasar el texto a App para que lo muestre
@@ -2044,6 +2049,119 @@ namespace cad {
         
         selectedEntities.clear();
         statusMessage = "Rehacer.";
+    }
+
+    std::string Engine::getEntityList() const {
+        std::ostringstream oss;
+        oss << "========================================\n";
+        oss << "  LISTA DE ENTIDADES (" << doc.entities.size() << ")\n";
+        oss << "========================================\n\n";
+        
+        if (doc.entities.empty()) {
+            oss << "No hay entidades en el dibujo.\n";
+            return oss.str();
+        }
+        
+        int count = 0;
+        for (const auto& entity : doc.entities) {
+            count++;
+            oss << "--- Entidad #" << count << " ---\n";
+            
+            if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                oss << "Tipo: LÍNEA\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Punto 1: (" << line->p1.x << ", " << line->p1.y << ")\n";
+                oss << "  Punto 2: (" << line->p2.x << ", " << line->p2.y << ")\n";
+                double dx = line->p2.x - line->p1.x;
+                double dy = line->p2.y - line->p1.y;
+                double len = std::sqrt(dx * dx + dy * dy);
+                double angle = std::atan2(dy, dx) * 180.0 / std::numbers::pi;
+                oss << "  Longitud: " << len << "\n";
+                oss << "  Ángulo: " << angle << "°\n";
+                oss << "  Capa: " << line->layerName << "\n\n";
+            }
+            else if (auto* circle = dynamic_cast<Circle*>(entity.get())) {
+                oss << "Tipo: CÍRCULO\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Centro: (" << circle->center.x << ", " << circle->center.y << ")\n";
+                oss << "  Radio: " << circle->radius << "\n";
+                oss << "  Diámetro: " << circle->radius * 2.0 << "\n";
+                oss << "  Circunferencia: " << 2.0 * std::numbers::pi * circle->radius << "\n";
+                oss << "  Área: " << std::numbers::pi * circle->radius * circle->radius << "\n";
+                oss << "  Capa: " << circle->layerName << "\n\n";
+            }
+            else if (auto* arc = dynamic_cast<Arc*>(entity.get())) {
+                oss << "Tipo: ARCO\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Centro: (" << arc->center.x << ", " << arc->center.y << ")\n";
+                oss << "  Radio: " << arc->radius << "\n";
+                oss << "  Ángulo inicio: " << arc->startAngle << "°\n";
+                oss << "  Ángulo final: " << arc->endAngle << "°\n";
+                double angleDiff = arc->endAngle - arc->startAngle;
+                if (angleDiff < 0) angleDiff += 360.0;
+                oss << "  Longitud de arco: " << (angleDiff / 360.0) * 2.0 * std::numbers::pi * arc->radius << "\n";
+                oss << "  Capa: " << arc->layerName << "\n\n";
+            }
+            else if (auto* poly = dynamic_cast<Polyline*>(entity.get())) {
+                oss << "Tipo: POLILÍNEA\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Número de vértices: " << poly->points.size() << "\n";
+                double totalLen = 0.0;
+                for (size_t i = 1; i < poly->points.size(); ++i) {
+                    double dx = poly->points[i].x - poly->points[i-1].x;
+                    double dy = poly->points[i].y - poly->points[i-1].y;
+                    totalLen += std::sqrt(dx * dx + dy * dy);
+                }
+                oss << "  Longitud total: " << totalLen << "\n";
+                oss << "  Cerrada: " << (poly->points.size() > 2 && 
+                    poly->points.front().x == poly->points.back().x && 
+                    poly->points.front().y == poly->points.back().y ? "Sí" : "No") << "\n";
+                oss << "  Capa: " << poly->layerName << "\n\n";
+            }
+            else if (auto* polygon = dynamic_cast<Polygon*>(entity.get())) {
+                oss << "Tipo: POLÍGONO\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Centro: (" << polygon->center.x << ", " << polygon->center.y << ")\n";
+                oss << "  Lados: " << polygon->sides << "\n";
+                oss << "  Radio: " << polygon->radius << "\n";
+                double area = 0.5 * polygon->sides * polygon->radius * polygon->radius * 
+                            std::sin(2.0 * std::numbers::pi / polygon->sides);
+                oss << "  Área: " << area << "\n";
+                oss << "  Perímetro: " << 2.0 * polygon->sides * polygon->radius * 
+                    std::sin(std::numbers::pi / polygon->sides) << "\n";
+                oss << "  Capa: " << polygon->layerName << "\n\n";
+            }
+            else if (auto* ellipse = dynamic_cast<Ellipse*>(entity.get())) {
+                oss << "Tipo: ELIPSE\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Centro: (" << ellipse->center.x << ", " << ellipse->center.y << ")\n";
+                oss << "  Eje mayor: " << ellipse->majorRadius << "\n";
+                oss << "  Eje menor: " << ellipse->minorRadius << "\n";
+                oss << "  Rotación: " << ellipse->rotationAngle * 180.0 / std::numbers::pi << "°\n";
+                oss << "  Área: " << std::numbers::pi * ellipse->majorRadius * ellipse->minorRadius << "\n";
+                oss << "  Capa: " << ellipse->layerName << "\n\n";
+            }
+            else if (auto* dim = dynamic_cast<Dimension*>(entity.get())) {
+                oss << "Tipo: COTA\n";
+                oss << std::fixed << std::setprecision(2);
+                oss << "  Valor: " << dim->value << "\n";
+                oss << "  Tipo: ";
+                if (dim->type == DimType::HORIZONTAL) oss << "Horizontal";
+                else if (dim->type == DimType::VERTICAL) oss << "Vertical";
+                else if (dim->type == DimType::ALIGNED) oss << "Alineada";
+                else if (dim->type == DimType::RADIUS) oss << "Radio";
+                else if (dim->type == DimType::DIAMETER) oss << "Diámetro";
+                else if (dim->type == DimType::ANGULAR) oss << "Angular";
+                oss << "\n";
+                oss << "  Capa: " << dim->layerName << "\n\n";
+            }
+            else {
+                oss << "Tipo: DESCONOCIDA\n";
+                oss << "  Capa: " << entity->layerName << "\n\n";
+            }
+        }
+        
+        return oss.str();
     }
 
 } // namespace cad

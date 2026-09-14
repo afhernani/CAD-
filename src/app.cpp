@@ -92,6 +92,11 @@ namespace cad {
         viewPanY_ = 50.0f;
         showAxes_ = true;  // Por defecto, mostrar ejes
         isSnapped_ = false;
+
+        // >>> AÑADIR ESTO PARA LISTA DE ENTIDADES <<<
+        showEntityListPanel_ = false;
+        entityListScrollOffset_ = 0;
+        entityListText_ = "";
     }
 
     void App::run() {
@@ -160,7 +165,26 @@ namespace cad {
 
             // --- SCROLL EN VENTANA DE COMANDOS ---
             if (event.type == sf::Event::MouseWheelScrolled) {
+                int mx = event.mouseWheelScroll.x;
                 int my = event.mouseWheelScroll.y;
+                // >>> AÑADIR ESTO: Scroll en panel de lista de entidades <<<
+                if (showEntityListPanel_) {
+                    const int panelWidth = 350;
+                    const int panelX = WINDOW_WIDTH - panelWidth;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT;
+        
+                    
+                    if (mx >= panelX && mx < WINDOW_WIDTH &&
+                        my >= panelY && my < panelY + panelHeight) {
+                        if (event.mouseWheelScroll.delta > 0) {
+                            entityListScrollOffset_ = std::max(0, entityListScrollOffset_ - 1);
+                        } else {
+                            entityListScrollOffset_++;
+                        }
+                        return;
+                    }
+                }
                 // Si el ratón está sobre la ventana de comandos
                 if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
                     my < WINDOW_HEIGHT - STATUS_HEIGHT) {
@@ -502,7 +526,15 @@ namespace cad {
 
             // --- TECLAS DE NAVEGACIÓN Y AUTOCOMPLETADO (KeyPressed) ---
             if (event.type == sf::Event::KeyPressed && isTyping_) {
-                
+                // >>> AÑADIR ESTO: Ctrl+L para mostrar/ocultar panel de lista <<<
+                if (event.key.code == sf::Keyboard::L && event.key.control) {
+                    showEntityListPanel_ = !showEntityListPanel_;
+                    if (showEntityListPanel_) {
+                        updateEntityList();
+                    }
+                    engine_.statusMessage = showEntityListPanel_ ? 
+                        "Panel de propiedades activado" : "Panel de propiedades desactivado";
+                }
                 // Flecha ARRIBA: Historial anterior
                 if (event.key.code == sf::Keyboard::Up) {
                     if (!commandHistory_.empty()) {
@@ -604,6 +636,11 @@ namespace cad {
         drawEntities();
         drawDimensionTexts();
         drawCrosshair();
+
+        // >>> AÑADIR ESTO: Dibujar panel de lista de entidades si está activo <<<
+        if (showEntityListPanel_) {
+            drawEntityListPanel();
+        }
 
         // Dibujar la interfaz
         drawUI();
@@ -801,8 +838,12 @@ namespace cad {
         // La ventana de comandos se dibuja en drawCommandWindow()
         drawCommandWindow();
 
+        // >>> MODIFICAR: Barra de Estado con ancho reducido si el panel está activo <<<
+        // int statusWidth = showEntityListPanel_ ? (WINDOW_WIDTH - 350) : WINDOW_WIDTH;
+        int statusWidth = showEntityListPanel_ ? WINDOW_WIDTH : WINDOW_WIDTH;
+
         // Barra de Estado (Muy abajo)
-        sf::RectangleShape statusBg(sf::Vector2f(WINDOW_WIDTH, STATUS_HEIGHT));
+        sf::RectangleShape statusBg(sf::Vector2f(statusWidth, STATUS_HEIGHT));
         statusBg.setFillColor(sf::Color(0, 122, 204));
         statusBg.setPosition(0, WINDOW_HEIGHT - STATUS_HEIGHT);
         window_.draw(statusBg);
@@ -814,6 +855,11 @@ namespace cad {
             << " | X: " << currentMouseWorldPos_.x 
             << ", Y: " << currentMouseWorldPos_.y 
             << " | Zoom: " << viewScale_ << "x";
+        
+        if (showEntityListPanel_) {
+            oss << " | Panel: ON";
+        }
+        
         sf::Text statusTxt;
         statusTxt.setFont(font_);
         statusTxt.setString(toSfString(oss.str()));
@@ -1038,8 +1084,10 @@ namespace cad {
     }
 
     void App::drawCommandWindow() {
+        // >>> MODIFICAR: Reducir ancho si el panel de propiedades está activo <<<
+        int cmdWidth = showEntityListPanel_ ? (WINDOW_WIDTH - 350) : WINDOW_WIDTH;
         // Fondo de la ventana de comandos
-        sf::RectangleShape cmdBg(sf::Vector2f(WINDOW_WIDTH, COMMAND_HEIGHT));
+        sf::RectangleShape cmdBg(sf::Vector2f(cmdWidth, COMMAND_HEIGHT));
         cmdBg.setFillColor(sf::Color(60, 60, 60));
         cmdBg.setPosition(0, WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT);
         window_.draw(cmdBg);
@@ -1097,7 +1145,7 @@ namespace cad {
             
             sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
             scrollIndicator.setFillColor(sf::Color(100, 100, 100));
-            scrollIndicator.setPosition(WINDOW_WIDTH - 10, indicatorY);
+            scrollIndicator.setPosition(cmdWidth - 10, indicatorY);
             window_.draw(scrollIndicator);
         }
     }
@@ -2047,6 +2095,114 @@ namespace cad {
                 text.setPosition(screenPos);
                 window_.draw(text);
             }
+        }
+    }
+    void App::updateEntityList() {
+        entityListText_ = engine_.getEntityList();
+        entityListScrollOffset_ = 0;
+    }
+
+    void App::drawEntityListPanel() {
+        const int panelWidth = 350;
+        // >>> MODIFICAR: Restar COMMAND_HEIGHT para que no se solape con la barra de comandos <<<
+        const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;// - COMMAND_HEIGHT - STATUS_HEIGHT;
+        const int panelX = WINDOW_WIDTH - panelWidth;
+        const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+        
+        // Fondo del panel
+        sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
+        panelBg.setFillColor(sf::Color(40, 40, 45));
+        panelBg.setPosition(panelX, panelY);
+        window_.draw(panelBg);
+        
+        // Borde superior
+        sf::RectangleShape panelBorder(sf::Vector2f(panelWidth, 2));
+        panelBorder.setFillColor(sf::Color(80, 80, 80));
+        panelBorder.setPosition(panelX, panelY);
+        window_.draw(panelBorder);
+        
+        // Título
+        sf::Text title;
+        title.setFont(font_);
+        title.setString("PROPIEDADES DE ENTIDADES");
+        title.setCharacterSize(14);
+        title.setFillColor(sf::Color(220, 220, 220));
+        title.setPosition(panelX + 10, panelY + 10);
+        window_.draw(title);
+        
+        // Separador
+        sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
+        separator.setFillColor(sf::Color(100, 100, 100));
+        separator.setPosition(panelX + 10, panelY + 35);
+        window_.draw(separator);
+        
+        // Actualizar lista si está vacía
+        if (entityListText_.empty()) {
+            updateEntityList();
+        }
+        
+        // Contenido scrolleable
+        const int lineHeight = 16;
+        const int startY = panelY + 45;
+        const int maxHeight = panelHeight - 55;
+        const int maxLines = maxHeight / lineHeight;
+        
+        // Dividir el texto en líneas
+        std::vector<std::string> lines;
+        std::string line;
+        for (char c : entityListText_) {
+            if (c == '\n') {
+                lines.push_back(line);
+                line.clear();
+            } else {
+                line += c;
+            }
+        }
+        if (!line.empty()) {
+            lines.push_back(line);
+        }
+        
+        // Limitar scroll
+        int totalLines = lines.size();
+        int maxOffset = std::max(0, totalLines - maxLines);
+        entityListScrollOffset_ = std::min(entityListScrollOffset_, maxOffset);
+        
+        // Dibujar líneas visibles
+        int startIdx = entityListScrollOffset_;
+        int lineCount = 0;
+        for (int i = startIdx; i < totalLines && lineCount < maxLines; ++i) {
+            sf::Text lineText;
+            lineText.setFont(font_);
+            lineText.setString(lines[i]);
+            lineText.setCharacterSize(11);
+            
+            // Color diferente para títulos y contenido
+            if (lines[i].find("---") != std::string::npos || 
+                lines[i].find("===") != std::string::npos ||
+                lines[i].find("LISTA") != std::string::npos) {
+                lineText.setFillColor(sf::Color(100, 200, 255));
+            } else if (lines[i].find("Tipo:") != std::string::npos) {
+                lineText.setFillColor(sf::Color(255, 220, 100));
+            } else {
+                lineText.setFillColor(sf::Color(200, 200, 200));
+            }
+            
+            lineText.setPosition(panelX + 10, startY + lineCount * lineHeight);
+            window_.draw(lineText);
+            lineCount++;
+        }
+        
+        // Indicador de scroll si hay más contenido
+        if (totalLines > maxLines) {
+            float scrollRatio = (maxOffset > 0) ? (float)entityListScrollOffset_ / maxOffset : 0.0f;
+            float indicatorHeight = 30.f;
+            float maxIndicatorY = startY + maxHeight - indicatorHeight;
+            float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
+            
+            sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
+            scrollIndicator.setFillColor(sf::Color(100, 100, 100));
+            scrollIndicator.setPosition(panelX + panelWidth - 10, indicatorY);
+            window_.draw(scrollIndicator);
         }
     }
 
