@@ -25,6 +25,12 @@ namespace cad {
         tempChamferDist2 = 0.0;
         tempChamferLine1 = nullptr;
         tempChamferLine2 = nullptr;
+        // Reset variables for Array
+        tempArrayEntities.clear();
+        tempArrayRows = 1; tempArrayCols = 1;
+        tempArrayRowSpacing = 0.0; tempArrayColSpacing = 0.0;
+        tempArrayCount = 1; tempArrayAngle = 360.0;
+        tempArrayCenter = {0.0, 0.0};
         
         statusMessage = "Comando cancelado.";
     }
@@ -89,7 +95,7 @@ namespace cad {
             }
             else if (currentMode == Mode::TRIM || currentMode == Mode::EXTEND || 
                     currentMode == Mode::OFFSET || currentMode == Mode::FILLET ||
-                    currentMode == Mode::CHAMFER) {
+                    currentMode == Mode::CHAMFER || currentMode == Mode::ARRAY) {
                 // Delegamos la lógica de terminación/cancelación a processCoordinate
                 processCoordinate("");
             }
@@ -270,6 +276,15 @@ namespace cad {
             tempChamferLine2 = nullptr;
             statusMessage = "CHAFLAN | Especificar primera distancia (0 para esquina viva):";
         }
+        else if (upperCmd == "ARR" || upperCmd == "ARRAY") {
+            currentMode = Mode::ARRAY;
+            tempArrayEntities.clear();
+            tempArrayRows = 1; tempArrayCols = 1;
+            tempArrayRowSpacing = 0.0; tempArrayColSpacing = 0.0;
+            tempArrayCount = 1; tempArrayAngle = 360.0;
+            tempArrayCenter = {0.0, 0.0};
+            statusMessage = "ARRAY | Selecciona entidades (clic) y pulsa Enter para continuar:";
+        }
         else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
             toggleGrid();
             statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada.";
@@ -403,11 +418,35 @@ namespace cad {
                 tempChamferLine2 = nullptr;
                 statusMessage = "CHAFLAN cancelado.";
             }
+            else if (currentMode == Mode::ARRAY) {
+                if (tempArrayEntities.empty()) {
+                    statusMessage = "ARRAY | No hay entidades seleccionadas. Comando cancelado.";
+                    currentMode = Mode::IDLE;
+                } else {
+                    statusMessage = "ARRAY | Elige tipo [Rectangular/Polar] (Escribe R o P):";
+                }
+            }
             // else {
             //     cancelCommand();
             // }
             // Para otros modos: no hacer nada, mantener estado
             return;
+        }
+        // --- ARRAY: Manejar R/P antes de parsear coordenadas ---
+        if (currentMode == Mode::ARRAY && !tempArrayEntities.empty()) {
+            std::string upperStr(coordStr);
+            std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
+            
+            if (upperStr == "R" || upperStr == "RECTANGULAR") {
+                tempArrayType = ArrayType::RECTANGULAR;
+                statusMessage = "ARRAY RECTANGULAR | Punto base:";
+                return; // Salir aquí para no continuar con el parseo
+            }
+            else if (upperStr == "P" || upperStr == "POLAR") {
+                tempArrayType = ArrayType::POLAR;
+                statusMessage = "ARRAY POLAR | Punto base:";
+                return; // Salir aquí
+            }
         }
         // Comandos especiales para Polilínea
         if (currentMode == Mode::DRAW_POLYLINE) {
@@ -1540,6 +1579,117 @@ namespace cad {
                 }
             }
         }
+        // --- ARRAY ---
+        else if (currentMode == Mode::ARRAY) {
+            std::string upperStr(coordStr);
+            std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
+            
+            // PASO 1: Elegir tipo (R o P)
+            if (statusMessage.find("Tipo") != std::string::npos ||
+                statusMessage.find("tipo") != std::string::npos ||
+                statusMessage.find("Rectangular") != std::string::npos ||
+                statusMessage.find("Polar") != std::string::npos) {
+                if (upperStr == "R" || upperStr == "RECTANGULAR") {
+                    tempArrayType = ArrayType::RECTANGULAR;
+                    statusMessage = "ARRAY RECTANGULAR | Punto base:";  // ← NUEVO: Pedir punto base primero
+                }
+                else if (upperStr == "P" || upperStr == "POLAR") {
+                    tempArrayType = ArrayType::POLAR;
+                    statusMessage = "ARRAY POLAR | Punto base (centro de rotación):";  // ← NUEVO: Pedir punto base primero
+                }
+                else {
+                    statusMessage = "ARRAY | Tipo no válido. Escribe R o P:";
+                }
+            }
+            // PASO 2: Flujo Rectangular (con punto base)
+            else if (tempArrayType == ArrayType::RECTANGULAR) {
+                // Sub-paso 2a: Punto base
+                if (statusMessage.find("Punto base") != std::string::npos ||
+                    statusMessage.find("punto base") != std::string::npos) {
+                    tempArrayBasePoint = lastPoint;  // ← Guardar punto base
+                    statusMessage = "ARRAY RECTANGULAR | Número de filas:";
+                }
+                // Sub-paso 2b: Número de filas
+                else if (statusMessage.find("Número de filas") != std::string::npos && isScalar) {
+                    tempArrayRows = std::max(1, (int)scalarValue);
+                    statusMessage = "ARRAY RECTANGULAR | Número de columnas:";
+                }
+                // Sub-paso 2c: Número de columnas
+                else if (statusMessage.find("Número de columnas") != std::string::npos && isScalar) {
+                    tempArrayCols = std::max(1, (int)scalarValue);
+                    statusMessage = "ARRAY RECTANGULAR | Espaciado entre filas:";
+                }
+                // Sub-paso 2d: Espaciado entre filas
+                else if (statusMessage.find("Espaciado entre filas") != std::string::npos && isScalar) {
+                    tempArrayRowSpacing = scalarValue;
+                    statusMessage = "ARRAY RECTANGULAR | Espaciado entre columnas:";
+                }
+                // Sub-paso 2e: Espaciado entre columnas y ejecutar
+                else if (statusMessage.find("Espaciado entre columnas") != std::string::npos && isScalar) {
+                    tempArrayColSpacing = scalarValue;
+                    saveState();
+                    int created = 0;
+                    for (int r = 0; r < tempArrayRows; ++r) {
+                        for (int c = 0; c < tempArrayCols; ++c) {
+                            if (r == 0 && c == 0) continue;  // Saltar la posición original
+                            double offX = c * tempArrayColSpacing;
+                            double offY = r * tempArrayRowSpacing;
+                            for (Entity* e : tempArrayEntities) {
+                                auto copy = e->clone();
+                                // Desplazamiento simple desde la posición original
+                                copy->move(offX, offY);
+                                copy->layerName = doc.currentLayerName;
+                                doc.addEntity(std::move(copy));
+                                created++;
+                            }
+                        }
+                    }
+                    statusMessage = "ARRAY | Creadas " + std::to_string(created) + " copias rectangulares.";
+                    tempArrayEntities.clear();
+                    currentMode = Mode::IDLE;
+                }
+                else {
+                    statusMessage = "ARRAY | Introduce un valor numérico válido.";
+                }
+            }
+            // PASO 3: Flujo Polar (con punto base = centro)
+            else if (tempArrayType == ArrayType::POLAR) {
+                // Sub-paso 3a: Punto base (centro de rotación)
+                if (statusMessage.find("Punto base") != std::string::npos ||
+                    statusMessage.find("punto base") != std::string::npos ) {
+                    tempArrayCenter = lastPoint;  // ← Guardar centro
+                    statusMessage = "ARRAY POLAR | Número de copias:";
+                }
+                // Sub-paso 3b: Número de copias
+                else if (statusMessage.find("Número de copias") != std::string::npos && isScalar) {
+                    tempArrayCount = std::max(2, (int)scalarValue);
+                    statusMessage = "ARRAY POLAR | Ángulo total (grados, 360=completo):";
+                }
+                // Sub-paso 3c: Ángulo total y ejecutar
+                else if (statusMessage.find("Ángulo total") != std::string::npos && isScalar) {
+                    tempArrayAngle = scalarValue;
+                    saveState();
+                    int created = 0;
+                    double angleStep = (tempArrayCount > 1) ? (tempArrayAngle / (tempArrayCount - 1)) : 0.0;
+                    for (int i = 1; i < tempArrayCount; ++i) {
+                        double ang = i * angleStep;
+                        for (Entity* e : tempArrayEntities) {
+                            auto copy = e->clone();
+                            copy->rotate(tempArrayCenter, ang);
+                            copy->layerName = doc.currentLayerName;
+                            doc.addEntity(std::move(copy));
+                            created++;
+                        }
+                    }
+                    statusMessage = "ARRAY | Creadas " + std::to_string(created) + " copias polares.";
+                    tempArrayEntities.clear();
+                    currentMode = Mode::IDLE;
+                }
+                else {
+                    statusMessage = "ARRAY | Introduce un valor numérico válido.";
+                }
+            }
+        }
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -1691,6 +1841,7 @@ namespace cad {
             oss << "  SI, SIMETRIA  - Crear simetría (reflejo)\n";
             oss << "  TR, RECORTAR  - Recortar entidades\n";
             oss << "  EX, ALARGAR   - Alargar entidades\n\n";
+            oss << "  AR, ARRAY     - Crear matriz de copias (Rectangular/Polar)\n";
             
             oss << "[ EDICION Y SISTEMA ]\n";
             oss << "  Z, BORRAR     - Borrar todo el dibujo\n";
@@ -1818,7 +1969,7 @@ namespace cad {
             "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", 
-            "DESPLAZAR", "CHAFLAN", "CHAMFER", "DESPLAZAR",
+            "DESPLAZAR", "CHAFLAN", "CHAMFER", "DESPLAZAR", "ARRAY", "MATRIZ",
             // Edición y Sistema
             "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)

@@ -25,10 +25,13 @@ namespace cad {
         MEASURE_DIST,
         TRIM,
         EXTEND,
-        UNDO,
+        UNDO, ARRAY,
         REDO, OFFSET, FILLET, CHAMFER,
         GRIP_EDIT // << grips editables
     };
+
+    // Nuevo enum auxiliar para el tipo de array:
+    enum class ArrayType { RECTANGULAR, POLAR };
 
     class Engine {
     public:
@@ -121,6 +124,17 @@ namespace cad {
         double tempChamferDist2 = 0.0;
         Line* tempChamferLine1 = nullptr;
         Line* tempChamferLine2 = nullptr;
+        // Nuevos miembros de Engine:
+        std::vector<Entity*> tempArrayEntities;
+        int tempArrayRows = 1;
+        int tempArrayCols = 1;
+        double tempArrayRowSpacing = 0.0;
+        double tempArrayColSpacing = 0.0;
+        int tempArrayCount = 1;
+        double tempArrayAngle = 360.0;
+        Point2D tempArrayCenter = {0.0, 0.0};
+        Point2D tempArrayBasePoint = {0.0, 0.0};
+        ArrayType tempArrayType = ArrayType::RECTANGULAR;
         
     private:
         void executeCommand(std::string_view cmd);

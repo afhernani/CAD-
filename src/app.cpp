@@ -286,11 +286,22 @@ namespace cad {
                         engine_.statusMessage = "Ayuda mostrada";
                     }
                 }
+
                 // B) Clic en el Canvas
                 else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
                     Point2D worldPoint = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+                    // >>> AÑADIR ESTO PRIMERO: Si estamos pidiendo el centro del array polar <<<
+                    if (engine_.currentMode == Mode::ARRAY &&
+                        (engine_.statusMessage.find("Punto base") != std::string::npos ||
+                            engine_.statusMessage.find("punto base") != std::string::npos )) {
+                            std::ostringstream ossCoord;
+                            ossCoord << std::fixed << std::setprecision(6);
+                            ossCoord << worldPoint.x << "," << worldPoint.y;
+                            engine_.processInput(ossCoord.str());
+                            inputBuffer_.clear();
+                            return;
+                        }
                     double tolerance = 5.0 / viewScale_;
-
                     if (engine_.currentMode == Mode::GRIP_EDIT) {
                         // Confirmar edición de grip
                         engine_.currentMode = Mode::IDLE;
@@ -330,6 +341,28 @@ namespace cad {
                     }
                     // ... (el resto de modos como DRAW_LINE etc. los dejas igual que los tenías) ...
                     else if (engine_.currentMode != Mode::IDLE) {
+                        // >>> AÑADIR ESTO PARA ARRAY <<<
+                        if (engine_.currentMode == Mode::ARRAY && 
+                        (engine_.statusMessage.find("Selecciona") != std::string::npos || 
+                            engine_.statusMessage.find("selecciona") != std::string::npos)) {
+                            
+                            double minDist = 10.0 / viewScale_;
+                            Entity* found = nullptr;
+                            for (auto& entity : engine_.doc.entities) {
+                                if (entity->isNear(worldPoint, minDist)) {
+                                    found = entity.get();
+                                    break;
+                                }
+                            }
+                            if (found) {
+                                if (std::find(engine_.tempArrayEntities.begin(), engine_.tempArrayEntities.end(), found) == engine_.tempArrayEntities.end()) {
+                                    engine_.tempArrayEntities.push_back(found);
+                                }
+                                engine_.statusMessage = "ARRAY | " + std::to_string(engine_.tempArrayEntities.size()) + " entidades. Selecciona más o pulsa Enter:";
+                            }
+                            return; // Salir para no enviar coordenadas al engine aún
+                        }
+                        // ... (el resto de tu código existente para otros modos) ...
                         Point2D targetPoint = isSnapped_ ? snappedPoint_ : worldPoint;
                         std::ostringstream ossCoord;
                         ossCoord << std::fixed << std::setprecision(6);
@@ -425,7 +458,8 @@ namespace cad {
                             engine_.currentMode == Mode::FILLET ||
                             engine_.currentMode == Mode::CHAMFER ||
                             engine_.currentMode == Mode::TRIM || 
-                            engine_.currentMode == Mode::EXTEND) {
+                            engine_.currentMode == Mode::EXTEND ||
+                            engine_.currentMode == Mode::ARRAY) {
                             engine_.processInput("");  // Enter vacío para terminar
                         }
                         // Para otros modos (LÍNEA, CÍRCULO, etc.), NO hacer nada con Enter vacío
@@ -1859,6 +1893,50 @@ namespace cad {
                         window_.draw(chamferLine, 2, sf::Lines);
                     }
                 }
+            }
+        }
+        // --- ARRAY (feedback visual de las copias) ---
+        else if (engine_.currentMode == Mode::ARRAY && !engine_.tempArrayEntities.empty()) {
+            sf::Color ghostColor(0, 200, 255, 120); // Cian semitransparente
+            auto w2s_local = [this](double x, double y) { return worldToScreen(x, y); };
+
+            // Resaltar las entidades base seleccionadas
+            for (Entity* e : engine_.tempArrayEntities) {
+                e->draw(window_, w2s_local, ghostColor, viewScale_);
+            }
+
+            // Si ya tenemos parámetros suficientes, mostrar las copias fantasma
+            if (engine_.tempArrayType == cad::ArrayType::RECTANGULAR &&
+                engine_.tempArrayRows > 0 && engine_.tempArrayCols > 0 &&
+                engine_.tempArrayRowSpacing != 0.0 && engine_.tempArrayColSpacing != 0.0) {
+                // Ya se ha completado todo, no hace falta preview (se crea al instante)
+            }
+            else if (engine_.tempArrayType == cad::ArrayType::POLAR &&
+                    engine_.tempArrayCount > 1 && engine_.tempArrayAngle != 0.0) {
+                // Si ya tenemos centro, mostrar preview de las copias rotadas
+                Point2D center = engine_.tempArrayCenter;
+                // Si aún no hay centro definido, usar el ratón como centro provisional
+                if (engine_.statusMessage.find("Centro") != std::string::npos) {
+                    center = {currentMouseWorldPos_.x, currentMouseWorldPos_.y};
+                }
+                double angleStep = (engine_.tempArrayCount > 1) ?
+                                (engine_.tempArrayAngle / (engine_.tempArrayCount - 1)) : 0.0;
+                for (int i = 1; i < engine_.tempArrayCount; ++i) {
+                    double ang = i * angleStep;
+                    for (Entity* e : engine_.tempArrayEntities) {
+                        auto copy = e->clone();
+                        copy->rotate(center, ang);
+                        copy->draw(window_, w2s_local, ghostColor, viewScale_);
+                    }
+                }
+                // Dibujar marcador del centro
+                sf::CircleShape centerMark(5.0f);
+                centerMark.setFillColor(sf::Color::Transparent);
+                centerMark.setOutlineColor(sf::Color::Cyan);
+                centerMark.setOutlineThickness(2.0f);
+                centerMark.setOrigin(5.0f, 5.0f);
+                centerMark.setPosition(worldToScreen(center.x, center.y));
+                window_.draw(centerMark);
             }
         }
     }
