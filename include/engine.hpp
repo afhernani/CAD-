@@ -25,7 +25,7 @@ namespace cad {
         MEASURE_DIST,
         TRIM,
         EXTEND,
-        UNDO, ARRAY,
+        UNDO, ARRAY, STRETCH,
         REDO, OFFSET, FILLET, CHAMFER,
         GRIP_EDIT // << grips editables
     };
@@ -136,6 +136,12 @@ namespace cad {
         Point2D tempArrayCenter = {0.0, 0.0};
         Point2D tempArrayBasePoint = {0.0, 0.0};
         ArrayType tempArrayType = ArrayType::RECTANGULAR;
+        // Variables para STRETCH
+        std::vector<Entity*> stretchSelectedEntities;
+        Point2D stretchBasePoint = {0.0, 0.0};
+        Point2D stretchWindowP1 = {0.0, 0.0};  // Esquina 1 de la ventana de cruce
+        Point2D stretchWindowP2 = {0.0, 0.0};  // Esquina 2 de la ventana de cruce
+        std::vector<Point2D> stretchVerticesToMove;  // Vértices que están dentro de la ventana
         
     private:
         void executeCommand(std::string_view cmd);

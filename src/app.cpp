@@ -365,6 +365,55 @@ namespace cad {
                     }
                     // ... (el resto de modos como DRAW_LINE etc. los dejas igual que los tenías) ...
                     else if (engine_.currentMode != Mode::IDLE) {
+                        // >>> AÑADIR ESTO PARA STRETCH <<<
+                        if (engine_.currentMode == Mode::STRETCH) {
+                            // Si estamos en modo STRETCH, necesitamos detectar clic y arrastre
+                            // Por simplicidad, usamos clic simple para definir la ventana
+                            if (engine_.statusMessage.find("ventana") != std::string::npos ||
+                                engine_.statusMessage.find("Ventana") != std::string::npos) {
+                                
+                                // Primer clic: esquina 1 de la ventana
+                                if (engine_.stretchWindowP1.x == 0.0 && engine_.stretchWindowP1.y == 0.0) {
+                                    engine_.stretchWindowP1 = worldPoint;
+                                    engine_.statusMessage = "STRETCH | Esquina opuesta de la ventana:";
+                                }
+                                // Segundo clic: esquina 2 de la ventana
+                                else {
+                                    engine_.stretchWindowP2 = worldPoint;
+                                    
+                                    // Calcular límites de la ventana
+                                    double minX = std::min(engine_.stretchWindowP1.x, engine_.stretchWindowP2.x);
+                                    double maxX = std::max(engine_.stretchWindowP1.x, engine_.stretchWindowP2.x);
+                                    double minY = std::min(engine_.stretchWindowP1.y, engine_.stretchWindowP2.y);
+                                    double maxY = std::max(engine_.stretchWindowP1.y, engine_.stretchWindowP2.y);
+                                    
+                                    // Buscar entidades con vértices dentro de la ventana
+                                    for (auto& entity : engine_.doc.entities) {
+                                        auto grips = entity->getGripPoints();
+                                        bool hasVertexInside = false;
+                                        for (const auto& grip : grips) {
+                                            if (grip.x >= minX && grip.x <= maxX &&
+                                                grip.y >= minY && grip.y <= maxY) {
+                                                hasVertexInside = true;
+                                                break;
+                                            }
+                                        }
+                                        if (hasVertexInside) {
+                                            engine_.stretchSelectedEntities.push_back(entity.get());
+                                        }
+                                    }
+                                    
+                                    if (!engine_.stretchSelectedEntities.empty()) {
+                                        engine_.statusMessage = "STRETCH | Punto base:";
+                                    } else {
+                                        engine_.statusMessage = "STRETCH | No hay entidades en la ventana. Intenta de nuevo:";
+                                        engine_.stretchWindowP1 = {0.0, 0.0};
+                                        engine_.stretchWindowP2 = {0.0, 0.0};
+                                    }
+                                }
+                                return;
+                            }
+                        }
                         // >>> AÑADIR ESTO PARA ARRAY <<<
                         if (engine_.currentMode == Mode::ARRAY && 
                         (engine_.statusMessage.find("Selecciona") != std::string::npos || 
@@ -1986,6 +2035,29 @@ namespace cad {
                 centerMark.setPosition(worldToScreen(center.x, center.y));
                 window_.draw(centerMark);
             }
+        }
+        // --- STRETCH (Ventana de cruce) ---
+        else if (engine_.currentMode == Mode::STRETCH &&
+                engine_.statusMessage.find("Esquina opuesta") != std::string::npos) {
+            // Dibujar rectángulo de la ventana de cruce
+            sf::Color windowColor(0, 255, 0, 100);  // Verde semitransparente
+            sf::RectangleShape windowRect;
+            
+            double x1 = engine_.stretchWindowP1.x;
+            double y1 = engine_.stretchWindowP1.y;
+            double x2 = currentMouseWorldPos_.x;
+            double y2 = currentMouseWorldPos_.y;
+            
+            double width = std::abs(x2 - x1) * viewScale_;
+            double height = std::abs(y2 - y1) * viewScale_;
+            
+            windowRect.setSize({static_cast<float>(width), static_cast<float>(height)});
+            windowRect.setFillColor(windowColor);
+            windowRect.setOutlineColor(sf::Color(0, 255, 0, 200));
+            windowRect.setOutlineThickness(1.0f);
+            windowRect.setPosition(worldToScreen(std::min(x1, x2), std::max(y1, y2)));
+            
+            window_.draw(windowRect);
         }
     }
 

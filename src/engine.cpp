@@ -31,7 +31,12 @@ namespace cad {
         tempArrayRowSpacing = 0.0; tempArrayColSpacing = 0.0;
         tempArrayCount = 1; tempArrayAngle = 360.0;
         tempArrayCenter = {0.0, 0.0};
-        
+        // Reset variables for Stretch
+        stretchSelectedEntities.clear();
+        stretchVerticesToMove.clear();
+        stretchWindowP1 = {0.0, 0.0};
+        stretchWindowP2 = {0.0, 0.0};
+
         statusMessage = "Comando cancelado.";
     }
 
@@ -284,6 +289,12 @@ namespace cad {
             tempArrayCount = 1; tempArrayAngle = 360.0;
             tempArrayCenter = {0.0, 0.0};
             statusMessage = "ARRAY | Selecciona entidades (clic) y pulsa Enter para continuar:";
+        }
+        else if (upperCmd == "S" || upperCmd == "STRETCH" || upperCmd == "ESTIRAR") {
+            currentMode = Mode::STRETCH;
+            stretchSelectedEntities.clear();
+            stretchVerticesToMove.clear();
+            statusMessage = "STRETCH | Selecciona entidades con ventana de cruce (clic y arrastra):";
         }
         else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
             toggleGrid();
@@ -1695,6 +1706,48 @@ namespace cad {
                 }
             }
         }
+        // --- STRETCH (ESTIRAR) ---
+        else if (currentMode == Mode::STRETCH) {
+            // PASO 1: Punto base
+            if (statusMessage.find("base") != std::string::npos ||
+                statusMessage.find("Base") != std::string::npos) {
+                stretchBasePoint = lastPoint;
+                statusMessage = "STRETCH | Punto destino:";
+            }
+            // PASO 2: Punto destino y ejecutar
+            else if (statusMessage.find("destino") != std::string::npos ||
+                    statusMessage.find("Destino") != std::string::npos) {
+                Point2D destPoint = lastPoint;
+                double dx = destPoint.x - stretchBasePoint.x;
+                double dy = destPoint.y - stretchBasePoint.y;
+                
+                saveState();
+                
+                // Mover solo los vértices que están dentro de la ventana de cruce
+                for (Entity* e : stretchSelectedEntities) {
+                    auto grips = e->getGripPoints();
+                    for (size_t i = 0; i < grips.size(); ++i) {
+                        // Verificar si este vértice está dentro de la ventana
+                        double minX = std::min(stretchWindowP1.x, stretchWindowP2.x);
+                        double maxX = std::max(stretchWindowP1.x, stretchWindowP2.x);
+                        double minY = std::min(stretchWindowP1.y, stretchWindowP2.y);
+                        double maxY = std::max(stretchWindowP1.y, stretchWindowP2.y);
+                        
+                        if (grips[i].x >= minX && grips[i].x <= maxX &&
+                            grips[i].y >= minY && grips[i].y <= maxY) {
+                            // Este vértice se mueve
+                            e->moveGrip(i, {grips[i].x + dx, grips[i].y + dy});
+                        }
+                    }
+                }
+                
+                statusMessage = "STRETCH | Entidades estiradas.";
+                stretchSelectedEntities.clear();
+                stretchVerticesToMove.clear();
+                currentMode = Mode::IDLE;
+            }
+        }
+
     }
 
     std::optional<Point2D> Engine::parseCoordinate(std::string_view str) {
@@ -1974,7 +2027,7 @@ namespace cad {
             "LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
             // Modificación
             "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", 
-            "DESPLAZAR", "CHAFLAN", "CHAMFER", "DESPLAZAR", "ARRAY", "MATRIZ",
+            "DESPLAZAR", "CHAFLAN", "CHAMFER", "DESPLAZAR", "ARRAY", "MATRIZ", "STRETCH", "ESTIRAR",
             // Edición y Sistema
             "BORRAR", "CAPA", "MEDIR", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "EXPORTAR", "GRID", "REJILLA",
             // Futuras implementaciones (para la ayuda y autocompletado)
