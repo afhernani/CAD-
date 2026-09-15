@@ -527,7 +527,8 @@ namespace cad {
                     }
                     else {
                         // Buffer vacío: solo enviar si estamos en un modo que termina con Enter
-                        if (engine_.currentMode == Mode::OFFSET || 
+                        if (engine_.currentMode == Mode::DRAW_POLYLINE ||
+                            engine_.currentMode == Mode::OFFSET || 
                             engine_.currentMode == Mode::FILLET ||
                             engine_.currentMode == Mode::CHAMFER ||
                             engine_.currentMode == Mode::TRIM || 
