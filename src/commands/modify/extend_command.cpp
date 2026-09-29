@@ -9,6 +9,10 @@
 namespace cad {
 
     ExtendCommand::ExtendCommand() {
+        step_ = Step::SelectingBoundaries;
+        selectingBoundaries_ = true;
+        finished_ = false;
+        boundaries_.clear();
         statusMessage_ = "EXTEND | Seleccionar bordes (Enter para terminar):";
     }
 

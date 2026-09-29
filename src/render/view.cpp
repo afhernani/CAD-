@@ -2,34 +2,37 @@
 
 namespace cad {
 
-View::View() = default;
+    View::View() = default;
 
-sf::Vector2f View::worldToScreen(double wx, double wy, float canvasHeight) const {
-    float sx = (wx + panX_) * scale_;
-    float sy = (canvasHeight - (wy + panY_) * scale_);
-    return {sx, sy};
-}
+    sf::Vector2f View::worldToScreen(double wx, double wy, float canvasHeight) const {
+        float sx = (wx + panX_) * scale_;
+        float sy = (canvasHeight - (wy + panY_) * scale_);
+        return {sx, sy};
+    }
 
-Point2D View::screenToWorld(float sx, float sy, float canvasHeight) const {
-    float wx = (sx / scale_) - panX_;
-    float wy = ((canvasHeight - sy) / scale_) - panY_;
-    return {wx, wy};
-}
+    Point2D View::screenToWorld(float sx, float sy, float canvasHeight) const {
+        float wx = (sx / scale_) - panX_;
+        float wy = ((canvasHeight - sy) / scale_) - panY_;
+        return {wx, wy};
+    }
 
-void View::zoom(float factor, const sf::Vector2f& mouseScreenPos, float canvasHeight) {
-    Point2D worldBefore = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
-    scale_ *= factor;
-    if (scale_ < 0.01f) scale_ = 0.01f;
-    if (scale_ > 100.0f) scale_ = 100.0f;
-    
-    Point2D worldAfter = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
-    panX_ += (worldBefore.x - worldAfter.x);
-    panY_ += (worldBefore.y - worldAfter.y);
-}
+    void View::zoom(float factor, const sf::Vector2f& mouseScreenPos, float canvasHeight) {
+        // 1. Calcular el punto del mundo bajo el cursor ANTES del zoom
+        Point2D worldBefore = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
 
-void View::pan(const sf::Vector2f& deltaScreen) {
-    panX_ += (deltaScreen.x / scale_);
-    panY_ -= (deltaScreen.y / scale_); // Y invertida en SFML
-}
+        // 2. Aplicar el nuevo scale
+        scale_ *= factor;
+        if (scale_ < 0.01f) scale_ = 0.01f;
+        if (scale_ > 100.0f) scale_ = 100.0f;
+
+        // 3. Recalcular el pan para que worldBefore siga bajo el cursor
+        panX_ = (mouseScreenPos.x / scale_) - worldBefore.x;
+        panY_ = ((canvasHeight - mouseScreenPos.y) / scale_) - worldBefore.y;
+    }
+
+    void View::pan(const sf::Vector2f& deltaScreen) {
+        panX_ += (deltaScreen.x / scale_);
+        panY_ -= (deltaScreen.y / scale_); // Y invertida en SFML
+    }
 
 } // namespace cad

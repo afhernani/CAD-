@@ -9,6 +9,11 @@
 namespace cad {
 
 TrimCommand::TrimCommand() {
+    // --- INICIALIZACIÓN EXPLÍCITA ---
+    step_ = Step::SelectingBoundaries;
+    selectingBoundaries_ = true;
+    finished_ = false;
+    boundaries_.clear();
     statusMessage_ = "TRIM | Seleccionar cortes (Enter para terminar):";
 }
 
