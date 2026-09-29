@@ -1,0 +1,35 @@
+#include "cad/render/view.hpp"
+
+namespace cad {
+
+View::View() = default;
+
+sf::Vector2f View::worldToScreen(double wx, double wy, float canvasHeight) const {
+    float sx = (wx + panX_) * scale_;
+    float sy = (canvasHeight - (wy + panY_) * scale_);
+    return {sx, sy};
+}
+
+Point2D View::screenToWorld(float sx, float sy, float canvasHeight) const {
+    float wx = (sx / scale_) - panX_;
+    float wy = ((canvasHeight - sy) / scale_) - panY_;
+    return {wx, wy};
+}
+
+void View::zoom(float factor, const sf::Vector2f& mouseScreenPos, float canvasHeight) {
+    Point2D worldBefore = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
+    scale_ *= factor;
+    if (scale_ < 0.01f) scale_ = 0.01f;
+    if (scale_ > 100.0f) scale_ = 100.0f;
+    
+    Point2D worldAfter = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
+    panX_ += (worldBefore.x - worldAfter.x);
+    panY_ += (worldBefore.y - worldAfter.y);
+}
+
+void View::pan(const sf::Vector2f& deltaScreen) {
+    panX_ += (deltaScreen.x / scale_);
+    panY_ -= (deltaScreen.y / scale_); // Y invertida en SFML
+}
+
+} // namespace cad

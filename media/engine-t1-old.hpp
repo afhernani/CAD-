@@ -1,9 +1,41 @@
 #pragma once
-#include "document.hpp"
+#include "cad/core/document/document.hpp"
+#include "command.hpp"
+#include "draw/line_command.hpp"
+#include "draw/circle_command.hpp"
+#include "draw/arc_command.hpp"
+#include "draw/polyline_command.hpp"
+#include "draw/polygon_command.hpp"
+#include "draw/ellipse_command.hpp"
+#include "modify/move_command.hpp"
+#include "modify/copy_command.hpp"
+#include "modify/rotate_command.hpp"
+#include "modify/scale_command.hpp"
+#include "modify/mirror_command.hpp"
+#include "modify/offset_command.hpp"
+#include "modify/fillet_command.hpp"
+#include "modify/chamfer_command.hpp"
+#include "modify/trim_command.hpp"
+#include "modify/extend_command.hpp"
+#include "modify/measure_command.hpp"
+#include "modify/array_command.hpp"
+#include "modify/stretch_command.hpp"
+#include "block/block_create_command.hpp"
+#include "block/block_insert_command.hpp"
+#include "../core/geometry/entities/line.hpp"
+#include "../core/geometry/entities/circle.hpp"
+#include "../core/geometry/entities/arc.hpp"
+#include "../core/geometry/entities/polyline.hpp"
+#include "../core/geometry/entities/polygon.hpp"
+#include "../core/geometry/entities/ellipse.hpp"
+#include "../core/geometry/entities/dimension.hpp"
+#include "../core/geometry/entities/block_insert.hpp"
+#include "../core/geometry/intersections.hpp" 
 #include <string>
 #include <optional>    // para manejar valores que pueden no existir
 #include <string_view> // c++17/20 para vistars de cadenas sin copia
 #include <vector>
+#include <memory>
 
 namespace cad {
 
@@ -27,6 +59,7 @@ namespace cad {
         EXTEND,
         UNDO, ARRAY, STRETCH,
         REDO, OFFSET, FILLET, CHAMFER,
+        BLOCK_CREATE, BLOCK_INSERT, 
         GRIP_EDIT // << grips editables
     };
 
@@ -39,23 +72,13 @@ namespace cad {
         Mode currentMode = Mode::IDLE;
         std::string statusMessage = "Listo";
         
+        // Comando activo
+        std::unique_ptr<ICommand> activeCommand_;
+        
         // Puntos temporales mientras se dibuja
-        Point2D tempPoint1;
-        Point2D tempPoint2;
         Point2D lastPoint; // Guarda el último punto para cálculos relativos
         // Copia sincronizada desde App para cálculos de tolerancia
         double viewScale = 1.0;  
-
-        // Estado específico para Polilínea
-        std::vector<Point2D> tempPolylinePoints;
-
-        // Estado específico para Polígono
-        Point2D tempPolygonCenter;
-        int tempPolygonSides = 0;
-
-        // Estado específico para Arco
-        double tempArcRadius = 0.0;
-        double tempArcStartAngle = 0.0;
 
         // Procesa el texto que el usuario escribe y pulsa Enter
         void processInput(std::string_view input);
@@ -73,28 +96,11 @@ namespace cad {
         void selectEntity(const Point2D& clickPoint, double tolerance);
         void deleteSelected();
 
-        Point2D moveBasePoint; // punto para mover
-        // COPIAR Y ROTAR
-        Point2D copyBasePoint;
-        Point2D rotateCenter;
-        double rotateAngle = 0.0;
-        // ESCALAR
-        Point2D scaleBasePoint;
-        double scaleFactor = 1.0;
-        // MIRROR
-        Point2D mirrorAxisP1;
-        // EXTEND / TRIM
-        std::vector<Entity*> trimBoundaries;
-        std::vector<Entity*> extendBoundaries;
-        bool trimSelectingBoundaries = true;
-        bool extendSelectingBoundaries = true;
         // Variables para Grip Edit
         Entity* activeGripEntity = nullptr;
         int activeGripIndex = -1;
         std::unique_ptr<Entity> gripBackup; // Para restaurar si se pulsa ESC
 
-        // Variables temporales para elipse
-        double tempEllipseMajorRadius = 0.0;
         // Devuelve la lista completa de comandos (actuales y futuros)
         std::vector<std::string> getAllCommands() const;
 
@@ -112,36 +118,6 @@ namespace cad {
         Point2D tempDimP1, tempDimP2, tempDimP3, tempDimP2_line2; // Puntos temporales para cota angular
         double tempDimAngle = 0.0; // Angulo calculado para cota angular.
         DimType currentDimType = DimType::HORIZONTAL;
-        // Variables para OFFSET
-        double tempOffsetDistance = 0.0;
-        Point2D tempOffsetP1;
-        Entity* tempOffsetEntity = nullptr;
-        // Variables para FILLET
-        double tempFilletRadius = 0.0;
-        Line* tempFilletLine1 = nullptr;
-        Line* tempFilletLine2 = nullptr;
-        // Variables para CHAMFER
-        double tempChamferDist1 = 0.0;
-        double tempChamferDist2 = 0.0;
-        Line* tempChamferLine1 = nullptr;
-        Line* tempChamferLine2 = nullptr;
-        // Nuevos miembros de Engine:
-        std::vector<Entity*> tempArrayEntities;
-        int tempArrayRows = 1;
-        int tempArrayCols = 1;
-        double tempArrayRowSpacing = 0.0;
-        double tempArrayColSpacing = 0.0;
-        int tempArrayCount = 1;
-        double tempArrayAngle = 360.0;
-        Point2D tempArrayCenter = {0.0, 0.0};
-        Point2D tempArrayBasePoint = {0.0, 0.0};
-        ArrayType tempArrayType = ArrayType::RECTANGULAR;
-        // Variables para STRETCH
-        std::vector<Entity*> stretchSelectedEntities;
-        Point2D stretchBasePoint = {0.0, 0.0};
-        Point2D stretchWindowP1 = {0.0, 0.0};  // Esquina 1 de la ventana de cruce
-        Point2D stretchWindowP2 = {0.0, 0.0};  // Esquina 2 de la ventana de cruce
-        std::vector<Point2D> stretchVerticesToMove;  // Vértices que están dentro de la ventana
         
     private:
         void executeCommand(std::string_view cmd);
@@ -153,5 +129,5 @@ namespace cad {
         std::string getHelpText(std::string_view topic);
         [[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
     };
-
+    
 } // namespace cad

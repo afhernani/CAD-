@@ -1,6 +1,13 @@
 #pragma once
-#include "geometry.hpp"
+// #include "cad/core/geometry/geometry.hpp"
 #include "layer.hpp"
+#include "block.hpp"
+#include "cad/core/geometry/entity.hpp"
+#include "../geometry/entities/block_insert.hpp" 
+//#include "cad/core/geometry/entities/line.hpp"
+//#include "cad/core/geometry/entities/circle.hpp"
+// ... etc, todas las entidades que uses
+// #include "cad/core/document/layer.hpp"
 #include <vector>
 #include <map>
 #include <memory>
@@ -37,6 +44,10 @@ namespace cad {
         // ... (lo que ya tienes) ...
         void saveToFile(const std::string& filename);
         void loadFromFile(const std::string& filename);
+        // DECLARACIONES PARA BLOCKS <<<
+        std::vector<std::unique_ptr<BlockDefinition>> blockDefinitions;
+        BlockDefinition* addBlockDefinition(std::unique_ptr<BlockDefinition> def);
+        BlockDefinition* findBlockDefinition(const std::string& name);
         
     };
 

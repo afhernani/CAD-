@@ -1,0 +1,92 @@
+#include "cad/core/geometry/geometry.hpp"
+#include "cad/core/math/math.hpp" 
+#include <cmath>
+#include <numbers>
+#include <algorithm>
+
+namespace cad {
+
+    // Función factoría para reconstruir entidades desde JSON
+    std::unique_ptr<Entity> Entity::fromJson(const nlohmann::json& j) {
+        std::string type = j.value("type", "");
+        std::string layer = j.value("layer", "0");
+
+        if (type == "Line") {
+            auto e = std::make_unique<Line>();
+            e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
+            e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
+            e->layerName = layer;
+            return e;
+        }
+        else if (type == "Circle") {
+            auto e = std::make_unique<Circle>();
+            e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
+            e->radius = j["radius"].get<double>();
+            e->layerName = layer;
+            return e;
+        }
+        else if (type == "Arc") {
+            auto e = std::make_unique<Arc>();
+            e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
+            e->radius = j["radius"].get<double>();
+            e->startAngle = j["startAngle"].get<double>();
+            e->endAngle = j["endAngle"].get<double>();
+            e->layerName = layer;
+            return e;
+        }
+        else if (type == "Polyline") {
+            auto e = std::make_unique<Polyline>();
+            for (const auto& pt : j["points"]) {
+                e->points.push_back({pt["x"].get<double>(), pt["y"].get<double>()});
+            }
+            e->layerName = layer;
+            return e;
+        }
+        else if (type == "Polygon") {
+            auto e = std::make_unique<Polygon>();
+            e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
+            e->sides = j["sides"].get<int>();
+            e->radius = j["radius"].get<double>();
+            e->rotationOffset = j.value("rotationOffset", 0.0);
+            e->layerName = layer;
+            return e;
+        }
+        else if (type == "Ellipse") {
+            auto e = std::make_unique<Ellipse>();
+            e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
+            e->majorRadius = j["majorRadius"].get<double>();
+            e->minorRadius = j["minorRadius"].get<double>();
+            e->rotationAngle = j.value("rotationAngle", 0.0);
+            e->layerName = layer;
+            return e;
+        }
+        // >>> COTA <<<
+        else if (type == "Dimension") {
+            auto e = std::make_unique<Dimension>();
+            e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
+            e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
+            e->location = {j["location"]["x"].get<double>(), j["location"]["y"].get<double>()};
+            e->value = j["value"].get<double>();
+            e->isHorizontal = j.value("isHorizontal", false);
+            e->layerName = layer;
+            // Cargar tipo de cota
+            e->type = static_cast<DimType>(j.value("dimType", 0));
+            e->isAligned = j.value("isAligned", false);
+            if (j.contains("p3")) {
+                e->p3 = {j["p3"]["x"].get<double>(), j["p3"]["y"].get<double>()};
+            }
+            return e;
+        }
+        else if (type == "BlockInsert") {
+            auto e = std::make_unique<BlockInsert>();
+            e->insertPoint = {j["insertPoint"]["x"].get<double>(), j["insertPoint"]["y"].get<double>()};
+            e->layerName = layer;
+            e->blockScale = j.value("scale", 1.0);
+            e->blockRotation = j.value("rotation", 0.0);
+            //La definición se resuelve después de cargar todo (ver Corrección 6)
+            return e;
+        }
+        return nullptr; // Tipo desconocido
+    }
+ 
+} // namespace cad
