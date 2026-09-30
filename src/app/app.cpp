@@ -8,6 +8,7 @@
 #include "cad/core/geometry/entities/dimension.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <chrono>
@@ -50,25 +51,63 @@ namespace cad {
 
     // --- Constructor ---
     App::App() : ui_(font_) {
+        std::cout << "Iniciando aplicación..." << std::endl;
+
+        // 0. Detectar directorio del ejecutable
+        std::filesystem::path exePath = std::filesystem::current_path();
+        std::filesystem::path assetsPath;
+        
+        // Si estamos en build/, los assets están en ../assets/
+        // Si estamos en raíz/, los assets están en assets/
+        if (exePath.filename().string() == "build") {
+            assetsPath = exePath.parent_path() / "assets";
+        } else {
+            assetsPath = exePath / "assets";
+        }
+        
+        std::string fontPath = (assetsPath / "arial.ttf").string();
+        std::cout << "[App] Buscando fuente en: " << fontPath << std::endl;
+
+        // 1. Cargar configuración (con fallback)
+        bool configLoaded = config_.loadFromFile("config.json");
+        if (!configLoaded) {
+            configLoaded = config_.loadFromFile("../config.json");
+        }
+
+        // 2. Configurar y crear la ventana
         sf::ContextSettings settings;
         settings.majorVersion = 2;
         settings.minorVersion = 1;
         settings.antialiasingLevel = 0;
-        std::cout << "Creando ventana..." << std::endl;
-        window_.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "CAD+ v0.5", sf::Style::Close | sf::Style::Resize);
+
+        std::cout << "Creando ventana: " << config_.window.width << "x" << config_.window.height << std::endl;
+        window_.create(
+            sf::VideoMode(config_.window.width, config_.window.height),
+            config_.window.title,
+            sf::Style::Close | sf::Style::Resize,
+            settings
+        );
+        
         window_.setPosition(sf::Vector2i(100, 100));
         window_.setVerticalSyncEnabled(false);
 
-        if (!font_.loadFromFile("assets/arial.ttf") && !font_.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
-            std::cerr << "Error: No se pudo cargar la fuente." << std::endl;
+        // 3. Cargar fuente (usando la ruta calculada)
+        if (!font_.loadFromFile(fontPath)) {
+            // Fallback a ruta absoluta de sistema (solo Linux)
+            if (!font_.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+                std::cerr << "Error crítico: No se pudo cargar la fuente desde: " << fontPath << std::endl;
+            }
+        } else {
+            std::cout << "[App] Fuente cargada correctamente." << std::endl;
         }
 
+        // 4. Cargar cursores
         const sf::Uint8 transparentPixels[1024] = {0};
         bool transparentOk = transparentCursor_.loadFromPixels(transparentPixels, {16, 16}, {0, 0});
         bool arrowOk = arrowCursor_.loadFromSystem(sf::Cursor::Arrow);
         cursorsLoaded_ = transparentOk && arrowOk;
 
-        // Inicializar View
+        // 5. Inicializar estado
         view_.setScale(1.0f);
         view_.setPan({50.0f, 50.0f});
         engine_.viewScale = 1.0;

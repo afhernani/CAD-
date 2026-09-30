@@ -1,0 +1,24 @@
+{
+  "window": {
+    "width": 1280,
+    "height": 720,
+    "title": "CAD+ v0.5"
+  },
+  "ui": {
+    "menu_height": 30,
+    "toolbar_height": 60,
+    "command_height": 90,
+    "status_height": 25
+  },
+  "snap": {
+    "pixel_tolerance": 10.0,
+    "enabled": true
+  },
+  "grid": {
+    "enabled": false,
+    "base_size": 10.0
+  },
+  "paths": {
+    "font": "assets/arial.ttf"
+  }
+}

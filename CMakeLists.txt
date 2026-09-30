@@ -23,3 +23,18 @@ target_link_libraries(CAD+ PRIVATE sfml-graphics sfml-window sfml-system)
 if(WIN32)
     set_target_properties(CAD+  PROPERTIES WIN32_EXECUTABLE FALSE)
 endif()
+
+# ==============================================================================
+# MEJORA 2: Copiar recursos automáticamente al compilar
+# Esto soluciona el error de "No se pudo cargar la fuente" o "config.json no encontrado"
+# cuando ejecutas el .exe desde la carpeta build/.
+# ==============================================================================
+add_custom_command(TARGET CAD+ POST_BUILD
+    # 1. Copiar la carpeta de assets
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:CAD+>/assets
+    
+    # 2. Copiar el archivo de configuración (si existe)
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/config.json $<TARGET_FILE_DIR:CAD+>/config.json
+)

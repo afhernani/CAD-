@@ -4,6 +4,7 @@
 #include "cad/render/view.hpp"
 #include "cad/render/renderer.hpp"
 #include "cad/render/ui/ui_manager.hpp"
+#include "cad/core/config/config.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -19,6 +20,7 @@ namespace cad {
     private:
         sf::RenderWindow window_;
         sf::Font font_;
+        Config config_; 
 
         // Los 4 pilares de la aplicación
         Engine engine_;
