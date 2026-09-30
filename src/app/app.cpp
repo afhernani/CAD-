@@ -8,6 +8,7 @@
 #include "cad/core/geometry/entities/dimension.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
+#include "cad/persistence/file_manager.hpp"
 #include <filesystem>
 #include <iostream>
 #include <sstream>

@@ -13,11 +13,23 @@ namespace {
 void Polyline::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
                    const sf::Color& color, float viewScale) const {
     if (points.size() < 2) return;
-    sf::VertexArray va(sf::LineStrip, points.size());
+
+    // Si está cerrada, necesitamos un vértice extra en el LineStrip para volver al inicio
+    size_t numVertices = closed ? points.size() + 1 : points.size();
+    sf::VertexArray va(sf::LineStrip, numVertices);
+
+    // Dibujar todos los puntos reales
     for (size_t i = 0; i < points.size(); ++i) {
         va[i].position = w2s(points[i].x, points[i].y);
         va[i].color = color;
     }
+
+    // Si está cerrada, añadir el primer punto al final para cerrar el bucle visualmente
+    if (closed) {
+        va[points.size()].position = w2s(points[0].x, points[0].y);
+        va[points.size()].color = color;
+    }
+
     window.draw(va);
 }
 
@@ -39,6 +51,7 @@ void Polyline::move(double dx, double dy) {
 std::unique_ptr<Entity> Polyline::clone() const {
     auto c = std::make_unique<Polyline>();
     c->points = points;
+    c->closed = closed; 
     c->layerName = layerName;
     return c;
 }

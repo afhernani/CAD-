@@ -1,5 +1,6 @@
 #include "cad/core/config/config.hpp"
-#include "../third_party/json.hpp"  // nlohmann/json
+//#include "../third_party/json.hpp"  // nlohmann/json
+#include <json.hpp>
 #include <fstream>
 #include <iostream>
 

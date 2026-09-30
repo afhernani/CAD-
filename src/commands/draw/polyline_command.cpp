@@ -27,10 +27,12 @@ namespace cad {
         
         if (upperInput == "C" || upperInput == "CLOSE" || upperInput == "CERRAR") {
             if (points_.size() >= 2) {
-                points_.push_back(points_.front()); // Cerrar polilínea
+                // points_.push_back(points_.front()); // Cerrar polilínea
                 auto polyline = std::make_unique<Polyline>();
                 polyline->points = points_;
+                polyline->closed = true;
                 polyline->layerName = engine.doc.currentLayerName;
+                
                 engine.saveState();
                 engine.doc.addEntity(std::move(polyline));
                 statusMessage_ = "Polilínea cerrada.";

@@ -7,6 +7,7 @@ namespace cad {
 class Polyline : public Entity {
 public:
     std::vector<Point2D> points;
+    bool closed = false; 
 
     void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
              const sf::Color& color, float viewScale) const override;
