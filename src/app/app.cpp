@@ -421,8 +421,17 @@ namespace cad {
                         if (upperInput == "GUARDAR" || upperInput == "SAVE") {
                             std::string path = showSaveFileDialog();
                             if (!path.empty()) {
-                                engine_.doc.saveToFile(path);
-                                engine_.statusMessage = "Dibujo guardado en: " + path;
+                                // Asegurar que tenga extensión .json
+                                std::string ext = FileManager::getFileExtension(path);
+                                if (ext != ".json" && ext != ".JSON") {
+                                    path += ".json";
+                                }
+
+                                if (FileManager::saveDocument(engine_.doc, path)) {
+                                    engine_.statusMessage = "Dibujo guardado en: " + path;
+                                } else {
+                                    engine_.statusMessage = "Error al guardar el dibujo.";
+                                }
                             } else {
                                 engine_.statusMessage = "Guardado cancelado.";
                             }
@@ -430,10 +439,17 @@ namespace cad {
                         else if (upperInput == "CARGAR" || upperInput == "LOAD") {
                             std::string path = showOpenFileDialog();
                             if (!path.empty()) {
-                                engine_.doc.loadFromFile(path);
+                                // Limpiar estado actual antes de cargar
                                 engine_.selectedEntities.clear();
                                 engine_.currentMode = Mode::IDLE;
-                                engine_.statusMessage = "Dibujo cargado desde: " + path;
+                                engine_.cancelCommand();
+
+                                // Cargar usando FileManager (modifica el documento existente)
+                                if (FileManager::loadDocument(engine_.doc, path)) {
+                                    engine_.statusMessage = "Dibujo cargado desde: " + path;
+                                } else {
+                                    engine_.statusMessage = "Error al cargar el dibujo.";
+                                }
                             } else {
                                 engine_.statusMessage = "Carga cancelada.";
                             }
