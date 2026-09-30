@@ -748,4 +748,30 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     }
 }
 
+void Renderer::drawSelectionRect(sf::RenderWindow& window, const View& view,
+                                 const Point2D& startPoint, const Point2D& endPoint) const {
+    auto startScreen = view.worldToScreen(startPoint.x, startPoint.y, CANVAS_HEIGHT);
+    auto endScreen = view.worldToScreen(endPoint.x, endPoint.y, CANVAS_HEIGHT);
+    
+    sf::RectangleShape selectionRect;
+    selectionRect.setPosition(std::min(startScreen.x, endScreen.x), 
+                              std::min(startScreen.y, endScreen.y));
+    selectionRect.setSize({std::abs(endScreen.x - startScreen.x), 
+                          std::abs(endScreen.y - startScreen.y)});
+    selectionRect.setOutlineThickness(1.0f);
+    
+    // Determinar color según dirección del arrastre
+    if (startPoint.x < endPoint.x) {
+        // WINDOW: Azul (izquierda → derecha)
+        selectionRect.setFillColor(sf::Color(0, 100, 255, 40));   // Azul translúcido
+        selectionRect.setOutlineColor(sf::Color::Blue);
+    } else {
+        // CROSSING: Verde (derecha → izquierda)
+        selectionRect.setFillColor(sf::Color(0, 200, 100, 40));   // Verde translúcido
+        selectionRect.setOutlineColor(sf::Color::Green);
+    }
+    
+    window.draw(selectionRect);
+}
+
 } // namespace cad

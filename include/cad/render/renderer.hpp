@@ -14,6 +14,9 @@ public:
                 const sf::Vector2i& mouseScreenPos, const Point2D& mouseWorldPos,
                 sf::Font& font, bool isSnapped, const Point2D& snappedPoint, bool showAxes) const;
 
+    void drawSelectionRect(sf::RenderWindow& window, const View& view,
+                          const Point2D& startPoint, const Point2D& endPoint) const;
+
 private:
     // Constantes de layout (deben coincidir con App)
     static constexpr unsigned int WINDOW_WIDTH = 1280;

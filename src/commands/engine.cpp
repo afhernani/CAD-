@@ -256,6 +256,11 @@ namespace cad {
 		selectedEntities.clear();
 		statusMessage = "Entidades borradas.";
 	}
+	//
+	void Engine::performWindowSelection(const Point2D& p1, const Point2D& p2, bool addToSelection) {
+		selectionManager.selectByWindow(p1, p2, doc.entities, selectedEntities, addToSelection);
+		statusMessage = std::to_string(selectedEntities.size()) + " entidades seleccionadas.";
+	}
 
 	std::string Engine::getHelpText(std::string_view topic) {
 		std::string upperTopic(topic);

@@ -225,13 +225,36 @@ namespace cad {
             if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
                 isPanning_ = false;
             }
+            // >>> NUEVO: FIN DE SELECCIÓN POR VENTANA (Clic Izquierdo) <<<
+            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
+                if (isSelectingByWindow_) {
+                    selectionEndPoint_ = currentMouseWorldPos_;
+
+                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y, CANVAS_HEIGHT);
+                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y , CANVAS_HEIGHT);
+                    double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
+                    
+                    if (dragDistance > 5.0) {
+                        bool addToSelection = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) ||
+                                              sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
+                        engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, addToSelection);
+                    } else {
+                        engine_.selectEntity(selectionStartPoint_, 5.0 / view_.getScale());
+                    }
+                    
+                    isSelectingByWindow_ = false;
+                }
+            }
             if (event.type == sf::Event::MouseMoved && isPanning_) {
                 float dx = static_cast<float>(event.mouseMove.x) - panStartMouse_.x;
                 float dy = static_cast<float>(event.mouseMove.y) - panStartMouse_.y;
                 view_.pan({dx, dy});
                 panStartMouse_ = {static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y)};
             }
-
+            // >>> NUEVO: Actualizar punto final durante la selección por ventana <<<
+            if (event.type == sf::Event::MouseMoved && isSelectingByWindow_) {
+                selectionEndPoint_ = currentMouseWorldPos_;
+            }
             // --- CLIC IZQUIERDO ---
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                 int mx = event.mouseButton.x;
@@ -305,6 +328,16 @@ namespace cad {
                             engine_.statusMessage = "Arrastrando grip...";
                         } else {
                             engine_.selectEntity(worldPoint, tolerance);
+                            // >>> NUEVO: INICIO DE SELECCIÓN POR VENTANA <<<
+                            selectionStartPoint_ = worldPoint;
+                            selectionEndPoint_ = worldPoint;
+                            isSelectingByWindow_ = true;
+                            
+                            if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && 
+                                !sf::Keyboard::isKeyPressed(sf::Keyboard::RShift)) {
+                                engine_.selectedEntities.clear();
+                            }
+                            return; // <<< IMPORTANTE: Salir para no enviar coordenadas gen
                         }
                     }
 
@@ -502,6 +535,11 @@ namespace cad {
 
             // --- TECLA ESCAPE ---
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
+                // >>> NUEVO: Cancelar selección por ventana si está activa <<<
+                if (isSelectingByWindow_) {
+                    isSelectingByWindow_ = false;
+                }
+
                 if (engine_.currentMode == Mode::GRIP_EDIT && engine_.gripBackup) {
                     engine_.activeGripEntity->copyFrom(*engine_.gripBackup);
                     engine_.gripBackup.reset();
@@ -594,6 +632,11 @@ namespace cad {
         renderer_.render(window_, view_, engine_, currentMouseScreenPos_, currentMouseWorldPos_,
                         font_, lastSnapResult_.active, lastSnapResult_.point, showAxes_);
 
+        // >>> NUEVO: Dibujar rectángulo de selección por ventana <<<
+        if (isSelectingByWindow_) {
+            renderer_.drawSelectionRect(window_, view_, selectionStartPoint_, selectionEndPoint_);
+        }
+    
         ui_.draw(window_, engine_, inputBuffer_, commandHistory_, commandScrollOffset_,
                 isTyping_, showEntityListPanel_, entityListText_, entityListScrollOffset_,
                 showAxes_, view_.getScale(), currentMouseWorldPos_);

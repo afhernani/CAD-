@@ -82,6 +82,11 @@ namespace cad {
         sf::String toSfString(const std::string& utf8Str) {
             return sf::String::fromUtf8(utf8Str.begin(), utf8Str.end());
         }
+        // Variables para la selección por ventana (Window / Crossing)
+        bool isSelectingByWindow_ = false;
+        Point2D selectionStartPoint_;
+        Point2D selectionEndPoint_;
+        
     };
 
 } // namespace cad

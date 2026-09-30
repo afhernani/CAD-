@@ -31,6 +31,7 @@
 #include "../core/geometry/entities/dimension.hpp"
 #include "../core/geometry/entities/block_insert.hpp"
 #include "../core/geometry/intersections.hpp"
+#include "cad/core/selection/selection_manager.hpp"
 #include <string>
 #include <optional>
 #include <string_view>
@@ -88,6 +89,11 @@ namespace cad {
 		Point2D tempDimP1, tempDimP2, tempDimP3, tempDimP2_line2;
 		double tempDimAngle = 0.0;
 		DimType currentDimType = DimType::HORIZONTAL;
+
+		SelectionManager selectionManager;  // Miembro de seleccion
+		// Método público que App llamará
+		void performWindowSelection(const Point2D& p1, const Point2D& p2, bool addToSelection = false);
+
 
 	private:
 		void executeCommand(std::string_view cmd);
