@@ -517,7 +517,7 @@ namespace cad {
             }
 
             // --- TECLA ENTER EN EL CANVAS ---
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return) {
+            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return && !isTyping_) {
                 if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
                     engine_.processInput("");
                 }

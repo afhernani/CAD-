@@ -5,6 +5,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
+//#include <iostream>
 
 namespace cad {
 
@@ -27,6 +28,11 @@ namespace cad {
         }
 
         if (input.empty()) {
+            // AÑADE ESTA LÍNEA DE DEPURACIÓN:
+            // std::cout << "[DEBUG EXTEND] Execute llamado. Step actual: " 
+            //           << (step_ == Step::SelectingBoundaries ? "Boundaries" : "Entities") 
+            //           << " | Finished: " << finished_ << "\n";
+
             if (step_ == Step::SelectingBoundaries) {
                 if (boundaries_.empty()) {
                     statusMessage_ = "EXTEND | No hay bordes. Comando cancelado.";

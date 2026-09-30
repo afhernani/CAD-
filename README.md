@@ -1,6 +1,6 @@
 # CAD+
 
-**CAD+** es una aplicación de Diseño Asistido por Computadora (CAD) desarrollada en **C++20** utilizando la librería gráfica **SFML**. 
+**CAD+** es una aplicación de Diseño Asistido por Computadora (CAD) desarrollada en **C++20** utilizando la librería gráfica **SFML**  con arquitectura **MVC**, implementando sistemas de coordenadas polares/relativas, object snapping y persistencia de datos, gestionado con **CMake** y **Pixi**. 
 
 El proyecto está diseñado con una arquitectura modular (MVC) y se centra en la precisión matemática, la línea de comandos estilo AutoCAD y una interfaz gráfica profesional.
 
@@ -85,3 +85,5 @@ cad_cpp/
 ## 📄 Licencia
 
 Este proyecto es de código abierto y está disponible bajo la licencia MIT.
+
+[Documento de especificaciones técnicas](<media/Historial Curriculum.md>)
