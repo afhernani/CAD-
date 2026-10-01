@@ -19,7 +19,7 @@ public:
     std::string getName() const override { return "ELIPSE"; }
 
     // >>> NUEVO: Método de feedback visual <<<
-        void drawFeedback(sf::RenderWindow& window, const View& view, 
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                           const Point2D& mouseWorldPos, sf::Font& font) const override;
     // Para feedback visual
     Point2D getCenter() const { return center_; }

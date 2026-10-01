@@ -93,7 +93,7 @@ namespace cad {
         return finished_;
     }
 
-    void ArcCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+    void ArcCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                   const Point2D& mouseWorldPos, sf::Font& font) const {
         if (!hasCenter_) return; // Si no hay centro, no dibujamos nada
 

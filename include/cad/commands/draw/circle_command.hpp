@@ -18,7 +18,7 @@ namespace cad {
         bool isComplete() const override;
         std::string getName() const override { return "CIRCULO"; }
 
-        void drawFeedback(sf::RenderWindow& window, const View& view, 
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                           const Point2D& mouseWorldPos, sf::Font& font) const override;
                           
         Point2D getCenter() const { return center_; }

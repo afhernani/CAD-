@@ -111,7 +111,7 @@ namespace cad {
         return finished_;
     }
 
-    void PolygonCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+    void PolygonCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                       const Point2D& mouseWorldPos, sf::Font& font) const {
         if (!hasCenter_) return; // Si no hay centro, no dibujamos nada
 

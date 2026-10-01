@@ -14,7 +14,7 @@
 // #include "cad/commands/draw/polygon_command.hpp"
 // #include "cad/commands/draw/ellipse_command.hpp"
 // #include "cad/commands/draw/polyline_command.hpp"
-#include "cad/commands/modify/move_command.hpp"
+// #include "cad/commands/modify/move_command.hpp"
 #include "cad/commands/modify/copy_command.hpp"
 #include "cad/commands/modify/rotate_command.hpp"
 #include "cad/commands/modify/scale_command.hpp"
@@ -269,9 +269,9 @@ void Renderer::drawCrosshair(sf::RenderWindow& window, const View& view, const s
 
 void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, Engine& engine, 
                                    const Point2D& mouseWorldPos, sf::Font& font) const {
-    // El renderer no sabe qué comando es, solo le pide que se dibuje a sí mismo.
     if (engine.activeCommand_) {
-        engine.activeCommand_->drawFeedback(window, view, mouseWorldPos, font);
+        // >>> ACTUALIZADO: Ahora pasamos 'engine' como tercer argumento
+        engine.activeCommand_->drawFeedback(window, view, engine, mouseWorldPos, font);
     }
     // procedimiento antiguo.
     sf::Color feedbackColor(255, 255, 0, 180);
@@ -518,19 +518,19 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             }
         }
     }
-    // --- MOVER ---
-    if (engine.currentMode == Mode::MOVE && engine.activeCommand_) {
-        if (auto* moveCmd = dynamic_cast<MoveCommand*>(engine.activeCommand_.get())) {
-            sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
-            if (moveCmd->hasBasePoint()) {
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
-                sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y)); window.draw(baseMark);
-                double dx = mouseWorldPos.x - moveCmd->getBasePoint().x; double dy = mouseWorldPos.y - moveCmd->getBasePoint().y;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
-            }
-        }
-    }
+    // // --- MOVER ---
+    // if (engine.currentMode == Mode::MOVE && engine.activeCommand_) {
+    //     if (auto* moveCmd = dynamic_cast<MoveCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
+    //         for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+    //         if (moveCmd->hasBasePoint()) {
+    //             sf::Vertex guideLine[] = { sf::Vertex(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
+    //             sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y)); window.draw(baseMark);
+    //             double dx = mouseWorldPos.x - moveCmd->getBasePoint().x; double dy = mouseWorldPos.y - moveCmd->getBasePoint().y;
+    //             for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+    //         }
+    //     }
+    // }
     // --- COPIAR ---
     if (engine.currentMode == Mode::COPY && engine.activeCommand_) {
         if (auto* copyCmd = dynamic_cast<CopyCommand*>(engine.activeCommand_.get())) {

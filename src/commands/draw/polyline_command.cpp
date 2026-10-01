@@ -95,7 +95,7 @@ namespace cad {
         return finished_;
     }
 
-    void PolylineCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+    void PolylineCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                        const Point2D& mouseWorldPos, sf::Font& font) const {
         if (!hasPoints()) return; // Si no hay puntos, no dibujamos nada
 

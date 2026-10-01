@@ -4,17 +4,11 @@
 #include <string>
 #include <memory>
 
-// Forward declarations de SFML (evita incluir <SFML/Graphics.hpp> aquí)
-namespace sf {
-    class RenderWindow;
-    class Font;
-}
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class Engine; class View; }
 
 namespace cad {
-
-    //class Document;
-    class Engine;
-    class View;
 
     class ICommand {
     public:
@@ -37,10 +31,11 @@ namespace cad {
         
         // Nombre del comando (para logs/ayuda)
         virtual std::string getName() const = 0;
-        // Por defecto no dibuja nada. Los comandos que necesiten preview lo sobrescriben.
-        virtual void drawFeedback(sf::RenderWindow& window, const View& view, 
-                              const Point2D& mouseWorldPos, sf::Font& font) const {
-        // Implementación vacía por defecto
+        // >>> ACTUALIZADO: Ahora recibe Engine& para que los comandos de modificación 
+        // puedan acceder a engine.selectedEntities
+        virtual void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                                  const Point2D& mouseWorldPos, sf::Font& font) const {
+            // Implementación vacía por defecto
         }
 
     };

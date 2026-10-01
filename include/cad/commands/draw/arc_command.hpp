@@ -20,7 +20,7 @@ namespace cad {
         std::string getName() const override { return "ARCO"; }
 
         // >>> NUEVO: Método de feedback visual <<<
-        void drawFeedback(sf::RenderWindow& window, const View& view, 
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine, 
                           const Point2D& mouseWorldPos, sf::Font& font) const override;
 
         // Para feedback visual

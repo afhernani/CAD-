@@ -57,7 +57,7 @@ namespace cad {
         return false;
     }
 
-    void LineCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+    void LineCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                const Point2D& mouseWorldPos, sf::Font& font) const {
         // Dibujamos feedback si estamos esperando el segundo punto o en modo línea continua
         if (state_ == State::WaitingSecondPoint) {

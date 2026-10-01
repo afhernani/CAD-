@@ -146,7 +146,7 @@ namespace cad {
         return finished_;
     }
 
-    void CircleCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+    void CircleCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                      const Point2D& mouseWorldPos, sf::Font& font) const {
         // Solo dibujamos feedback cuando tenemos el centro y estamos esperando 
         // que el usuario defina el radio haciendo clic (WaitingForPoint)
