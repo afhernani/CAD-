@@ -8,12 +8,12 @@
 #include "cad/core/geometry/entities/dimension.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
-#include "cad/commands/draw/line_command.hpp"
-#include "cad/commands/draw/circle_command.hpp"
-#include "cad/commands/draw/arc_command.hpp"
+// #include "cad/commands/draw/line_command.hpp"
+// #include "cad/commands/draw/circle_command.hpp"
+// #include "cad/commands/draw/arc_command.hpp"
+// #include "cad/commands/draw/polygon_command.hpp"
+// #include "cad/commands/draw/ellipse_command.hpp"
 #include "cad/commands/draw/polyline_command.hpp"
-#include "cad/commands/draw/polygon_command.hpp"
-#include "cad/commands/draw/ellipse_command.hpp"
 #include "cad/commands/modify/move_command.hpp"
 #include "cad/commands/modify/copy_command.hpp"
 #include "cad/commands/modify/rotate_command.hpp"
@@ -353,24 +353,24 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             }
         }
     }
-    // --- POLÍGONO ---
-    else if (engine.currentMode == Mode::DRAW_POLYGON && engine.activeCommand_) {
-        if (auto* polyCmd = dynamic_cast<PolygonCommand*>(engine.activeCommand_.get())) {
-            if (polyCmd->hasCenter() && !polyCmd->hasSides()) {
-                sf::CircleShape dot(4.0f); dot.setFillColor(feedbackColor); dot.setOrigin(4.0f, 4.0f); dot.setPosition(w2s(polyCmd->getCenter().x, polyCmd->getCenter().y)); window.draw(dot);
-            }
-            else if (polyCmd->hasCenter() && polyCmd->hasSides()) {
-                double dx = mouseWorldPos.x - polyCmd->getCenter().x; double dy = mouseWorldPos.y - polyCmd->getCenter().y;
-                double radius = std::sqrt(dx * dx + dy * dy); int sides = polyCmd->getSides();
-                const double PI = 3.14159265358979323846; double angleStep = 2.0 * PI / sides;
-                sf::VertexArray va(sf::LineStrip, sides + 1);
-                for (int i = 0; i <= sides; ++i) { double angle = i * angleStep - PI / 2.0; va[i].position = w2s(polyCmd->getCenter().x + radius * std::cos(angle), polyCmd->getCenter().y + radius * std::sin(angle)); va[i].color = feedbackColor; }
-                window.draw(va);
-                sf::Vertex line[] = { sf::Vertex(w2s(polyCmd->getCenter().x, polyCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(line, 2, sf::Lines);
-            }
-        }
-    }
+    // // --- POLÍGONO ---
+    // else if (engine.currentMode == Mode::DRAW_POLYGON && engine.activeCommand_) {
+    //     if (auto* polyCmd = dynamic_cast<PolygonCommand*>(engine.activeCommand_.get())) {
+    //         if (polyCmd->hasCenter() && !polyCmd->hasSides()) {
+    //             sf::CircleShape dot(4.0f); dot.setFillColor(feedbackColor); dot.setOrigin(4.0f, 4.0f); dot.setPosition(w2s(polyCmd->getCenter().x, polyCmd->getCenter().y)); window.draw(dot);
+    //         }
+    //         else if (polyCmd->hasCenter() && polyCmd->hasSides()) {
+    //             double dx = mouseWorldPos.x - polyCmd->getCenter().x; double dy = mouseWorldPos.y - polyCmd->getCenter().y;
+    //             double radius = std::sqrt(dx * dx + dy * dy); int sides = polyCmd->getSides();
+    //             const double PI = 3.14159265358979323846; double angleStep = 2.0 * PI / sides;
+    //             sf::VertexArray va(sf::LineStrip, sides + 1);
+    //             for (int i = 0; i <= sides; ++i) { double angle = i * angleStep - PI / 2.0; va[i].position = w2s(polyCmd->getCenter().x + radius * std::cos(angle), polyCmd->getCenter().y + radius * std::sin(angle)); va[i].color = feedbackColor; }
+    //             window.draw(va);
+    //             sf::Vertex line[] = { sf::Vertex(w2s(polyCmd->getCenter().x, polyCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(line, 2, sf::Lines);
+    //         }
+    //     }
+    // }
     // // --- ELIPSE ---
     // else if (engine.currentMode == Mode::DRAW_ELLIPSE && engine.activeCommand_) {
     //     if (auto* ellipseCmd = dynamic_cast<EllipseCommand*>(engine.activeCommand_.get())) {
