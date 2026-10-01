@@ -21,6 +21,8 @@ namespace cad {
         std::string getStatusMessage() const override;
         bool isComplete() const override;
         std::string getName() const override { return "LINEA"; }
+        void drawFeedback(sf::RenderWindow& window, const View& view, 
+                      const Point2D& mouseWorldPos, sf::Font& font) const override;
 
         // >>> NUEVOS MÉTODOS PARA FEEDBACK VISUAL <<<
         State getState() const { return state_; }

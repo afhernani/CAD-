@@ -88,10 +88,12 @@ namespace cad {
             sf::Style::Close | sf::Style::Resize,
             settings
         );
-        
         window_.setPosition(sf::Vector2i(100, 100));
         window_.setVerticalSyncEnabled(false);
-
+        
+        float realCanvasHeight = config_.window.height - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT;
+        view_.setCanvasHeight(realCanvasHeight);
+        
         // 3. Cargar fuente (usando la ruta calculada)
         if (!font_.loadFromFile(fontPath)) {
             // Fallback a ruta absoluta de sistema (solo Linux)
@@ -159,7 +161,7 @@ namespace cad {
                 if (isInCanvas) {
                     window_.setMouseCursorVisible(false);
                     currentMouseWorldPos_ = view_.screenToWorld(
-                        static_cast<float>(mx), static_cast<float>(my), CANVAS_HEIGHT);
+                        static_cast<float>(mx), static_cast<float>(my));
                     lastSnapResult_ = snapEngine_.findSnap(
                         engine_.doc.entities, currentMouseWorldPos_, view_.getScale());
 
@@ -208,7 +210,7 @@ namespace cad {
                 if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT &&
                     my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
                     float zoomFactor = (event.mouseWheelScroll.delta > 0) ? 1.1f : (1.0f / 1.1f);
-                    view_.zoom(zoomFactor, {static_cast<float>(mx), static_cast<float>(my)}, CANVAS_HEIGHT);
+                    view_.zoom(zoomFactor, {static_cast<float>(mx), static_cast<float>(my)});
                     engine_.viewScale = view_.getScale();
                 }
             }
@@ -230,8 +232,8 @@ namespace cad {
                 if (isSelectingByWindow_) {
                     selectionEndPoint_ = currentMouseWorldPos_;
                     
-                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y, CANVAS_HEIGHT);
-                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y, CANVAS_HEIGHT);
+                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y);
+                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y);
                     double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
                     double tolerance = 5.0 / view_.getScale();
 

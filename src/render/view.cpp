@@ -4,21 +4,21 @@ namespace cad {
 
     View::View() = default;
 
-    sf::Vector2f View::worldToScreen(double wx, double wy, float canvasHeight) const {
+    sf::Vector2f View::worldToScreen(double wx, double wy) const {
         float sx = (wx + panX_) * scale_;
-        float sy = (canvasHeight - (wy + panY_) * scale_);
+        float sy = (canvasHeight_ - (wy + panY_) * scale_);
         return {sx, sy};
     }
 
-    Point2D View::screenToWorld(float sx, float sy, float canvasHeight) const {
+    Point2D View::screenToWorld(float sx, float sy) const {
         float wx = (sx / scale_) - panX_;
-        float wy = ((canvasHeight - sy) / scale_) - panY_;
+        float wy = ((canvasHeight_ - sy) / scale_) - panY_;
         return {wx, wy};
     }
 
-    void View::zoom(float factor, const sf::Vector2f& mouseScreenPos, float canvasHeight) {
+    void View::zoom(float factor, const sf::Vector2f& mouseScreenPos) {
         // 1. Calcular el punto del mundo bajo el cursor ANTES del zoom
-        Point2D worldBefore = screenToWorld(mouseScreenPos.x, mouseScreenPos.y, canvasHeight);
+        Point2D worldBefore = screenToWorld(mouseScreenPos.x, mouseScreenPos.y);
 
         // 2. Aplicar el nuevo scale
         scale_ *= factor;
@@ -27,7 +27,7 @@ namespace cad {
 
         // 3. Recalcular el pan para que worldBefore siga bajo el cursor
         panX_ = (mouseScreenPos.x / scale_) - worldBefore.x;
-        panY_ = ((canvasHeight - mouseScreenPos.y) / scale_) - worldBefore.y;
+        panY_ = ((canvasHeight_ - mouseScreenPos.y) / scale_) - worldBefore.y;
     }
 
     void View::pan(const sf::Vector2f& deltaScreen) {

@@ -5,6 +5,7 @@
 #include "cad/render/renderer.hpp"
 #include "cad/render/ui/ui_manager.hpp"
 #include "cad/core/config/config.hpp"
+#include "cad/core/constants.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <vector>
@@ -63,15 +64,15 @@ namespace cad {
         sf::Vector2i currentMouseScreenPos_;
         Point2D currentMouseWorldPos_;
 
-        // --- Constantes de layout ---
-        static constexpr unsigned int WINDOW_WIDTH = 1280;
-        static constexpr unsigned int WINDOW_HEIGHT = 720;
-        static constexpr unsigned int MENU_HEIGHT = 30;
-        static constexpr unsigned int TOOLBAR_HEIGHT = 60;
-        static constexpr unsigned int COMMAND_HEIGHT = 90;
-        static constexpr unsigned int STATUS_HEIGHT = 25;
-        static constexpr float CANVAS_HEIGHT = static_cast<float>(
-            WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT);
+        // // --- Constantes de layout ---
+        // static constexpr unsigned int WINDOW_WIDTH = 1280;
+        // static constexpr unsigned int WINDOW_HEIGHT = 720;
+        // static constexpr unsigned int MENU_HEIGHT = 30;
+        // static constexpr unsigned int TOOLBAR_HEIGHT = 60;
+        // static constexpr unsigned int COMMAND_HEIGHT = 90;
+        // static constexpr unsigned int STATUS_HEIGHT = 25;
+        // static constexpr float CANVAS_HEIGHT = static_cast<float>(
+        //     WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT);
 
         // --- Métodos ---
         void handleEvents();

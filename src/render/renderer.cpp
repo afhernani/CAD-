@@ -52,7 +52,11 @@ void Renderer::render(sf::RenderWindow& window, const View& view, Engine& engine
     drawGrips(window, view, engine);
     drawDimensionTexts(window, view, engine, font);
     drawCrosshair(window, view, mouseScreenPos, mouseWorldPos, isSnapped, snappedPoint);
-    drawDrawingFeedback(window, view, engine, mouseWorldPos, font);
+    // drawDrawingFeedback(window, view, engine, mouseWorldPos, font);
+    // El renderer no sabe qué comando es, solo le pide que se dibuje a sí mismo.
+    if (engine.activeCommand_) {
+        engine.activeCommand_->drawFeedback(window, view, mouseWorldPos, font);
+    }
 }
 
 void Renderer::drawGrid(sf::RenderWindow& window, const View& view, const Engine& engine) const {
@@ -64,8 +68,8 @@ void Renderer::drawGrid(sf::RenderWindow& window, const View& view, const Engine
     while (pixelSpacing < 30.0) { currentGridSize *= 10.0; pixelSpacing = currentGridSize * view.getScale(); }
     while (pixelSpacing > 150.0) { currentGridSize /= 10.0; pixelSpacing = currentGridSize * view.getScale(); }
 
-    Point2D tl = view.screenToWorld(0, 0, CANVAS_HEIGHT);
-    Point2D br = view.screenToWorld(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT), CANVAS_HEIGHT);
+    Point2D tl = view.screenToWorld(0, 0);
+    Point2D br = view.screenToWorld(static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT));
     
     double left = std::min(tl.x, br.x), right = std::max(tl.x, br.x);
     double top = std::max(tl.y, br.y), bottom = std::min(tl.y, br.y);
@@ -77,14 +81,14 @@ void Renderer::drawGrid(sf::RenderWindow& window, const View& view, const Engine
     sf::VertexArray lines(sf::Lines);
 
     for (double x = startX; x <= right; x += currentGridSize) {
-        sf::Vector2f topPos = view.worldToScreen(x, top, CANVAS_HEIGHT);
-        sf::Vector2f botPos = view.worldToScreen(x, bottom, CANVAS_HEIGHT);
+        sf::Vector2f topPos = view.worldToScreen(x, top);
+        sf::Vector2f botPos = view.worldToScreen(x, bottom);
         lines.append(sf::Vertex(topPos, gridColor));
         lines.append(sf::Vertex(botPos, gridColor));
     }
     for (double y = startY; y <= bottom; y += currentGridSize) {
-        sf::Vector2f leftPos = view.worldToScreen(left, y, CANVAS_HEIGHT);
-        sf::Vector2f rightPos = view.worldToScreen(right, y, CANVAS_HEIGHT);
+        sf::Vector2f leftPos = view.worldToScreen(left, y);
+        sf::Vector2f rightPos = view.worldToScreen(right, y);
         lines.append(sf::Vertex(leftPos, gridColor));
         lines.append(sf::Vertex(rightPos, gridColor));
     }
@@ -93,21 +97,21 @@ void Renderer::drawGrid(sf::RenderWindow& window, const View& view, const Engine
 
 void Renderer::drawAxes(sf::RenderWindow& window, const View& view) const {
     sf::Vertex xAxis[] = {
-        sf::Vertex(view.worldToScreen(0, 0, CANVAS_HEIGHT), sf::Color::Red),
-        sf::Vertex(view.worldToScreen(50, 0, CANVAS_HEIGHT), sf::Color::Red)
+        sf::Vertex(view.worldToScreen(0, 0), sf::Color::Red),
+        sf::Vertex(view.worldToScreen(50, 0), sf::Color::Red)
     };
     window.draw(xAxis, 2, sf::Lines);
 
     sf::Vertex yAxis[] = {
-        sf::Vertex(view.worldToScreen(0, 0, CANVAS_HEIGHT), sf::Color::Green),
-        sf::Vertex(view.worldToScreen(0, 50, CANVAS_HEIGHT), sf::Color::Green)
+        sf::Vertex(view.worldToScreen(0, 0), sf::Color::Green),
+        sf::Vertex(view.worldToScreen(0, 50), sf::Color::Green)
     };
     window.draw(yAxis, 2, sf::Lines);
 
     sf::CircleShape origin(3.f);
     origin.setFillColor(sf::Color::White);
     origin.setOrigin(3.f, 3.f);
-    origin.setPosition(view.worldToScreen(0, 0, CANVAS_HEIGHT));
+    origin.setPosition(view.worldToScreen(0, 0));
     window.draw(origin);
 }
 
@@ -119,7 +123,7 @@ void Renderer::drawEntities(sf::RenderWindow& window, const View& view, const En
         sf::Color drawColor = layer->color;
         
         // Lambda para transformar coordenadas usando View
-        auto w2s = [&](double x, double y) { return view.worldToScreen(x, y, CANVAS_HEIGHT); };
+        auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
         entity->draw(window, w2s, drawColor, view.getScale());
     }
 }
@@ -132,7 +136,7 @@ void Renderer::drawGrips(sf::RenderWindow& window, const View& view, const Engin
     for (Entity* entity : engine.selectedEntities) {
         auto grips = entity->getGripPoints();
         for (int i = 0; i < grips.size(); ++i) {
-            sf::Vector2f screenPos = view.worldToScreen(grips[i].x, grips[i].y, CANVAS_HEIGHT);
+            sf::Vector2f screenPos = view.worldToScreen(grips[i].x, grips[i].y);
             bool isActive = (engine.currentMode == Mode::GRIP_EDIT &&
                              engine.activeGripEntity == entity &&
                              engine.activeGripIndex == i);
@@ -192,7 +196,7 @@ void Renderer::drawDimensionTexts(sf::RenderWindow& window, const View& view, co
                 textY = dim->isHorizontal ? dim->location.y : (dim->p1.y + dim->p2.y) / 2.0;
             }
 
-            sf::Vector2f screenPos = view.worldToScreen(textX, textY, CANVAS_HEIGHT);
+            sf::Vector2f screenPos = view.worldToScreen(textX, textY);
             sf::Text text;
             text.setFont(font);
             text.setString(toSfString(oss.str()));
@@ -226,7 +230,7 @@ void Renderer::drawCrosshair(sf::RenderWindow& window, const View& view, const s
     sf::Vector2f screenPos = { static_cast<float>(mouseScreenPos.x), static_cast<float>(mouseScreenPos.y) };
     sf::Color crosshairColor = isSnapped ? sf::Color(255, 255, 0) : sf::Color(255, 255, 255);
     
-    if (isSnapped) screenPos = view.worldToScreen(snappedPoint.x, snappedPoint.y, CANVAS_HEIGHT);
+    if (isSnapped) screenPos = view.worldToScreen(snappedPoint.x, snappedPoint.y);
 
     float crosshairSize = 25.0f;
     float thickness = 2.0f;
@@ -269,7 +273,7 @@ void Renderer::drawCrosshair(sf::RenderWindow& window, const View& view, const s
 void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, Engine& engine, 
                                    const Point2D& mouseWorldPos, sf::Font& font) const {
     sf::Color feedbackColor(255, 255, 0, 180);
-    auto w2s = [&](double x, double y) { return view.worldToScreen(x, y, CANVAS_HEIGHT); };
+    auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
 
     // --- LÍNEA ---
     if (engine.currentMode == Mode::DRAW_LINE && engine.activeCommand_) {
@@ -387,7 +391,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     // --- COTA (DIMENSION) ---
     else if (engine.currentMode == Mode::DRAW_DIMENSION) {
         if (engine.statusMessage.find("Segundo") != std::string::npos) {
-            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
             window.draw(line, 2, sf::Lines);
         }
         else if (engine.statusMessage.find("Ubicación") != std::string::npos || engine.statusMessage.find("ubicación") != std::string::npos) {
@@ -397,25 +401,25 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             if (isHoriz) { double y = mouseWorldPos.y; ext1 = {engine.tempDimP1.x, y}; ext2 = {engine.tempDimP2.x, y}; lineStart = {engine.tempDimP1.x, y}; lineEnd = {engine.tempDimP2.x, y}; } 
             else { double x = mouseWorldPos.x; ext1 = {x, engine.tempDimP1.y}; ext2 = {x, engine.tempDimP2.y}; lineStart = {x, engine.tempDimP1.y}; lineEnd = {x, engine.tempDimP2.y}; }
             sf::Color extColor(255, 255, 0, 100);
-            sf::Vertex extLine1[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT), extColor), sf::Vertex(view.worldToScreen(ext1.x, ext1.y, CANVAS_HEIGHT), extColor) };
-            sf::Vertex extLine2[] = { sf::Vertex(view.worldToScreen(engine.tempDimP2.x, engine.tempDimP2.y, CANVAS_HEIGHT), extColor), sf::Vertex(view.worldToScreen(ext2.x, ext2.y, CANVAS_HEIGHT), extColor) };
+            sf::Vertex extLine1[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), extColor), sf::Vertex(view.worldToScreen(ext1.x, ext1.y), extColor) };
+            sf::Vertex extLine2[] = { sf::Vertex(view.worldToScreen(engine.tempDimP2.x, engine.tempDimP2.y), extColor), sf::Vertex(view.worldToScreen(ext2.x, ext2.y), extColor) };
             window.draw(extLine1, 2, sf::Lines); window.draw(extLine2, 2, sf::Lines);
-            sf::Vertex dimLine[] = { sf::Vertex(view.worldToScreen(lineStart.x, lineStart.y, CANVAS_HEIGHT), feedbackColor), sf::Vertex(view.worldToScreen(lineEnd.x, lineEnd.y, CANVAS_HEIGHT), feedbackColor) };
+            sf::Vertex dimLine[] = { sf::Vertex(view.worldToScreen(lineStart.x, lineStart.y), feedbackColor), sf::Vertex(view.worldToScreen(lineEnd.x, lineEnd.y), feedbackColor) };
             window.draw(dimLine, 2, sf::Lines);
         }
     }
     // --- COTA ALINEADA ---
     else if (engine.currentMode == Mode::DRAW_DIM_ALIGNED) {
         if (engine.statusMessage.find("Segundo") != std::string::npos) {
-            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
             window.draw(line, 2, sf::Lines);
         }
         else if (engine.statusMessage.find("Ubicación") != std::string::npos) {
             double dx = engine.tempDimP2.x - engine.tempDimP1.x; double dy = engine.tempDimP2.y - engine.tempDimP1.y; double len = std::sqrt(dx*dx + dy*dy);
             if (len > 0) {
                 double nx = -dy / len; double ny = dx / len; double vx = mouseWorldPos.x - engine.tempDimP1.x; double vy = mouseWorldPos.y - engine.tempDimP1.y; double offset = vx * nx + vy * ny;
-                sf::Vector2f sPos = view.worldToScreen(engine.tempDimP1.x + nx * offset, engine.tempDimP1.y + ny * offset, CANVAS_HEIGHT);
-                sf::Vector2f ePos = view.worldToScreen(engine.tempDimP2.x + nx * offset, engine.tempDimP2.y + ny * offset, CANVAS_HEIGHT);
+                sf::Vector2f sPos = view.worldToScreen(engine.tempDimP1.x + nx * offset, engine.tempDimP1.y + ny * offset);
+                sf::Vector2f ePos = view.worldToScreen(engine.tempDimP2.x + nx * offset, engine.tempDimP2.y + ny * offset);
                 sf::Vertex line[] = { sf::Vertex(sPos, feedbackColor), sf::Vertex(ePos, feedbackColor) };
                 window.draw(line, 2, sf::Lines);
             }
@@ -429,8 +433,8 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
         else {
             double radius = std::sqrt(std::pow(mouseWorldPos.x - engine.tempDimP1.x, 2) + std::pow(mouseWorldPos.y - engine.tempDimP1.y, 2));
             sf::CircleShape circle(static_cast<float>(radius * view.getScale())); circle.setFillColor(sf::Color::Transparent); circle.setOutlineColor(feedbackColor); circle.setOutlineThickness(1.5f);
-            circle.setOrigin(static_cast<float>(radius * view.getScale()), static_cast<float>(radius * view.getScale())); circle.setPosition(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT)); window.draw(circle);
-            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+            circle.setOrigin(static_cast<float>(radius * view.getScale()), static_cast<float>(radius * view.getScale())); circle.setPosition(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y)); window.draw(circle);
+            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
             window.draw(line, 2, sf::Lines);
             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << "R=" << radius;
             sf::Text txt; txt.setFont(font); txt.setString(toSfString(oss.str())); txt.setCharacterSize(14); txt.setFillColor(sf::Color::Yellow);
@@ -445,10 +449,10 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
         else {
             double radius = std::sqrt(std::pow(mouseWorldPos.x - engine.tempDimP1.x, 2) + std::pow(mouseWorldPos.y - engine.tempDimP1.y, 2));
             sf::CircleShape circle(static_cast<float>(radius * view.getScale())); circle.setFillColor(sf::Color::Transparent); circle.setOutlineColor(feedbackColor); circle.setOutlineThickness(1.5f);
-            circle.setOrigin(static_cast<float>(radius * view.getScale()), static_cast<float>(radius * view.getScale())); circle.setPosition(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT)); window.draw(circle);
+            circle.setOrigin(static_cast<float>(radius * view.getScale()), static_cast<float>(radius * view.getScale())); circle.setPosition(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y)); window.draw(circle);
             double dx = mouseWorldPos.x - engine.tempDimP1.x; double dy = mouseWorldPos.y - engine.tempDimP1.y; double len = std::hypot(dx, dy);
             double nx = (len > 0) ? (dx / len) : 1.0; double ny = (len > 0) ? (dy / len) : 0.0;
-            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x - nx * radius, engine.tempDimP1.y - ny * radius, CANVAS_HEIGHT), feedbackColor), sf::Vertex(view.worldToScreen(engine.tempDimP1.x + nx * radius, engine.tempDimP1.y + ny * radius, CANVAS_HEIGHT), feedbackColor) };
+            sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x - nx * radius, engine.tempDimP1.y - ny * radius), feedbackColor), sf::Vertex(view.worldToScreen(engine.tempDimP1.x + nx * radius, engine.tempDimP1.y + ny * radius), feedbackColor) };
             window.draw(line, 2, sf::Lines);
             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << "Ø=" << (radius * 2.0);
             sf::Text txt; txt.setFont(font); txt.setString(toSfString(oss.str())); txt.setCharacterSize(14); txt.setFillColor(sf::Color::Yellow);
@@ -459,7 +463,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     else if (engine.currentMode == Mode::DRAW_DIM_ANGULAR) {
         const double PI = 3.14159265358979323846;
         if (engine.statusMessage.find("segunda") != std::string::npos) {
-            sf::Vertex line1[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y, CANVAS_HEIGHT), feedbackColor), sf::Vertex(view.worldToScreen(engine.tempDimP2.x, engine.tempDimP2.y, CANVAS_HEIGHT), feedbackColor) };
+            sf::Vertex line1[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), feedbackColor), sf::Vertex(view.worldToScreen(engine.tempDimP2.x, engine.tempDimP2.y), feedbackColor) };
             window.draw(line1, 2, sf::Lines);
             auto inter = lineLineIntersection(engine.tempDimP1, engine.tempDimP2, engine.tempDimP1, mouseWorldPos);
             Point2D dynamicVertex = inter.intersects ? inter.point : engine.tempDimP1;
@@ -468,12 +472,12 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             double distToMouse = std::hypot(mouseWorldPos.x - dynamicVertex.x, mouseWorldPos.y - dynamicVertex.y);
             double arcRadius = std::min(distToMouse * 0.3, 50.0);
             sf::Color guideColor(255, 255, 0, 100); double extLen = arcRadius * 2.0;
-            sf::Vertex guide1[] = { sf::Vertex(view.worldToScreen(dynamicVertex.x, dynamicVertex.y, CANVAS_HEIGHT), guideColor), sf::Vertex(view.worldToScreen(dynamicVertex.x + std::cos(angle1) * extLen, dynamicVertex.y + std::sin(angle1) * extLen, CANVAS_HEIGHT), guideColor) };
-            sf::Vertex guide2[] = { sf::Vertex(view.worldToScreen(dynamicVertex.x, dynamicVertex.y, CANVAS_HEIGHT), guideColor), sf::Vertex(view.worldToScreen(dynamicVertex.x + std::cos(angle2) * extLen, dynamicVertex.y + std::sin(angle2) * extLen, CANVAS_HEIGHT), guideColor) };
+            sf::Vertex guide1[] = { sf::Vertex(view.worldToScreen(dynamicVertex.x, dynamicVertex.y), guideColor), sf::Vertex(view.worldToScreen(dynamicVertex.x + std::cos(angle1) * extLen, dynamicVertex.y + std::sin(angle1) * extLen), guideColor) };
+            sf::Vertex guide2[] = { sf::Vertex(view.worldToScreen(dynamicVertex.x, dynamicVertex.y), guideColor), sf::Vertex(view.worldToScreen(dynamicVertex.x + std::cos(angle2) * extLen, dynamicVertex.y + std::sin(angle2) * extLen), guideColor) };
             window.draw(guide1, 2, sf::Lines); window.draw(guide2, 2, sf::Lines);
             const int numPoints = 32; sf::VertexArray arc(sf::LineStrip, numPoints);
             double diff = angle2 - angle1; while (diff < 0) diff += 2 * PI; while (diff >= 2 * PI) diff -= 2 * PI; double step = diff / (numPoints - 1);
-            for (int i = 0; i < numPoints; ++i) { double angle = angle1 + i * step; arc[i].position = view.worldToScreen(dynamicVertex.x + arcRadius * std::cos(angle), dynamicVertex.y + arcRadius * std::sin(angle), CANVAS_HEIGHT); arc[i].color = sf::Color(255, 255, 0); }
+            for (int i = 0; i < numPoints; ++i) { double angle = angle1 + i * step; arc[i].position = view.worldToScreen(dynamicVertex.x + arcRadius * std::cos(angle), dynamicVertex.y + arcRadius * std::sin(angle)); arc[i].color = sf::Color(255, 255, 0); }
             window.draw(arc);
         }
         else if (engine.statusMessage.find("Ubicación") != std::string::npos) {
@@ -482,17 +486,17 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             double angle1 = std::atan2(engine.tempDimP2.y - vertex.y, engine.tempDimP2.x - vertex.x);
             double angle2 = std::atan2(engine.tempDimP2_line2.y - vertex.y, engine.tempDimP2_line2.x - vertex.x);
             sf::Color guideColor(255, 255, 0, 100); double extLen = arcRadius * 1.5;
-            sf::Vertex guide1[] = { sf::Vertex(view.worldToScreen(vertex.x, vertex.y, CANVAS_HEIGHT), guideColor), sf::Vertex(view.worldToScreen(vertex.x + std::cos(angle1) * extLen, vertex.y + std::sin(angle1) * extLen, CANVAS_HEIGHT), guideColor) };
-            sf::Vertex guide2[] = { sf::Vertex(view.worldToScreen(vertex.x, vertex.y, CANVAS_HEIGHT), guideColor), sf::Vertex(view.worldToScreen(vertex.x + std::cos(angle2) * extLen, vertex.y + std::sin(angle2) * extLen, CANVAS_HEIGHT), guideColor) };
+            sf::Vertex guide1[] = { sf::Vertex(view.worldToScreen(vertex.x, vertex.y), guideColor), sf::Vertex(view.worldToScreen(vertex.x + std::cos(angle1) * extLen, vertex.y + std::sin(angle1) * extLen), guideColor) };
+            sf::Vertex guide2[] = { sf::Vertex(view.worldToScreen(vertex.x, vertex.y), guideColor), sf::Vertex(view.worldToScreen(vertex.x + std::cos(angle2) * extLen, vertex.y + std::sin(angle2) * extLen), guideColor) };
             window.draw(guide1, 2, sf::Lines); window.draw(guide2, 2, sf::Lines);
             const int numPoints = 64; sf::VertexArray arc(sf::LineStrip, numPoints);
             double diff = angle2 - angle1; while (diff < 0) diff += 2 * PI; while (diff >= 2 * PI) diff -= 2 * PI; double step = diff / (numPoints - 1);
-            for (int i = 0; i < numPoints; ++i) { double angle = angle1 + i * step; arc[i].position = view.worldToScreen(vertex.x + arcRadius * std::cos(angle), vertex.y + arcRadius * std::sin(angle), CANVAS_HEIGHT); arc[i].color = sf::Color(255, 255, 0); }
+            for (int i = 0; i < numPoints; ++i) { double angle = angle1 + i * step; arc[i].position = view.worldToScreen(vertex.x + arcRadius * std::cos(angle), vertex.y + arcRadius * std::sin(angle)); arc[i].color = sf::Color(255, 255, 0); }
             window.draw(arc);
             float arrowSize = 3.0f;
-            sf::Vector2f p1Screen = view.worldToScreen(vertex.x + arcRadius * std::cos(angle1), vertex.y + arcRadius * std::sin(angle1), CANVAS_HEIGHT);
+            sf::Vector2f p1Screen = view.worldToScreen(vertex.x + arcRadius * std::cos(angle1), vertex.y + arcRadius * std::sin(angle1));
             sf::CircleShape arrowStart(arrowSize); arrowStart.setFillColor(sf::Color(255, 255, 0)); arrowStart.setOrigin(arrowSize, arrowSize); arrowStart.setPosition(p1Screen); window.draw(arrowStart);
-            sf::Vector2f p2Screen = view.worldToScreen(vertex.x + arcRadius * std::cos(angle2), vertex.y + arcRadius * std::sin(angle2), CANVAS_HEIGHT);
+            sf::Vector2f p2Screen = view.worldToScreen(vertex.x + arcRadius * std::cos(angle2), vertex.y + arcRadius * std::sin(angle2));
             sf::CircleShape arrowEnd(arrowSize); arrowEnd.setFillColor(sf::Color(255, 255, 0)); arrowEnd.setOrigin(arrowSize, arrowSize); arrowEnd.setPosition(p2Screen); window.draw(arrowEnd);
             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << engine.tempDimAngle << "°";
             sf::Text txt; txt.setFont(font); txt.setString(toSfString(oss.str())); txt.setCharacterSize(14); txt.setFillColor(sf::Color(255, 255, 0));
@@ -503,12 +507,12 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     else if (engine.currentMode == Mode::MIRROR && engine.activeCommand_) {
         if (auto* mirrorCmd = dynamic_cast<MirrorCommand*>(engine.activeCommand_.get())) {
             sf::Color axisColor(0, 255, 0, 180); sf::Color ghostColor(0, 200, 255, 100);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, sf::Color(255, 165, 0, 150), view.getScale()); }
+            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, sf::Color(255, 165, 0, 150), view.getScale()); }
             if (mirrorCmd->hasAxisP1()) {
                 sf::Vertex axisLine[] = { sf::Vertex(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(axisLine, 2, sf::Lines);
                 sf::CircleShape p1(4.0f); p1.setFillColor(axisColor); p1.setOrigin(4.0f, 4.0f); p1.setPosition(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y)); window.draw(p1);
                 Point2D axisP2 = {mouseWorldPos.x, mouseWorldPos.y};
-                for (Entity* e : engine.selectedEntities) { auto copy = e->clone(); copy->mirror(mirrorCmd->getAxisP1(), axisP2); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; copy->draw(window, w2s_l, ghostColor, view.getScale()); }
+                for (Entity* e : engine.selectedEntities) { auto copy = e->clone(); copy->mirror(mirrorCmd->getAxisP1(), axisP2); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; copy->draw(window, w2s_l, ghostColor, view.getScale()); }
             }
         }
     }
@@ -516,12 +520,12 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     if (engine.currentMode == Mode::MOVE && engine.activeCommand_) {
         if (auto* moveCmd = dynamic_cast<MoveCommand*>(engine.activeCommand_.get())) {
             sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
             if (moveCmd->hasBasePoint()) {
                 sf::Vertex guideLine[] = { sf::Vertex(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
                 sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(moveCmd->getBasePoint().x, moveCmd->getBasePoint().y)); window.draw(baseMark);
                 double dx = mouseWorldPos.x - moveCmd->getBasePoint().x; double dy = mouseWorldPos.y - moveCmd->getBasePoint().y;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
             }
         }
     }
@@ -529,12 +533,12 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     if (engine.currentMode == Mode::COPY && engine.activeCommand_) {
         if (auto* copyCmd = dynamic_cast<CopyCommand*>(engine.activeCommand_.get())) {
             sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 255, 0, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
             if (copyCmd->hasBasePoint()) {
                 sf::Vertex guideLine[] = { sf::Vertex(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
                 sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y)); window.draw(baseMark);
                 double dx = mouseWorldPos.x - copyCmd->getBasePoint().x; double dy = mouseWorldPos.y - copyCmd->getBasePoint().y;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
             }
         }
     }
@@ -542,13 +546,13 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     if (engine.currentMode == Mode::ROTATE && engine.activeCommand_) {
         if (auto* rotCmd = dynamic_cast<RotateCommand*>(engine.activeCommand_.get())) {
             sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
             if (rotCmd->hasCenter()) {
                 sf::Vertex guideLine[] = { sf::Vertex(w2s(rotCmd->getCenter().x, rotCmd->getCenter().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
                 sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(w2s(rotCmd->getCenter().x, rotCmd->getCenter().y)); window.draw(centerMark);
                 double dx = mouseWorldPos.x - rotCmd->getCenter().x; double dy = mouseWorldPos.y - rotCmd->getCenter().y;
                 double angle = std::atan2(dy, dx) * 180.0 / 3.14159265358979323846;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->rotate(rotCmd->getCenter(), angle); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->rotate(rotCmd->getCenter(), angle); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
                 std::ostringstream oss; oss << std::fixed << std::setprecision(1) << angle << "°";
                 sf::Text angleText; angleText.setFont(font); angleText.setString(toSfString(oss.str())); angleText.setCharacterSize(14); angleText.setFillColor(sf::Color::Yellow);
                 sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); angleText.setPosition(mouseScreen.x + 12.f, mouseScreen.y - 25.f); window.draw(angleText);
@@ -559,13 +563,13 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     if (engine.currentMode == Mode::SCALE && engine.activeCommand_) {
         if (auto* scaleCmd = dynamic_cast<ScaleCommand*>(engine.activeCommand_.get())) {
             sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(255, 100, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
             if (scaleCmd->hasBasePoint()) {
                 sf::Vertex guideLine[] = { sf::Vertex(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
                 sf::CircleShape baseMark(5.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(5.0f, 5.0f); baseMark.setPosition(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y)); window.draw(baseMark);
                 double dx = mouseWorldPos.x - scaleCmd->getBasePoint().x; double dy = mouseWorldPos.y - scaleCmd->getBasePoint().y;
                 double factor = std::sqrt(dx * dx + dy * dy);
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->scale(scaleCmd->getBasePoint(), factor); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->scale(scaleCmd->getBasePoint(), factor); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
                 std::ostringstream oss; oss << std::fixed << std::setprecision(2) << factor << "x";
                 sf::Text factorText; factorText.setFont(font); factorText.setString(toSfString(oss.str())); factorText.setCharacterSize(14); factorText.setFillColor(sf::Color::Magenta);
                 sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); factorText.setPosition(mouseScreen.x + 12.f, mouseScreen.y - 25.f); window.draw(factorText);
@@ -590,7 +594,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
                 else if (auto* circle = dynamic_cast<Circle*>(entity)) {
                     double newRadius = circle->radius + distance; if (newRadius < 0) newRadius = std::abs(newRadius);
                     sf::CircleShape circlePreview(static_cast<float>(newRadius * view.getScale())); circlePreview.setFillColor(sf::Color::Transparent); circlePreview.setOutlineColor(previewColor); circlePreview.setOutlineThickness(1.5f);
-                    circlePreview.setOrigin(static_cast<float>(newRadius * view.getScale()), static_cast<float>(newRadius * view.getScale())); circlePreview.setPosition(view.worldToScreen(circle->center.x, circle->center.y, CANVAS_HEIGHT)); window.draw(circlePreview);
+                    circlePreview.setOrigin(static_cast<float>(newRadius * view.getScale()), static_cast<float>(newRadius * view.getScale())); circlePreview.setPosition(view.worldToScreen(circle->center.x, circle->center.y)); window.draw(circlePreview);
                 }
                 else if (auto* arc = dynamic_cast<Arc*>(entity)) {
                     const double PI = 3.14159265358979323846; double newRadius = arc->radius + distance; if (newRadius < 0) newRadius = std::abs(newRadius);
@@ -683,22 +687,22 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     else if (engine.currentMode == Mode::ARRAY && engine.activeCommand_) {
         if (auto* arrayCmd = dynamic_cast<ArrayCommand*>(engine.activeCommand_.get())) {
             sf::Color highlightColor(255, 165, 0, 150); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : arrayCmd->getSelectedEntities()) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; e->draw(window, w2s_l, highlightColor, view.getScale()); }
+            for (Entity* e : arrayCmd->getSelectedEntities()) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, highlightColor, view.getScale()); }
             if (!arrayCmd->isSelectingEntities()) {
                 if (arrayCmd->getType() == ArrayCommand::Type::Rectangular) {
                     if (arrayCmd->getRows() > 0 && arrayCmd->getCols() > 0 && arrayCmd->getRowSpacing() != 0.0 && arrayCmd->getColSpacing() != 0.0) {
-                        for (int r = 0; r < arrayCmd->getRows(); ++r) { for (int c = 0; c < arrayCmd->getCols(); ++c) { if (r == 0 && c == 0) continue; double dx = c * arrayCmd->getColSpacing(); double dy = r * arrayCmd->getRowSpacing(); for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
+                        for (int r = 0; r < arrayCmd->getRows(); ++r) { for (int c = 0; c < arrayCmd->getCols(); ++c) { if (r == 0 && c == 0) continue; double dx = c * arrayCmd->getColSpacing(); double dy = r * arrayCmd->getRowSpacing(); for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
                     }
                 }
                 else if (arrayCmd->getType() == ArrayCommand::Type::Polar && arrayCmd->hasPolarCenter()) {
                     Point2D center = arrayCmd->getPolarCenter(); int count = arrayCmd->getPolarCount(); double angle = arrayCmd->getPolarAngle();
-                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
-                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y, CANVAS_HEIGHT)); window.draw(centerMark);
+                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
+                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y)); window.draw(centerMark);
                 }
                 else if (arrayCmd->getType() == ArrayCommand::Type::Polar && !arrayCmd->hasPolarCenter()) {
                     Point2D center = {mouseWorldPos.x, mouseWorldPos.y}; int count = arrayCmd->getPolarCount(); double angle = arrayCmd->getPolarAngle();
-                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y,CANVAS_HEIGHT); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
-                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y, CANVAS_HEIGHT)); window.draw(centerMark);
+                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
+                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y)); window.draw(centerMark);
                 }
             }
         }
@@ -712,7 +716,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
                 double x2 = mouseWorldPos.x; double y2 = mouseWorldPos.y;
                 float w = static_cast<float>(std::abs(x2 - x1) * view.getScale()); float h = static_cast<float>(std::abs(y2 - y1) * view.getScale());
                 windowRect.setSize(sf::Vector2f(w, h)); windowRect.setFillColor(windowColor); windowRect.setOutlineColor(sf::Color(0, 255, 0, 200)); windowRect.setOutlineThickness(1.0f);
-                windowRect.setPosition(view.worldToScreen(std::min(x1, x2), std::max(y1, y2), CANVAS_HEIGHT)); window.draw(windowRect);
+                windowRect.setPosition(view.worldToScreen(std::min(x1, x2), std::max(y1, y2))); window.draw(windowRect);
             }
         }
     }
@@ -724,7 +728,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
                 
                 // Lambda para transformar coordenadas usando la nueva clase View
                 auto w2s_local = [&](double x, double y) { 
-                    return view.worldToScreen(x, y, CANVAS_HEIGHT); 
+                    return view.worldToScreen(x, y); 
                 };
 
                 // Dibujar las entidades seleccionadas con color destacado
@@ -750,8 +754,8 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
 
 void Renderer::drawSelectionRect(sf::RenderWindow& window, const View& view,
                                  const Point2D& startPoint, const Point2D& endPoint) const {
-    auto startScreen = view.worldToScreen(startPoint.x, startPoint.y, CANVAS_HEIGHT);
-    auto endScreen = view.worldToScreen(endPoint.x, endPoint.y, CANVAS_HEIGHT);
+    auto startScreen = view.worldToScreen(startPoint.x, startPoint.y);
+    auto endScreen = view.worldToScreen(endPoint.x, endPoint.y);
     
     sf::RectangleShape selectionRect;
     selectionRect.setPosition(std::min(startScreen.x, endScreen.x), 

@@ -1,6 +1,8 @@
 #include "cad/commands/draw/line_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/document/document.hpp"
+#include "cad/render/view.hpp"      // 1. NECESARIO: Para sf::Color, sf::Vertex, sf::RenderWindow
+#include "cad/core/constants.hpp"         // 2. NECESARIO: Para que el compilador conozca CANVAS_HEIGHT
 #include <sstream>
 #include <cmath>
 
@@ -53,6 +55,27 @@ namespace cad {
 
     bool LineCommand::isComplete() const {
         return false;
+    }
+
+    void LineCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+                               const Point2D& mouseWorldPos, sf::Font& font) const {
+        // Dibujamos feedback si estamos esperando el segundo punto o en modo línea continua
+        if (state_ == State::WaitingSecondPoint) {
+            sf::Color feedbackColor(255, 255, 0, 180);
+            
+            // Lambda para convertir coordenadas. 
+            // ¡Ahora CANVAS_HEIGHT es visible gracias a constants.hpp!
+            auto w2s = [&](double x, double y) { 
+                return view.worldToScreen(x, y); 
+            };
+            
+            sf::Vertex line[] = { 
+                // 3. CORRECCIÓN CLAVE: Usar p1_ (tu variable real) en lugar de startPoint_
+                sf::Vertex(w2s(p1_.x, p1_.y), feedbackColor), 
+                sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) 
+            };
+            window.draw(line, 2, sf::Lines);
+        }
     }
 
 } // namespace cad
