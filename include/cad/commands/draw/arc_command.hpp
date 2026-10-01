@@ -3,6 +3,9 @@
 #include "../command.hpp"
 #include "../../core/geometry/entities/arc.hpp"
 
+// Forward declarations para evitar incluir SFML aquí
+namespace sf { class RenderWindow; class Font; }
+
 namespace cad {
 
     class ArcCommand : public ICommand {
@@ -15,6 +18,11 @@ namespace cad {
         std::string getStatusMessage() const override;
         bool isComplete() const override;
         std::string getName() const override { return "ARCO"; }
+
+        // >>> NUEVO: Método de feedback visual <<<
+        void drawFeedback(sf::RenderWindow& window, const View& view, 
+                          const Point2D& mouseWorldPos, sf::Font& font) const override;
+
         // Para feedback visual
         Point2D getCenter() const { return center_; }
         Point2D getStartPoint() const { return startPoint_; }

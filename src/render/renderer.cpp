@@ -308,38 +308,38 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //     }
     // }
     // --- ARCO ---
-    if (engine.currentMode == Mode::DRAW_ARC && engine.activeCommand_) {
-        if (auto* arcCmd = dynamic_cast<ArcCommand*>(engine.activeCommand_.get())) {
-            if (arcCmd->hasCenter() && !arcCmd->hasStartPoint()) {
-                sf::Vertex line[] = { sf::Vertex(w2s(arcCmd->getCenter().x, arcCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(line, 2, sf::Lines);
-            }
-            else if (arcCmd->hasCenter() && arcCmd->hasStartPoint()) {
-                double dx = mouseWorldPos.x - arcCmd->getCenter().x;
-                double dy = mouseWorldPos.y - arcCmd->getCenter().y;
-                double endAngle = std::atan2(dy, dx);
-                double startDx = arcCmd->getStartPoint().x - arcCmd->getCenter().x;
-                double startDy = arcCmd->getStartPoint().y - arcCmd->getCenter().y;
-                double startRadAngle = std::atan2(startDy, startDx);
-                const int numPoints = 64;
-                sf::VertexArray va(sf::LineStrip, numPoints);
-                const double PI = 3.14159265358979323846;
-                double diff = endAngle - startRadAngle;
-                while (diff < 0) diff += 2 * PI; while (diff >= 2 * PI) diff -= 2 * PI;
-                double step = diff / (numPoints - 1);
-                for (int i = 0; i < numPoints; ++i) {
-                    double angle = startRadAngle + i * step;
-                    va[i].position = w2s(arcCmd->getCenter().x + arcCmd->getRadius() * std::cos(angle), arcCmd->getCenter().y + arcCmd->getRadius() * std::sin(angle));
-                    va[i].color = feedbackColor;
-                }
-                window.draw(va);
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(arcCmd->getCenter().x, arcCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(guideLine, 2, sf::Lines);
-            }
-        }
-    }
+    // if (engine.currentMode == Mode::DRAW_ARC && engine.activeCommand_) {
+    //     if (auto* arcCmd = dynamic_cast<ArcCommand*>(engine.activeCommand_.get())) {
+    //         if (arcCmd->hasCenter() && !arcCmd->hasStartPoint()) {
+    //             sf::Vertex line[] = { sf::Vertex(w2s(arcCmd->getCenter().x, arcCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(line, 2, sf::Lines);
+    //         }
+    //         else if (arcCmd->hasCenter() && arcCmd->hasStartPoint()) {
+    //             double dx = mouseWorldPos.x - arcCmd->getCenter().x;
+    //             double dy = mouseWorldPos.y - arcCmd->getCenter().y;
+    //             double endAngle = std::atan2(dy, dx);
+    //             double startDx = arcCmd->getStartPoint().x - arcCmd->getCenter().x;
+    //             double startDy = arcCmd->getStartPoint().y - arcCmd->getCenter().y;
+    //             double startRadAngle = std::atan2(startDy, startDx);
+    //             const int numPoints = 64;
+    //             sf::VertexArray va(sf::LineStrip, numPoints);
+    //             const double PI = 3.14159265358979323846;
+    //             double diff = endAngle - startRadAngle;
+    //             while (diff < 0) diff += 2 * PI; while (diff >= 2 * PI) diff -= 2 * PI;
+    //             double step = diff / (numPoints - 1);
+    //             for (int i = 0; i < numPoints; ++i) {
+    //                 double angle = startRadAngle + i * step;
+    //                 va[i].position = w2s(arcCmd->getCenter().x + arcCmd->getRadius() * std::cos(angle), arcCmd->getCenter().y + arcCmd->getRadius() * std::sin(angle));
+    //                 va[i].color = feedbackColor;
+    //             }
+    //             window.draw(va);
+    //             sf::Vertex guideLine[] = { sf::Vertex(w2s(arcCmd->getCenter().x, arcCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(guideLine, 2, sf::Lines);
+    //         }
+    //     }
+    // }
     // --- POLILÍNEA ---
-    else if (engine.currentMode == Mode::DRAW_POLYLINE && engine.activeCommand_) {
+    if (engine.currentMode == Mode::DRAW_POLYLINE && engine.activeCommand_) {
         if (auto* polyCmd = dynamic_cast<PolylineCommand*>(engine.activeCommand_.get())) {
             if (polyCmd->hasPoints()) {
                 const auto& points = polyCmd->getPoints();
