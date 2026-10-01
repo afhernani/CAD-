@@ -371,25 +371,25 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             }
         }
     }
-    // --- ELIPSE ---
-    else if (engine.currentMode == Mode::DRAW_ELLIPSE && engine.activeCommand_) {
-        if (auto* ellipseCmd = dynamic_cast<EllipseCommand*>(engine.activeCommand_.get())) {
-            if (ellipseCmd->hasCenter() && !ellipseCmd->hasMajorAxis()) {
-                sf::Vertex line[] = { sf::Vertex(w2s(ellipseCmd->getCenter().x, ellipseCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(line, 2, sf::Lines);
-            }
-            else if (ellipseCmd->hasCenter() && ellipseCmd->hasMajorAxis()) {
-                double dx = mouseWorldPos.x - ellipseCmd->getCenter().x; double dy = mouseWorldPos.y - ellipseCmd->getCenter().y;
-                double minorRadius = std::sqrt(dx * dx + dy * dy); const int numPoints = 64;
-                sf::VertexArray va(sf::LineStrip, numPoints + 1); const double PI = 3.14159265358979323846; double angleStep = 2.0 * PI / numPoints;
-                double rotationAngle = ellipseCmd->getRotationAngle();
-                for (int i = 0; i <= numPoints; ++i) { double angle = i * angleStep; double rotatedAngle = angle + rotationAngle; va[i].position = w2s(ellipseCmd->getCenter().x + ellipseCmd->getMajorRadius() * std::cos(rotatedAngle), ellipseCmd->getCenter().y + minorRadius * std::sin(rotatedAngle)); va[i].color = feedbackColor; }
-                window.draw(va);
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(ellipseCmd->getCenter().x, ellipseCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(guideLine, 2, sf::Lines);
-            }
-        }
-    }
+    // // --- ELIPSE ---
+    // else if (engine.currentMode == Mode::DRAW_ELLIPSE && engine.activeCommand_) {
+    //     if (auto* ellipseCmd = dynamic_cast<EllipseCommand*>(engine.activeCommand_.get())) {
+    //         if (ellipseCmd->hasCenter() && !ellipseCmd->hasMajorAxis()) {
+    //             sf::Vertex line[] = { sf::Vertex(w2s(ellipseCmd->getCenter().x, ellipseCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(line, 2, sf::Lines);
+    //         }
+    //         else if (ellipseCmd->hasCenter() && ellipseCmd->hasMajorAxis()) {
+    //             double dx = mouseWorldPos.x - ellipseCmd->getCenter().x; double dy = mouseWorldPos.y - ellipseCmd->getCenter().y;
+    //             double minorRadius = std::sqrt(dx * dx + dy * dy); const int numPoints = 64;
+    //             sf::VertexArray va(sf::LineStrip, numPoints + 1); const double PI = 3.14159265358979323846; double angleStep = 2.0 * PI / numPoints;
+    //             double rotationAngle = ellipseCmd->getRotationAngle();
+    //             for (int i = 0; i <= numPoints; ++i) { double angle = i * angleStep; double rotatedAngle = angle + rotationAngle; va[i].position = w2s(ellipseCmd->getCenter().x + ellipseCmd->getMajorRadius() * std::cos(rotatedAngle), ellipseCmd->getCenter().y + minorRadius * std::sin(rotatedAngle)); va[i].color = feedbackColor; }
+    //             window.draw(va);
+    //             sf::Vertex guideLine[] = { sf::Vertex(w2s(ellipseCmd->getCenter().x, ellipseCmd->getCenter().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(guideLine, 2, sf::Lines);
+    //         }
+    //     }
+    // }
     // --- COTA (DIMENSION) ---
     else if (engine.currentMode == Mode::DRAW_DIMENSION) {
         if (engine.statusMessage.find("Segundo") != std::string::npos) {

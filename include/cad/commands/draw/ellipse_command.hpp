@@ -2,6 +2,9 @@
 #include "../command.hpp"
 #include "../../core/geometry/entities/ellipse.hpp"
 
+// Forward declarations para evitar incluir SFML aquí
+namespace sf { class RenderWindow; class Font; }
+
 namespace cad {
 
 class EllipseCommand : public ICommand {
@@ -15,6 +18,9 @@ public:
     bool isComplete() const override;
     std::string getName() const override { return "ELIPSE"; }
 
+    // >>> NUEVO: Método de feedback visual <<<
+        void drawFeedback(sf::RenderWindow& window, const View& view, 
+                          const Point2D& mouseWorldPos, sf::Font& font) const override;
     // Para feedback visual
     Point2D getCenter() const { return center_; }
     Point2D getMajorAxisEnd() const { return majorAxisEnd_; }
