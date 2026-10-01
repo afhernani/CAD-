@@ -532,18 +532,18 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //     }
     // }
     // --- COPIAR ---
-    if (engine.currentMode == Mode::COPY && engine.activeCommand_) {
-        if (auto* copyCmd = dynamic_cast<CopyCommand*>(engine.activeCommand_.get())) {
-            sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 255, 0, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
-            if (copyCmd->hasBasePoint()) {
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
-                sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y)); window.draw(baseMark);
-                double dx = mouseWorldPos.x - copyCmd->getBasePoint().x; double dy = mouseWorldPos.y - copyCmd->getBasePoint().y;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
-            }
-        }
-    }
+    // if (engine.currentMode == Mode::COPY && engine.activeCommand_) {
+    //     if (auto* copyCmd = dynamic_cast<CopyCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 255, 0, 120); sf::Color axisColor(255, 255, 0, 200);
+    //         for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+    //         if (copyCmd->hasBasePoint()) {
+    //             sf::Vertex guideLine[] = { sf::Vertex(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
+    //             sf::CircleShape baseMark(4.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(4.0f, 4.0f); baseMark.setPosition(w2s(copyCmd->getBasePoint().x, copyCmd->getBasePoint().y)); window.draw(baseMark);
+    //             double dx = mouseWorldPos.x - copyCmd->getBasePoint().x; double dy = mouseWorldPos.y - copyCmd->getBasePoint().y;
+    //             for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+    //         }
+    //     }
+    // }
     // --- ROTAR ---
     if (engine.currentMode == Mode::ROTATE && engine.activeCommand_) {
         if (auto* rotCmd = dynamic_cast<RotateCommand*>(engine.activeCommand_.get())) {
