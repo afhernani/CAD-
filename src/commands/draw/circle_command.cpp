@@ -1,10 +1,17 @@
 #include "cad/commands/draw/circle_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/document/document.hpp"
+#include "cad/render/view.hpp"             // OBLIGATORIO para usar view.worldToScreen
+#include <SFML/Graphics.hpp>               // OBLIGATORIO para sf::VertexArray, sf::Color
+#include "cad/core/constants.hpp"          // Para CANVAS_HEIGHT
 #include <sstream>
 #include <cmath>
 
 namespace cad {
+
+    namespace{
+        constexpr double PI = 3.14159265358979323846;
+    }
 
     CircleCommand::CircleCommand() {
         statusMessage_ = "CIRCULO | Especificar centro:";
@@ -137,6 +144,40 @@ namespace cad {
 
     bool CircleCommand::isComplete() const {
         return finished_;
+    }
+
+    void CircleCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+                                     const Point2D& mouseWorldPos, sf::Font& font) const {
+        // Solo dibujamos feedback cuando tenemos el centro y estamos esperando 
+        // que el usuario defina el radio haciendo clic (WaitingForPoint)
+        if (hasCenter_ && step_ != Step::WaitingCenter) {
+            sf::Color feedbackColor(255, 255, 0, 180);
+            
+            // Lambda para convertir coordenadas
+            auto w2s = [&](double x, double y) { 
+                return view.worldToScreen(x, y); 
+            };
+
+            // Calcular radio dinámico basado en la posición del ratón
+            double dx = mouseWorldPos.x - center_.x;
+            double dy = mouseWorldPos.y - center_.y;
+            double radius = std::sqrt(dx * dx + dy * dy);
+
+            // Dibujar el círculo aproximado con segmentos
+            const int numPoints = 64;
+            sf::VertexArray va(sf::LineStrip, numPoints + 1);
+            // const double PI = 3.14159265358979323846;
+            double angleStep = 2.0 * PI / numPoints;
+
+            for (int i = 0; i <= numPoints; ++i) {
+                double angle = i * angleStep;
+                va[i].position = w2s(center_.x + radius * std::cos(angle), 
+                                     center_.y + radius * std::sin(angle));
+                va[i].color = feedbackColor;
+            }
+            
+            window.draw(va);
+        }
     }
 
 } // namespace cad
