@@ -13,7 +13,7 @@
 // #include "cad/commands/draw/arc_command.hpp"
 // #include "cad/commands/draw/polygon_command.hpp"
 // #include "cad/commands/draw/ellipse_command.hpp"
-#include "cad/commands/draw/polyline_command.hpp"
+// #include "cad/commands/draw/polyline_command.hpp"
 #include "cad/commands/modify/move_command.hpp"
 #include "cad/commands/modify/copy_command.hpp"
 #include "cad/commands/modify/rotate_command.hpp"
@@ -338,21 +338,21 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //         }
     //     }
     // }
-    // --- POLILÍNEA ---
-    if (engine.currentMode == Mode::DRAW_POLYLINE && engine.activeCommand_) {
-        if (auto* polyCmd = dynamic_cast<PolylineCommand*>(engine.activeCommand_.get())) {
-            if (polyCmd->hasPoints()) {
-                const auto& points = polyCmd->getPoints();
-                if (points.size() >= 2) {
-                    sf::VertexArray segments(sf::LineStrip, points.size());
-                    for (size_t i = 0; i < points.size(); ++i) { segments[i].position = w2s(points[i].x, points[i].y); segments[i].color = feedbackColor; }
-                    window.draw(segments);
-                }
-                sf::Vertex line[] = { sf::Vertex(w2s(polyCmd->getLastPoint().x, polyCmd->getLastPoint().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
-                window.draw(line, 2, sf::Lines);
-            }
-        }
-    }
+    // // --- POLILÍNEA ---
+    // if (engine.currentMode == Mode::DRAW_POLYLINE && engine.activeCommand_) {
+    //     if (auto* polyCmd = dynamic_cast<PolylineCommand*>(engine.activeCommand_.get())) {
+    //         if (polyCmd->hasPoints()) {
+    //             const auto& points = polyCmd->getPoints();
+    //             if (points.size() >= 2) {
+    //                 sf::VertexArray segments(sf::LineStrip, points.size());
+    //                 for (size_t i = 0; i < points.size(); ++i) { segments[i].position = w2s(points[i].x, points[i].y); segments[i].color = feedbackColor; }
+    //                 window.draw(segments);
+    //             }
+    //             sf::Vertex line[] = { sf::Vertex(w2s(polyCmd->getLastPoint().x, polyCmd->getLastPoint().y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
+    //             window.draw(line, 2, sf::Lines);
+    //         }
+    //     }
+    // }
     // // --- POLÍGONO ---
     // else if (engine.currentMode == Mode::DRAW_POLYGON && engine.activeCommand_) {
     //     if (auto* polyCmd = dynamic_cast<PolygonCommand*>(engine.activeCommand_.get())) {
@@ -391,7 +391,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //     }
     // }
     // --- COTA (DIMENSION) ---
-    else if (engine.currentMode == Mode::DRAW_DIMENSION) {
+    if (engine.currentMode == Mode::DRAW_DIMENSION) {
         if (engine.statusMessage.find("Segundo") != std::string::npos) {
             sf::Vertex line[] = { sf::Vertex(view.worldToScreen(engine.tempDimP1.x, engine.tempDimP1.y), feedbackColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) };
             window.draw(line, 2, sf::Lines);

@@ -1,6 +1,9 @@
 #include "cad/commands/draw/polyline_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/document/document.hpp"
+#include "cad/render/view.hpp"             // OBLIGATORIO para view.worldToScreen
+#include <SFML/Graphics.hpp>               // OBLIGATORIO para sf::VertexArray, sf::Color
+#include "cad/core/constants.hpp"          // Para CANVAS_HEIGHT (o tu archivo de constantes)
 #include <sstream>
 #include <algorithm>
 
@@ -90,6 +93,35 @@ namespace cad {
 
     bool PolylineCommand::isComplete() const {
         return finished_;
+    }
+
+    void PolylineCommand::drawFeedback(sf::RenderWindow& window, const View& view, 
+                                       const Point2D& mouseWorldPos, sf::Font& font) const {
+        if (!hasPoints()) return; // Si no hay puntos, no dibujamos nada
+
+        sf::Color feedbackColor(255, 255, 0, 180);
+        auto w2s = [&](double x, double y) { 
+            return view.worldToScreen(x, y); 
+        };
+
+        const auto& pts = getPoints();
+
+        // 1. Dibujar los segmentos ya confirmados
+        if (pts.size() >= 2) {
+            sf::VertexArray segments(sf::LineStrip, pts.size());
+            for (size_t i = 0; i < pts.size(); ++i) {
+                segments[i].position = w2s(pts[i].x, pts[i].y);
+                segments[i].color = feedbackColor;
+            }
+            window.draw(segments);
+        }
+
+        // 2. Dibujar la línea guía desde el último punto hasta el ratón
+        sf::Vertex guideLine[] = { 
+            sf::Vertex(w2s(getLastPoint().x, getLastPoint().y), feedbackColor), 
+            sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), feedbackColor) 
+        };
+        window.draw(guideLine, 2, sf::Lines);
     }
 
 } // namespace cad
