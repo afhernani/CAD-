@@ -89,8 +89,23 @@ bool SelectionManager::lineIntersectsRectangle(const Point2D& p1, const Point2D&
         Point2D edgeStart = corners[i];
         Point2D edgeEnd = corners[(i + 1) % 4];
 
-        auto inter = lineLineIntersection(p1, p2, edgeStart, edgeEnd);
-        if (inter.intersects) {
+        // Calcular intersección de SEGMENTOS (no líneas infinitas)
+        // usando el algoritmo de parámetros t y u
+        double denom = (p2.x - p1.x) * (edgeEnd.y - edgeStart.y) -
+                       (p2.y - p1.y) * (edgeEnd.x - edgeStart.x);
+
+        // Si son paralelos, no hay intersección
+        if (std::abs(denom) < 1e-10) continue;
+
+        double t = ((edgeStart.x - p1.x) * (edgeEnd.y - edgeStart.y) -
+                    (edgeStart.y - p1.y) * (edgeEnd.x - edgeStart.x)) / denom;
+
+        double u = ((edgeStart.x - p1.x) * (p2.y - p1.y) -
+                    (edgeStart.y - p1.y) * (p2.x - p1.x)) / denom;
+
+        // Solo hay intersección si ambos parámetros están en [0, 1]
+        // (es decir, el punto de cruce está dentro de AMBOS segmentos)
+        if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
             return true;
         }
     }

@@ -225,24 +225,58 @@ namespace cad {
             if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
                 isPanning_ = false;
             }
-            // >>> NUEVO: FIN DE SELECCIÓN POR VENTANA (Clic Izquierdo) <<<
+                        // >>> FIN DE SELECCIÓN POR VENTANA O CLIC SIMPLE (Clic Izquierdo) <<<
             if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
                 if (isSelectingByWindow_) {
                     selectionEndPoint_ = currentMouseWorldPos_;
-
-                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y, CANVAS_HEIGHT);
-                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y , CANVAS_HEIGHT);
-                    double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
                     
+                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y, CANVAS_HEIGHT);
+                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y, CANVAS_HEIGHT);
+                    double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
+                    double tolerance = 5.0 / view_.getScale();
+
                     if (dragDistance > 5.0) {
-                        bool addToSelection = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) ||
-                                              sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
-                        engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, addToSelection);
+                        // --- CASO A: Fue un arrastre (Selección por Ventana) ---
+                        bool shiftPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || 
+                                            sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
+                        
+                        // Si NO se presiona Shift, limpiamos la selección previa antes de añadir la nueva ventana
+                        if (!shiftPressed) {
+                            engine_.selectedEntities.clear();
+                        }
+                        
+                        // Ejecutar selección (el 'true' indica que añada al vector)
+                        engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, true);
+                        
                     } else {
-                        engine_.selectEntity(selectionStartPoint_, 5.0 / view_.getScale());
+                        // --- CASO B: Fue un clic simple (≤ 5px) ---
+                        // 1. Verificar si hicimos clic sobre alguna entidad
+                        Entity* clickedEntity = nullptr;
+                        for (auto& entity : engine_.doc.entities) {
+                            if (entity->isNear(selectionStartPoint_, tolerance)) {
+                                clickedEntity = entity.get();
+                                break;
+                            }
+                        }
+
+                        if (clickedEntity) {
+                            // 2. Si hay entidad: Comportamiento TOGGLE (Añadir o Quitar)
+                            auto it = std::find(engine_.selectedEntities.begin(), 
+                                                engine_.selectedEntities.end(), 
+                                                clickedEntity);
+                            
+                            if (it != engine_.selectedEntities.end()) {
+                                engine_.selectedEntities.erase(it); // Ya estaba seleccionada: la quitamos
+                            } else {
+                                engine_.selectedEntities.push_back(clickedEntity); // No estaba: la añadimos (¡Acumulación!)
+                            }
+                        } else {
+                            // 3. Si NO hay entidad (clic en el vacío): Limpiar toda la selección
+                            engine_.selectedEntities.clear();
+                        }
                     }
                     
-                    isSelectingByWindow_ = false;
+                    isSelectingByWindow_ = false; // Resetear estado
                 }
             }
             if (event.type == sf::Event::MouseMoved && isPanning_) {
@@ -327,7 +361,7 @@ namespace cad {
                             engine_.gripBackup = hitEntity->clone();
                             engine_.statusMessage = "Arrastrando grip...";
                         } else {
-                            engine_.selectEntity(worldPoint, tolerance);
+                            // engine_.selectEntity(worldPoint, tolerance);
                             // >>> NUEVO: INICIO DE SELECCIÓN POR VENTANA <<<
                             selectionStartPoint_ = worldPoint;
                             selectionEndPoint_ = worldPoint;
