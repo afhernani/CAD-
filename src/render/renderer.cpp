@@ -8,9 +8,6 @@
 #include "cad/core/geometry/entities/dimension.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
-// #include "cad/commands/block/block_create_command.hpp"
-#include "cad/commands/block/block_insert_command.hpp"
-
 #include <sstream>
 #include <cmath>
 #include <iomanip>
