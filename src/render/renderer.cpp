@@ -20,8 +20,8 @@
 //#include "cad/commands/modify/scale_command.hpp"
 //#include "cad/commands/modify/mirror_command.hpp"
 //#include "cad/commands/modify/fillet_command.hpp"
+// #include "cad/commands/modify/chamfer_command.hpp"
 #include "cad/commands/modify/offset_command.hpp"
-#include "cad/commands/modify/chamfer_command.hpp"
 #include "cad/commands/modify/trim_command.hpp"
 #include "cad/commands/modify/extend_command.hpp"
 #include "cad/commands/modify/measure_command.hpp"
@@ -632,29 +632,29 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //     }
     // }
     // --- CHAMFER ---
-    if (engine.currentMode == Mode::CHAMFER && engine.activeCommand_) {
-        if (auto* chamferCmd = dynamic_cast<ChamferCommand*>(engine.activeCommand_.get())) {
-            sf::Color highlightColor(0, 255, 0, 150); sf::Color previewColor(255, 255, 0, 200);
-            if (chamferCmd->hasLine1() && chamferCmd->getLine1()) {
-                Line* l1 = chamferCmd->getLine1();
-                sf::Vertex line1[] = { sf::Vertex(w2s(l1->p1.x, l1->p1.y), highlightColor), sf::Vertex(w2s(l1->p2.x, l1->p2.y), highlightColor) }; window.draw(line1, 2, sf::Lines);
-                Line* hoverLine = nullptr; double tolerance = 10.0 / view.getScale();
-                for (auto& entity : engine.doc.entities) { if (auto* line = dynamic_cast<Line*>(entity.get())) { if (line->isNear(mouseWorldPos, tolerance) && line != l1) { hoverLine = line; break; } } }
-                if (hoverLine) {
-                    auto inter = lineLineIntersection(l1->p1, l1->p2, hoverLine->p1, hoverLine->p2);
-                    if (inter.intersects) {
-                        Point2D I = inter.point;
-                        auto normalize = [](Point2D a, Point2D b) { double dx = b.x - a.x, dy = b.y - a.y; double len = std::sqrt(dx*dx + dy*dy); return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0}; };
-                        double d1a = std::hypot(l1->p1.x - I.x, l1->p1.y - I.y); double d1b = std::hypot(l1->p2.x - I.x, l1->p2.y - I.y); Point2D end1 = (d1a < d1b) ? l1->p1 : l1->p2;
-                        double d2a = std::hypot(hoverLine->p1.x - I.x, hoverLine->p1.y - I.y); double d2b = std::hypot(hoverLine->p2.x - I.x, hoverLine->p2.y - I.y); Point2D end2 = (d2a < d2b) ? hoverLine->p1 : hoverLine->p2;
-                        Point2D v1 = normalize(I, end1); Point2D v2 = normalize(I, end2);
-                        Point2D T1 = {I.x + v1.x * chamferCmd->getDist1(), I.y + v1.y * chamferCmd->getDist1()}; Point2D T2 = {I.x + v2.x * chamferCmd->getDist2(), I.y + v2.y * chamferCmd->getDist2()};
-                        sf::Vertex chamferLine[] = { sf::Vertex(w2s(T1.x, T1.y), previewColor), sf::Vertex(w2s(T2.x, T2.y), previewColor) }; window.draw(chamferLine, 2, sf::Lines);
-                    }
-                }
-            }
-        }
-    }
+    // if (engine.currentMode == Mode::CHAMFER && engine.activeCommand_) {
+    //     if (auto* chamferCmd = dynamic_cast<ChamferCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color highlightColor(0, 255, 0, 150); sf::Color previewColor(255, 255, 0, 200);
+    //         if (chamferCmd->hasLine1() && chamferCmd->getLine1()) {
+    //             Line* l1 = chamferCmd->getLine1();
+    //             sf::Vertex line1[] = { sf::Vertex(w2s(l1->p1.x, l1->p1.y), highlightColor), sf::Vertex(w2s(l1->p2.x, l1->p2.y), highlightColor) }; window.draw(line1, 2, sf::Lines);
+    //             Line* hoverLine = nullptr; double tolerance = 10.0 / view.getScale();
+    //             for (auto& entity : engine.doc.entities) { if (auto* line = dynamic_cast<Line*>(entity.get())) { if (line->isNear(mouseWorldPos, tolerance) && line != l1) { hoverLine = line; break; } } }
+    //             if (hoverLine) {
+    //                 auto inter = lineLineIntersection(l1->p1, l1->p2, hoverLine->p1, hoverLine->p2);
+    //                 if (inter.intersects) {
+    //                     Point2D I = inter.point;
+    //                     auto normalize = [](Point2D a, Point2D b) { double dx = b.x - a.x, dy = b.y - a.y; double len = std::sqrt(dx*dx + dy*dy); return len > 0 ? Point2D{dx/len, dy/len} : Point2D{0,0}; };
+    //                     double d1a = std::hypot(l1->p1.x - I.x, l1->p1.y - I.y); double d1b = std::hypot(l1->p2.x - I.x, l1->p2.y - I.y); Point2D end1 = (d1a < d1b) ? l1->p1 : l1->p2;
+    //                     double d2a = std::hypot(hoverLine->p1.x - I.x, hoverLine->p1.y - I.y); double d2b = std::hypot(hoverLine->p2.x - I.x, hoverLine->p2.y - I.y); Point2D end2 = (d2a < d2b) ? hoverLine->p1 : hoverLine->p2;
+    //                     Point2D v1 = normalize(I, end1); Point2D v2 = normalize(I, end2);
+    //                     Point2D T1 = {I.x + v1.x * chamferCmd->getDist1(), I.y + v1.y * chamferCmd->getDist1()}; Point2D T2 = {I.x + v2.x * chamferCmd->getDist2(), I.y + v2.y * chamferCmd->getDist2()};
+    //                     sf::Vertex chamferLine[] = { sf::Vertex(w2s(T1.x, T1.y), previewColor), sf::Vertex(w2s(T2.x, T2.y), previewColor) }; window.draw(chamferLine, 2, sf::Lines);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     // --- TRIM ---
     if (engine.currentMode == Mode::TRIM && engine.activeCommand_) {
         if (auto* trimCmd = dynamic_cast<TrimCommand*>(engine.activeCommand_.get())) {
