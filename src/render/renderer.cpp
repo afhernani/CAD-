@@ -8,26 +8,7 @@
 #include "cad/core/geometry/entities/dimension.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
-// #include "cad/commands/draw/line_command.hpp"
-// #include "cad/commands/draw/circle_command.hpp"
-// #include "cad/commands/draw/arc_command.hpp"
-// #include "cad/commands/draw/polygon_command.hpp"
-// #include "cad/commands/draw/ellipse_command.hpp"
-// #include "cad/commands/draw/polyline_command.hpp"
-// #include "cad/commands/modify/move_command.hpp"
-//#include "cad/commands/modify/copy_command.hpp"
-//#include "cad/commands/modify/rotate_command.hpp"
-//#include "cad/commands/modify/scale_command.hpp"
-//#include "cad/commands/modify/mirror_command.hpp"
-//#include "cad/commands/modify/fillet_command.hpp"
-// #include "cad/commands/modify/chamfer_command.hpp"
-// #include "cad/commands/modify/trim_command.hpp"
-// #include "cad/commands/modify/extend_command.hpp"
-// #include "cad/commands/modify/measure_command.hpp"
-// #include "cad/commands/modify/offset_command.hpp"
-// #include "cad/commands/modify/stretch_command.hpp"
-// #include "cad/commands/modify/array_command.hpp"
-#include "cad/commands/block/block_create_command.hpp"
+// #include "cad/commands/block/block_create_command.hpp"
 #include "cad/commands/block/block_insert_command.hpp"
 
 #include <sstream>
@@ -390,36 +371,6 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << engine.tempDimAngle << "°";
             sf::Text txt; txt.setFont(font); txt.setString(toSfString(oss.str())); txt.setCharacterSize(14); txt.setFillColor(sf::Color(255, 255, 0));
             sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); txt.setPosition(mouseScreen.x + 15.f, mouseScreen.y - 25.f); window.draw(txt);
-        }
-    }
-    // --- BLOCK (Feedback visual de creación) ---
-    else if (engine.currentMode == Mode::BLOCK_CREATE && engine.activeCommand_) {
-        if (auto* blockCmd = dynamic_cast<BlockCreateCommand*>(engine.activeCommand_.get())) {
-            if (!blockCmd->getSelectedEntities().empty()) {
-                sf::Color highlightColor(0, 255, 255, 200); // Cian brillante
-                
-                // Lambda para transformar coordenadas usando la nueva clase View
-                auto w2s_local = [&](double x, double y) { 
-                    return view.worldToScreen(x, y); 
-                };
-
-                // Dibujar las entidades seleccionadas con color destacado
-                for (Entity* e : blockCmd->getSelectedEntities()) {
-                    e->draw(window, w2s_local, highlightColor, view.getScale());
-                }
-                
-                // Mostrar contador de entidades seleccionadas
-                std::ostringstream oss;
-                oss << "Entidades seleccionadas: " << blockCmd->getSelectedEntities().size();
-                
-                sf::Text countText;
-                countText.setFont(font); // O font_ si lo tienes como miembro en Renderer
-                countText.setString(toSfString(oss.str()));
-                countText.setCharacterSize(14);
-                countText.setFillColor(sf::Color(0, 255, 255));
-                countText.setPosition(10, MENU_HEIGHT + TOOLBAR_HEIGHT + 10);
-                window.draw(countText);
-            }
         }
     }
 }

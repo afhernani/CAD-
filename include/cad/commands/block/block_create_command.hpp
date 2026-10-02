@@ -4,6 +4,10 @@
 #include "../../core/document/block.hpp" // Asegúrate de que esté este include
 #include <vector>
 
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
 class BlockCreateCommand : public ICommand {
@@ -16,6 +20,9 @@ public:
     std::string getStatusMessage() const override;
     bool isComplete() const override;
     std::string getName() const override { return "BLOQUE"; }
+
+    void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                      const Point2D& mouseWorldPos, sf::Font& font) const override;
 
     enum class Step { WaitingName, WaitingBasePoint, SelectingEntities };
     Step getStep() const { return step_; }
