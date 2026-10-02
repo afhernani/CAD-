@@ -15,10 +15,10 @@
 // #include "cad/commands/draw/ellipse_command.hpp"
 // #include "cad/commands/draw/polyline_command.hpp"
 // #include "cad/commands/modify/move_command.hpp"
-#include "cad/commands/modify/copy_command.hpp"
-#include "cad/commands/modify/rotate_command.hpp"
-#include "cad/commands/modify/scale_command.hpp"
-#include "cad/commands/modify/mirror_command.hpp"
+//#include "cad/commands/modify/copy_command.hpp"
+//#include "cad/commands/modify/rotate_command.hpp"
+//#include "cad/commands/modify/scale_command.hpp"
+//#include "cad/commands/modify/mirror_command.hpp"
 #include "cad/commands/modify/offset_command.hpp"
 #include "cad/commands/modify/fillet_command.hpp"
 #include "cad/commands/modify/chamfer_command.hpp"
@@ -506,18 +506,18 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
         }
     }
     // --- SIMETRIA (MIRROR) ---
-    else if (engine.currentMode == Mode::MIRROR && engine.activeCommand_) {
-        if (auto* mirrorCmd = dynamic_cast<MirrorCommand*>(engine.activeCommand_.get())) {
-            sf::Color axisColor(0, 255, 0, 180); sf::Color ghostColor(0, 200, 255, 100);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, sf::Color(255, 165, 0, 150), view.getScale()); }
-            if (mirrorCmd->hasAxisP1()) {
-                sf::Vertex axisLine[] = { sf::Vertex(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(axisLine, 2, sf::Lines);
-                sf::CircleShape p1(4.0f); p1.setFillColor(axisColor); p1.setOrigin(4.0f, 4.0f); p1.setPosition(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y)); window.draw(p1);
-                Point2D axisP2 = {mouseWorldPos.x, mouseWorldPos.y};
-                for (Entity* e : engine.selectedEntities) { auto copy = e->clone(); copy->mirror(mirrorCmd->getAxisP1(), axisP2); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; copy->draw(window, w2s_l, ghostColor, view.getScale()); }
-            }
-        }
-    }
+    // else if (engine.currentMode == Mode::MIRROR && engine.activeCommand_) {
+    //     if (auto* mirrorCmd = dynamic_cast<MirrorCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color axisColor(0, 255, 0, 180); sf::Color ghostColor(0, 200, 255, 100);
+    //         for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, sf::Color(255, 165, 0, 150), view.getScale()); }
+    //         if (mirrorCmd->hasAxisP1()) {
+    //             sf::Vertex axisLine[] = { sf::Vertex(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(axisLine, 2, sf::Lines);
+    //             sf::CircleShape p1(4.0f); p1.setFillColor(axisColor); p1.setOrigin(4.0f, 4.0f); p1.setPosition(w2s(mirrorCmd->getAxisP1().x, mirrorCmd->getAxisP1().y)); window.draw(p1);
+    //             Point2D axisP2 = {mouseWorldPos.x, mouseWorldPos.y};
+    //             for (Entity* e : engine.selectedEntities) { auto copy = e->clone(); copy->mirror(mirrorCmd->getAxisP1(), axisP2); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; copy->draw(window, w2s_l, ghostColor, view.getScale()); }
+    //         }
+    //     }
+    // }
     // // --- MOVER ---
     // if (engine.currentMode == Mode::MOVE && engine.activeCommand_) {
     //     if (auto* moveCmd = dynamic_cast<MoveCommand*>(engine.activeCommand_.get())) {
