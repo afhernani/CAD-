@@ -4,6 +4,10 @@
 #include <vector>
 #include <algorithm>                         // ← AÑADIR: para std::find
 
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
     class TrimCommand : public ICommand {
@@ -16,6 +20,9 @@ namespace cad {
         std::string getStatusMessage() const override;
         bool isComplete() const override;
         std::string getName() const override { return "RECORTAR"; }
+
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                          const Point2D& mouseWorldPos, sf::Font& font) const override;
 
         // Para feedback visual
         const std::vector<Entity*>& getBoundaries() const { return boundaries_; }
