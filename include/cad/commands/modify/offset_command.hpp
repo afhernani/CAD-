@@ -2,41 +2,46 @@
 #include "../command.hpp"
 #include "../../core/geometry/entity.hpp" 
 
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
-class OffsetCommand : public ICommand {
-public:
-    OffsetCommand();
-    
-    void execute(const std::string& input, Engine& engine) override;
-    void onPoint(const Point2D& point, Engine& engine) override;
-    void onCancel() override;
-    std::string getStatusMessage() const override;
-    bool isComplete() const override;
-    std::string getName() const override { return "DESPLAZAR"; }
+    class OffsetCommand : public ICommand {
+    public:
+        OffsetCommand();
+        
+        void execute(const std::string& input, Engine& engine) override;
+        void onPoint(const Point2D& point, Engine& engine) override;
+        void onCancel() override;
+        std::string getStatusMessage() const override;
+        bool isComplete() const override;
+        std::string getName() const override { return "DESPLAZAR"; }
 
-    // Para feedback visual
-    double getDistance() const { return distance_; }
-    bool hasDistance() const { return hasDistance_; }
-    Entity* getSelectedEntity() const { return selectedEntity_; }
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                        const Point2D& mouseWorldPos, sf::Font& font) const override;
 
-private:
-    enum class Step { 
-        WaitingDistance, 
-        WaitingEntity, 
-        WaitingSide 
+        double getDistance() const { return distance_; }
+        bool hasDistance() const { return hasDistance_; }
+        Entity* getSelectedEntity() const { return selectedEntity_; }
+
+    private:
+        enum class Step { 
+            WaitingDistance, 
+            WaitingDistancePoint2,  // <<< NUEVO: Para diferenciar el segundo clic
+            WaitingEntity, 
+            WaitingSide 
+        };
+        Step step_ = Step::WaitingDistance;
+        double distance_ = 0.0;
+        Entity* selectedEntity_ = nullptr;
+        Point2D firstPoint_;
+        
+        bool hasDistance_ = false;
+        bool finished_ = false;
+        std::string statusMessage_;
+
+        void createOffsetEntity(Entity* entity, const Point2D& sidePoint, Engine& engine);
     };
-    Step step_ = Step::WaitingDistance;
-    double distance_ = 0.0;
-    Entity* selectedEntity_ = nullptr;
-    Point2D firstPoint_;  // Para calcular distancia con dos puntos
-    
-    bool hasDistance_ = false;
-    bool finished_ = false;
-    std::string statusMessage_;
-
-    // Método auxiliar para crear entidad desplazada
-    void createOffsetEntity(Entity* entity, const Point2D& sidePoint, Engine& engine);
-};
 
 } // namespace cad
