@@ -56,26 +56,7 @@ namespace cad {
 			executeCommand(cleanInput);
 		} else if (currentMode == Mode::LAYER_COMMAND) {
 			processLayerCommand(cleanInput);
-		} else if (currentMode == Mode::DIM_OPTIONS) {
-			std::string upperInput = cleanInput;
-			std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
-			if (upperInput == "A" || upperInput == "ALINEADA") {
-				currentDimType = DimType::ALIGNED; currentMode = Mode::DRAW_DIM_ALIGNED;
-				statusMessage = "COTA ALINEADA | Selecciona línea o primer punto:";
-			} else if (upperInput == "R" || upperInput == "RADIO") {
-				currentDimType = DimType::RADIUS; currentMode = Mode::DRAW_DIM_RADIUS;
-				statusMessage = "COTA RADIO | Selecciona círculo o arco:";
-			} else if (upperInput == "D" || upperInput == "DIAMETRO") {
-				currentDimType = DimType::DIAMETER; currentMode = Mode::DRAW_DIM_DIAMETER;
-				statusMessage = "COTA DIÁMETRO | Selecciona círculo o arco:";
-			} else if (upperInput == "AN" || upperInput == "ANGULO") {
-				currentDimType = DimType::ANGULAR; currentMode = Mode::DRAW_DIM_ANGULAR;
-				statusMessage = "COTA ANGULAR | Selecciona la primera línea:";
-			} else {
-				currentDimType = DimType::HORIZONTAL; currentMode = Mode::DRAW_DIMENSION;
-				statusMessage = "COTA | Primer punto:";
-			}
-		} else {
+		}else {
 			processCoordinate(cleanInput);
 		}
 	}
@@ -97,9 +78,7 @@ namespace cad {
 		} else if (upperCmd == "EL" || upperCmd == "ELLIPSE" || upperCmd == "ELIPSE") {
 			activeCommand_ = std::make_unique<EllipseCommand>(); currentMode = Mode::DRAW_ELLIPSE;
 		} else if (upperCmd == "DIM" || upperCmd == "COTA" || upperCmd == "ACOTAR") {
-			currentMode = Mode::DIM_OPTIONS; currentDimType = DimType::HORIZONTAL;
-			statusMessage = "COTA | [Alineada/Radio/Diámetro/Ángulo] <Horizontal>:";
-			return;
+			activeCommand_ = std::make_unique<DimensionCommand>(); currentMode = Mode::DRAW_DIMENSION;
 		} else if (upperCmd == "Q" || upperCmd == "QUIT" || upperCmd == "SALIR") {
 			statusMessage = "Usa el botón de cerrar ventana para salir."; return;
 		} else if (upperCmd == "Z" || upperCmd == "BORRAR") {

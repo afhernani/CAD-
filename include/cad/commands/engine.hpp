@@ -7,6 +7,7 @@
 #include "draw/polyline_command.hpp"
 #include "draw/polygon_command.hpp"
 #include "draw/ellipse_command.hpp"
+#include "draw/dimension_command.hpp"
 #include "modify/move_command.hpp"
 #include "modify/copy_command.hpp"
 #include "modify/rotate_command.hpp"
