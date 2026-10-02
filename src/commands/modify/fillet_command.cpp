@@ -1,6 +1,9 @@
 #include "cad/commands/modify/fillet_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/geometry/intersections.hpp"
+#include "cad/render/view.hpp"             // OBLIGATORIO
+#include <SFML/Graphics.hpp>               // OBLIGATORIO
+#include "cad/core/constants.hpp"          // Para CANVAS_HEIGHT
 #include <sstream>
 #include <cmath>
 #include <numbers>
@@ -193,6 +196,102 @@ namespace cad {
 
     bool FilletCommand::isComplete() const {
         return finished_;
+    }
+
+    void FilletCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                                     const Point2D& mouseWorldPos, sf::Font& font) const {
+        if (!hasLine1_ || !line1_) return;
+
+        sf::Color highlightColor(0, 255, 0, 150);
+        sf::Color previewColor(255, 255, 0, 200);
+
+        auto w2s = [&](double x, double y) {
+            return view.worldToScreen(x, y);
+        };
+
+        Line* l1 = line1_;
+        sf::Vertex line1Verts[] = {
+            sf::Vertex(w2s(l1->p1.x, l1->p1.y), highlightColor),
+            sf::Vertex(w2s(l1->p2.x, l1->p2.y), highlightColor)
+        };
+        window.draw(line1Verts, 2, sf::Lines);
+
+        // Buscar la segunda línea bajo el cursor
+        Line* hoverLine = nullptr;
+        double tolerance = 10.0 / view.getScale();
+        for (auto& entity : engine.doc.entities) {
+            if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                if (line->isNear(mouseWorldPos, tolerance) && line != l1) {
+                    hoverLine = line;
+                    break;
+                }
+            }
+        }
+
+        // Si hay segunda línea y tenemos radio, calculamos y dibujamos el arco de preview
+        if (hoverLine && hasRadius_ && radius_ > 0) {
+            auto inter = lineLineIntersection(l1->p1, l1->p2, hoverLine->p1, hoverLine->p2);
+            if (inter.intersects) {
+                Point2D I = inter.point;
+                
+                auto normalize = [](Point2D a, Point2D b) {
+                    double dx = b.x - a.x, dy = b.y - a.y;
+                    double len = std::sqrt(dx * dx + dy * dy);
+                    return len > 0 ? Point2D{dx / len, dy / len} : Point2D{0, 0};
+                };
+
+                double d1a = std::hypot(l1->p1.x - I.x, l1->p1.y - I.y);
+                double d1b = std::hypot(l1->p2.x - I.x, l1->p2.y - I.y);
+                Point2D end1 = (d1a < d1b) ? l1->p1 : l1->p2;
+
+                double d2a = std::hypot(hoverLine->p1.x - I.x, hoverLine->p1.y - I.y);
+                double d2b = std::hypot(hoverLine->p2.x - I.x, hoverLine->p2.y - I.y);
+                Point2D end2 = (d2a < d2b) ? hoverLine->p1 : hoverLine->p2;
+
+                Point2D v1 = normalize(I, end1);
+                Point2D v2 = normalize(I, end2);
+
+                double cosAngle = v1.x * v2.x + v1.y * v2.y;
+                if (cosAngle > 1.0) cosAngle = 1.0;
+                if (cosAngle < -1.0) cosAngle = -1.0;
+                double angle = std::acos(cosAngle);
+
+                if (angle > 0.001) {
+                    double d = radius_ / std::tan(angle / 2.0);
+                    Point2D T1 = {I.x + v1.x * d, I.y + v1.y * d};
+                    Point2D T2 = {I.x + v2.x * d, I.y + v2.y * d};
+
+                    Point2D bisector = {v1.x + v2.x, v1.y + v2.y};
+                    double bisLen = std::sqrt(bisector.x * bisector.x + bisector.y * bisector.y);
+                    if (bisLen > 0) {
+                        bisector.x /= bisLen;
+                        bisector.y /= bisLen;
+                        double h = radius_ / std::sin(angle / 2.0);
+                        Point2D center = {I.x + bisector.x * h, I.y + bisector.y * h};
+
+                        const int numPoints = 32;
+                        sf::VertexArray arc(sf::LineStrip, numPoints);
+                        double a1 = std::atan2(T1.y - center.y, T1.x - center.x);
+                        double a2 = std::atan2(T2.y - center.y, T2.x - center.x);
+
+                        double diff = a2 - a1;
+                        while (diff < 0) diff += 2 * 3.14159265;
+                        while (diff >= 2 * 3.14159265) diff -= 2 * 3.14159265;
+                        if (diff > 3.14159265) std::swap(a1, a2);
+                        diff = a2 - a1;
+                        while (diff < 0) diff += 2 * 3.14159265;
+                        double step = diff / (numPoints - 1);
+
+                        for (int i = 0; i < numPoints; ++i) {
+                            double a = a1 + i * step;
+                            arc[i].position = w2s(center.x + radius_ * std::cos(a), center.y + radius_ * std::sin(a));
+                            arc[i].color = previewColor;
+                        }
+                        window.draw(arc);
+                    }
+                }
+            }
+        }
     }
 
 } // namespace cad

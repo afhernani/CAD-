@@ -19,8 +19,8 @@
 //#include "cad/commands/modify/rotate_command.hpp"
 //#include "cad/commands/modify/scale_command.hpp"
 //#include "cad/commands/modify/mirror_command.hpp"
+//#include "cad/commands/modify/fillet_command.hpp"
 #include "cad/commands/modify/offset_command.hpp"
-#include "cad/commands/modify/fillet_command.hpp"
 #include "cad/commands/modify/chamfer_command.hpp"
 #include "cad/commands/modify/trim_command.hpp"
 #include "cad/commands/modify/extend_command.hpp"
@@ -593,44 +593,44 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
         }
     }
     // --- FILLET ---
-    if (engine.currentMode == Mode::FILLET && engine.activeCommand_) {
-        if (auto* filletCmd = dynamic_cast<FilletCommand*>(engine.activeCommand_.get())) {
-            sf::Color highlightColor(0, 255, 0, 150); sf::Color previewColor(255, 255, 0, 200);
-            if (filletCmd->hasLine1() && filletCmd->getLine1()) {
-                Line* l1 = filletCmd->getLine1();
-                sf::Vertex line1[] = { sf::Vertex(w2s(l1->p1.x, l1->p1.y), highlightColor), sf::Vertex(w2s(l1->p2.x, l1->p2.y), highlightColor) }; window.draw(line1, 2, sf::Lines);
-                Line* hoverLine = nullptr; double tolerance = 10.0 / view.getScale();
-                for (auto& entity : engine.doc.entities) { if (auto* line = dynamic_cast<Line*>(entity.get())) { if (line->isNear(mouseWorldPos, tolerance) && line != l1) { hoverLine = line; break; } } }
-                if (hoverLine) {
-                    auto inter = lineLineIntersection(l1->p1, l1->p2, hoverLine->p1, hoverLine->p2);
-                    if (inter.intersects && filletCmd->getRadius() > 0) {
-                        Point2D I = inter.point;
-                        auto normalize = [](Point2D a, Point2D b) { double dx = b.x - a.x, dy = b.y - a.y; double len = std::sqrt(dx * dx + dy * dy); return len > 0 ? Point2D{dx / len, dy / len} : Point2D{0, 0}; };
-                        double d1a = std::hypot(l1->p1.x - I.x, l1->p1.y - I.y); double d1b = std::hypot(l1->p2.x - I.x, l1->p2.y - I.y); Point2D end1 = (d1a < d1b) ? l1->p1 : l1->p2;
-                        double d2a = std::hypot(hoverLine->p1.x - I.x, hoverLine->p1.y - I.y); double d2b = std::hypot(hoverLine->p2.x - I.x, hoverLine->p2.y - I.y); Point2D end2 = (d2a < d2b) ? hoverLine->p1 : hoverLine->p2;
-                        Point2D v1 = normalize(I, end1); Point2D v2 = normalize(I, end2);
-                        double cosAngle = v1.x * v2.x + v1.y * v2.y; if (cosAngle > 1.0) cosAngle = 1.0; if (cosAngle < -1.0) cosAngle = -1.0;
-                        double angle = std::acos(cosAngle);
-                        if (angle > 0.001) {
-                            double d = filletCmd->getRadius() / std::tan(angle / 2.0);
-                            Point2D T1 = {I.x + v1.x * d, I.y + v1.y * d}; Point2D T2 = {I.x + v2.x * d, I.y + v2.y * d};
-                            Point2D bisector = {v1.x + v2.x, v1.y + v2.y}; double bisLen = std::sqrt(bisector.x * bisector.x + bisector.y * bisector.y);
-                            if (bisLen > 0) {
-                                bisector.x /= bisLen; bisector.y /= bisLen; double h = filletCmd->getRadius() / std::sin(angle / 2.0);
-                                Point2D center = {I.x + bisector.x * h, I.y + bisector.y * h};
-                                const int numPoints = 32; sf::VertexArray arc(sf::LineStrip, numPoints);
-                                double a1 = std::atan2(T1.y - center.y, T1.x - center.x); double a2 = std::atan2(T2.y - center.y, T2.x - center.x);
-                                double diff = a2 - a1; while (diff < 0) diff += 2 * 3.14159265; while (diff >= 2 * 3.14159265) diff -= 2 * 3.14159265;
-                                if (diff > 3.14159265) std::swap(a1, a2); diff = a2 - a1; while (diff < 0) diff += 2 * 3.14159265; double step = diff / (numPoints - 1);
-                                for (int i = 0; i < numPoints; ++i) { double a = a1 + i * step; arc[i].position = w2s(center.x + filletCmd->getRadius() * std::cos(a), center.y + filletCmd->getRadius() * std::sin(a)); arc[i].color = previewColor; }
-                                window.draw(arc);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // if (engine.currentMode == Mode::FILLET && engine.activeCommand_) {
+    //     if (auto* filletCmd = dynamic_cast<FilletCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color highlightColor(0, 255, 0, 150); sf::Color previewColor(255, 255, 0, 200);
+    //         if (filletCmd->hasLine1() && filletCmd->getLine1()) {
+    //             Line* l1 = filletCmd->getLine1();
+    //             sf::Vertex line1[] = { sf::Vertex(w2s(l1->p1.x, l1->p1.y), highlightColor), sf::Vertex(w2s(l1->p2.x, l1->p2.y), highlightColor) }; window.draw(line1, 2, sf::Lines);
+    //             Line* hoverLine = nullptr; double tolerance = 10.0 / view.getScale();
+    //             for (auto& entity : engine.doc.entities) { if (auto* line = dynamic_cast<Line*>(entity.get())) { if (line->isNear(mouseWorldPos, tolerance) && line != l1) { hoverLine = line; break; } } }
+    //             if (hoverLine) {
+    //                 auto inter = lineLineIntersection(l1->p1, l1->p2, hoverLine->p1, hoverLine->p2);
+    //                 if (inter.intersects && filletCmd->getRadius() > 0) {
+    //                     Point2D I = inter.point;
+    //                     auto normalize = [](Point2D a, Point2D b) { double dx = b.x - a.x, dy = b.y - a.y; double len = std::sqrt(dx * dx + dy * dy); return len > 0 ? Point2D{dx / len, dy / len} : Point2D{0, 0}; };
+    //                     double d1a = std::hypot(l1->p1.x - I.x, l1->p1.y - I.y); double d1b = std::hypot(l1->p2.x - I.x, l1->p2.y - I.y); Point2D end1 = (d1a < d1b) ? l1->p1 : l1->p2;
+    //                     double d2a = std::hypot(hoverLine->p1.x - I.x, hoverLine->p1.y - I.y); double d2b = std::hypot(hoverLine->p2.x - I.x, hoverLine->p2.y - I.y); Point2D end2 = (d2a < d2b) ? hoverLine->p1 : hoverLine->p2;
+    //                     Point2D v1 = normalize(I, end1); Point2D v2 = normalize(I, end2);
+    //                     double cosAngle = v1.x * v2.x + v1.y * v2.y; if (cosAngle > 1.0) cosAngle = 1.0; if (cosAngle < -1.0) cosAngle = -1.0;
+    //                     double angle = std::acos(cosAngle);
+    //                     if (angle > 0.001) {
+    //                         double d = filletCmd->getRadius() / std::tan(angle / 2.0);
+    //                         Point2D T1 = {I.x + v1.x * d, I.y + v1.y * d}; Point2D T2 = {I.x + v2.x * d, I.y + v2.y * d};
+    //                         Point2D bisector = {v1.x + v2.x, v1.y + v2.y}; double bisLen = std::sqrt(bisector.x * bisector.x + bisector.y * bisector.y);
+    //                         if (bisLen > 0) {
+    //                             bisector.x /= bisLen; bisector.y /= bisLen; double h = filletCmd->getRadius() / std::sin(angle / 2.0);
+    //                             Point2D center = {I.x + bisector.x * h, I.y + bisector.y * h};
+    //                             const int numPoints = 32; sf::VertexArray arc(sf::LineStrip, numPoints);
+    //                             double a1 = std::atan2(T1.y - center.y, T1.x - center.x); double a2 = std::atan2(T2.y - center.y, T2.x - center.x);
+    //                             double diff = a2 - a1; while (diff < 0) diff += 2 * 3.14159265; while (diff >= 2 * 3.14159265) diff -= 2 * 3.14159265;
+    //                             if (diff > 3.14159265) std::swap(a1, a2); diff = a2 - a1; while (diff < 0) diff += 2 * 3.14159265; double step = diff / (numPoints - 1);
+    //                             for (int i = 0; i < numPoints; ++i) { double a = a1 + i * step; arc[i].position = w2s(center.x + filletCmd->getRadius() * std::cos(a), center.y + filletCmd->getRadius() * std::sin(a)); arc[i].color = previewColor; }
+    //                             window.draw(arc);
+    //                         }
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
     // --- CHAMFER ---
     if (engine.currentMode == Mode::CHAMFER && engine.activeCommand_) {
         if (auto* chamferCmd = dynamic_cast<ChamferCommand*>(engine.activeCommand_.get())) {
