@@ -1,3 +1,16 @@
 namespace{
         constexpr double PI = 3.14159265358979323846;
     }
+#include <string>
+// Helper UTF-8
+        sf::String toSfString(const std::string& utf8Str) {
+            return sf::String::fromUtf8(utf8Str.begin(), utf8Str.end());
+        }
+		
+
+// Helper local para convertir UTF-8 a sf::String
+namespace {
+    sf::String toSfString(const std::string& utf8Str) {
+        return sf::String::fromUtf8(utf8Str.begin(), utf8Str.end());
+    }
+}

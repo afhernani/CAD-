@@ -544,23 +544,7 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //         }
     //     }
     // }
-    // --- ROTAR ---
-    if (engine.currentMode == Mode::ROTATE && engine.activeCommand_) {
-        if (auto* rotCmd = dynamic_cast<RotateCommand*>(engine.activeCommand_.get())) {
-            sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
-            if (rotCmd->hasCenter()) {
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(rotCmd->getCenter().x, rotCmd->getCenter().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
-                sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(w2s(rotCmd->getCenter().x, rotCmd->getCenter().y)); window.draw(centerMark);
-                double dx = mouseWorldPos.x - rotCmd->getCenter().x; double dy = mouseWorldPos.y - rotCmd->getCenter().y;
-                double angle = std::atan2(dy, dx) * 180.0 / 3.14159265358979323846;
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->rotate(rotCmd->getCenter(), angle); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
-                std::ostringstream oss; oss << std::fixed << std::setprecision(1) << angle << "°";
-                sf::Text angleText; angleText.setFont(font); angleText.setString(toSfString(oss.str())); angleText.setCharacterSize(14); angleText.setFillColor(sf::Color::Yellow);
-                sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); angleText.setPosition(mouseScreen.x + 12.f, mouseScreen.y - 25.f); window.draw(angleText);
-            }
-        }
-    }
+    
     // --- ESCALAR ---
     if (engine.currentMode == Mode::SCALE && engine.activeCommand_) {
         if (auto* scaleCmd = dynamic_cast<ScaleCommand*>(engine.activeCommand_.get())) {
