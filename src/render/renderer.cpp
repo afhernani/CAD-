@@ -546,22 +546,22 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     // }
     
     // --- ESCALAR ---
-    if (engine.currentMode == Mode::SCALE && engine.activeCommand_) {
-        if (auto* scaleCmd = dynamic_cast<ScaleCommand*>(engine.activeCommand_.get())) {
-            sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(255, 100, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
-            if (scaleCmd->hasBasePoint()) {
-                sf::Vertex guideLine[] = { sf::Vertex(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
-                sf::CircleShape baseMark(5.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(5.0f, 5.0f); baseMark.setPosition(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y)); window.draw(baseMark);
-                double dx = mouseWorldPos.x - scaleCmd->getBasePoint().x; double dy = mouseWorldPos.y - scaleCmd->getBasePoint().y;
-                double factor = std::sqrt(dx * dx + dy * dy);
-                for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->scale(scaleCmd->getBasePoint(), factor); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
-                std::ostringstream oss; oss << std::fixed << std::setprecision(2) << factor << "x";
-                sf::Text factorText; factorText.setFont(font); factorText.setString(toSfString(oss.str())); factorText.setCharacterSize(14); factorText.setFillColor(sf::Color::Magenta);
-                sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); factorText.setPosition(mouseScreen.x + 12.f, mouseScreen.y - 25.f); window.draw(factorText);
-            }
-        }
-    }
+    // if (engine.currentMode == Mode::SCALE && engine.activeCommand_) {
+    //     if (auto* scaleCmd = dynamic_cast<ScaleCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color originalColor(255, 165, 0, 180); sf::Color ghostColor(255, 100, 255, 120); sf::Color axisColor(255, 255, 0, 200);
+    //         for (Entity* e : engine.selectedEntities) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, originalColor, view.getScale()); }
+    //         if (scaleCmd->hasBasePoint()) {
+    //             sf::Vertex guideLine[] = { sf::Vertex(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y), axisColor), sf::Vertex(w2s(mouseWorldPos.x, mouseWorldPos.y), axisColor) }; window.draw(guideLine, 2, sf::Lines);
+    //             sf::CircleShape baseMark(5.0f); baseMark.setFillColor(axisColor); baseMark.setOrigin(5.0f, 5.0f); baseMark.setPosition(w2s(scaleCmd->getBasePoint().x, scaleCmd->getBasePoint().y)); window.draw(baseMark);
+    //             double dx = mouseWorldPos.x - scaleCmd->getBasePoint().x; double dy = mouseWorldPos.y - scaleCmd->getBasePoint().y;
+    //             double factor = std::sqrt(dx * dx + dy * dy);
+    //             for (Entity* e : engine.selectedEntities) { auto ghost = e->clone(); ghost->scale(scaleCmd->getBasePoint(), factor); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); }
+    //             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << factor << "x";
+    //             sf::Text factorText; factorText.setFont(font); factorText.setString(toSfString(oss.str())); factorText.setCharacterSize(14); factorText.setFillColor(sf::Color::Magenta);
+    //             sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); factorText.setPosition(mouseScreen.x + 12.f, mouseScreen.y - 25.f); window.draw(factorText);
+    //         }
+    //     }
+    // }
     // --- OFFSET ---
     if (engine.currentMode == Mode::OFFSET && engine.activeCommand_) {
         if (auto* offsetCmd = dynamic_cast<OffsetCommand*>(engine.activeCommand_.get())) {
