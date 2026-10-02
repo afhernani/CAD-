@@ -22,8 +22,8 @@
 //#include "cad/commands/modify/fillet_command.hpp"
 // #include "cad/commands/modify/chamfer_command.hpp"
 // #include "cad/commands/modify/trim_command.hpp"
+// #include "cad/commands/modify/extend_command.hpp"
 #include "cad/commands/modify/offset_command.hpp"
-#include "cad/commands/modify/extend_command.hpp"
 #include "cad/commands/modify/measure_command.hpp"
 #include "cad/commands/modify/array_command.hpp"
 #include "cad/commands/modify/stretch_command.hpp"
@@ -663,12 +663,12 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
     //     }
     // }
     // --- EXTEND ---
-    if (engine.currentMode == Mode::EXTEND && engine.activeCommand_) {
-        if (auto* extendCmd = dynamic_cast<ExtendCommand*>(engine.activeCommand_.get())) {
-            sf::Color boundaryColor(0, 255, 0, 150);
-            for (Entity* boundary : extendCmd->getBoundaries()) { if (auto* line = dynamic_cast<Line*>(boundary)) { sf::Vertex lineVerts[] = { sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor), sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor) }; window.draw(lineVerts, 2, sf::Lines); } }
-        }
-    }
+    // if (engine.currentMode == Mode::EXTEND && engine.activeCommand_) {
+    //     if (auto* extendCmd = dynamic_cast<ExtendCommand*>(engine.activeCommand_.get())) {
+    //         sf::Color boundaryColor(0, 255, 0, 150);
+    //         for (Entity* boundary : extendCmd->getBoundaries()) { if (auto* line = dynamic_cast<Line*>(boundary)) { sf::Vertex lineVerts[] = { sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor), sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor) }; window.draw(lineVerts, 2, sf::Lines); } }
+    //     }
+    // }
     // --- ARRAY ---
     else if (engine.currentMode == Mode::ARRAY && engine.activeCommand_) {
         if (auto* arrayCmd = dynamic_cast<ArrayCommand*>(engine.activeCommand_.get())) {

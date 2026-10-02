@@ -1,6 +1,10 @@
 #include "cad/commands/modify/extend_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/geometry/intersections.hpp"
+// #include "cad/core/geometry/entities/line.hpp" // OBLIGATORIO para dynamic_cast<Line*>
+#include "cad/render/view.hpp"                 // OBLIGATORIO
+#include <SFML/Graphics.hpp>                   // OBLIGATORIO
+#include "cad/core/constants.hpp"              // Para CANVAS_HEIGHT
 #include <sstream>
 #include <cmath>
 #include <limits>
@@ -143,6 +147,30 @@ namespace cad {
 
     bool ExtendCommand::isComplete() const {
         return finished_;
+    }
+
+    void ExtendCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                                     const Point2D& mouseWorldPos, sf::Font& font) const {
+        if (boundaries_.empty()) return;
+
+        sf::Color boundaryColor(0, 255, 0, 150); // Verde translúcido
+
+        auto w2s = [&](double x, double y) {
+            return view.worldToScreen(x, y);
+        };
+
+        // Dibujar todas las entidades seleccionadas como bordes límite
+        for (Entity* boundary : boundaries_) {
+            if (auto* line = dynamic_cast<Line*>(boundary)) {
+                sf::Vertex lineVerts[] = {
+                    sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor),
+                    sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor)
+                };
+                window.draw(lineVerts, 2, sf::Lines);
+            }
+            // Si en el futuro soportas Arcos o Polilíneas como bordes, 
+            // podrías añadir aquí los bloques else if correspondientes.
+        }
     }
 
 } // namespace cad

@@ -4,6 +4,10 @@
 #include <vector>
 #include <algorithm>
 
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
 class ExtendCommand : public ICommand {
@@ -16,6 +20,9 @@ public:
     std::string getStatusMessage() const override;
     bool isComplete() const override;
     std::string getName() const override { return "ALARGAR"; }
+
+    void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                      const Point2D& mouseWorldPos, sf::Font& font) const override;
 
     // Para feedback visual
     const std::vector<Entity*>& getBoundaries() const { return boundaries_; }
