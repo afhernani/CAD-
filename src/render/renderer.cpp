@@ -25,8 +25,8 @@
 // #include "cad/commands/modify/extend_command.hpp"
 // #include "cad/commands/modify/measure_command.hpp"
 // #include "cad/commands/modify/offset_command.hpp"
+// #include "cad/commands/modify/stretch_command.hpp"
 #include "cad/commands/modify/array_command.hpp"
-#include "cad/commands/modify/stretch_command.hpp"
 #include "cad/commands/block/block_create_command.hpp"
 #include "cad/commands/block/block_insert_command.hpp"
 
@@ -414,19 +414,6 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
                     if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
                     sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y)); window.draw(centerMark);
                 }
-            }
-        }
-    }
-    // --- STRETCH ---
-    if (engine.currentMode == Mode::STRETCH && engine.activeCommand_) {
-        if (auto* stretchCmd = dynamic_cast<StretchCommand*>(engine.activeCommand_.get())) {
-            if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP2 && stretchCmd->hasWindowP1()) {
-                sf::Color windowColor(0, 255, 0, 100); sf::RectangleShape windowRect;
-                double x1 = stretchCmd->getWindowP1().x; double y1 = stretchCmd->getWindowP1().y;
-                double x2 = mouseWorldPos.x; double y2 = mouseWorldPos.y;
-                float w = static_cast<float>(std::abs(x2 - x1) * view.getScale()); float h = static_cast<float>(std::abs(y2 - y1) * view.getScale());
-                windowRect.setSize(sf::Vector2f(w, h)); windowRect.setFillColor(windowColor); windowRect.setOutlineColor(sf::Color(0, 255, 0, 200)); windowRect.setOutlineThickness(1.0f);
-                windowRect.setPosition(view.worldToScreen(std::min(x1, x2), std::max(y1, y2))); window.draw(windowRect);
             }
         }
     }

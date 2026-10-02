@@ -4,6 +4,10 @@
 #include <vector>
 #include <algorithm>
 
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
     class StretchCommand : public ICommand {
@@ -16,6 +20,9 @@ namespace cad {
         std::string getStatusMessage() const override;
         bool isComplete() const override;
         std::string getName() const override { return "ESTIRAR"; }
+
+        void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                          const Point2D& mouseWorldPos, sf::Font& font) const override;
 
         // Getters para feedback visual y app.cpp
         enum class Step { SelectingWindowP1, SelectingWindowP2, WaitingBasePoint, WaitingDestPoint };
