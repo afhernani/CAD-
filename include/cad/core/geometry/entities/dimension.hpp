@@ -15,19 +15,26 @@ public:
     bool isAligned = false; // True si es cota alineada
     DimType type = DimType::HORIZONTAL; // Tipo de cota
 
+    Dimension() = default;
+    ~Dimension() override = default;
+
     void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
              const sf::Color& color, float viewScale) const override;
     bool isNear(const Point2D& point, double tolerance) const override;
     void move(double dx, double dy) override;
+    std::unique_ptr<Entity> clone() const override;
+
     void rotate(const Point2D& center, double angleDeg) override;
     void scale(const Point2D& base, double factor) override;
     void mirror(const Point2D& axisP1, const Point2D& axisP2) override;
-    std::unique_ptr<Entity> clone() const override;
-    void copyFrom(const Entity& src) override;
+
     std::vector<Point2D> getGripPoints() const override;
-    void moveGrip(int index, const Point2D& newPos) override;
     std::vector<Point2D> getSnapPoints() const override;
+    void moveGrip(int index, const Point2D& newPos) override;
+    void copyFrom(const Entity& src) override;
+    
     nlohmann::json toJson() const override;
+    static std::unique_ptr<Dimension> fromJson(const nlohmann::json& j);
 };
 
 } // namespace cad
