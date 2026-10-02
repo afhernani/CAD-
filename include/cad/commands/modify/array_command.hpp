@@ -3,6 +3,10 @@
 #include "../../core/geometry/entity.hpp"
 #include <vector>
 
+// Forward declarations
+namespace sf { class RenderWindow; class Font; }
+namespace cad { class View; class Engine; }
+
 namespace cad {
 
 class ArrayCommand : public ICommand {
@@ -15,6 +19,9 @@ public:
     std::string getStatusMessage() const override;
     bool isComplete() const override;
     std::string getName() const override { return "MATRIZ"; }
+
+    void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
+                      const Point2D& mouseWorldPos, sf::Font& font) const override;
 
     // Getters para feedback visual
     enum class Type { Rectangular, Polar };

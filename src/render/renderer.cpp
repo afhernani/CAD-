@@ -26,7 +26,7 @@
 // #include "cad/commands/modify/measure_command.hpp"
 // #include "cad/commands/modify/offset_command.hpp"
 // #include "cad/commands/modify/stretch_command.hpp"
-#include "cad/commands/modify/array_command.hpp"
+// #include "cad/commands/modify/array_command.hpp"
 #include "cad/commands/block/block_create_command.hpp"
 #include "cad/commands/block/block_insert_command.hpp"
 
@@ -390,31 +390,6 @@ void Renderer::drawDrawingFeedback(sf::RenderWindow& window, const View& view, E
             std::ostringstream oss; oss << std::fixed << std::setprecision(2) << engine.tempDimAngle << "°";
             sf::Text txt; txt.setFont(font); txt.setString(toSfString(oss.str())); txt.setCharacterSize(14); txt.setFillColor(sf::Color(255, 255, 0));
             sf::Vector2f mouseScreen = w2s(mouseWorldPos.x, mouseWorldPos.y); txt.setPosition(mouseScreen.x + 15.f, mouseScreen.y - 25.f); window.draw(txt);
-        }
-    }
-    
-    // --- ARRAY ---
-    else if (engine.currentMode == Mode::ARRAY && engine.activeCommand_) {
-        if (auto* arrayCmd = dynamic_cast<ArrayCommand*>(engine.activeCommand_.get())) {
-            sf::Color highlightColor(255, 165, 0, 150); sf::Color ghostColor(0, 200, 255, 120); sf::Color axisColor(255, 255, 0, 200);
-            for (Entity* e : arrayCmd->getSelectedEntities()) { auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; e->draw(window, w2s_l, highlightColor, view.getScale()); }
-            if (!arrayCmd->isSelectingEntities()) {
-                if (arrayCmd->getType() == ArrayCommand::Type::Rectangular) {
-                    if (arrayCmd->getRows() > 0 && arrayCmd->getCols() > 0 && arrayCmd->getRowSpacing() != 0.0 && arrayCmd->getColSpacing() != 0.0) {
-                        for (int r = 0; r < arrayCmd->getRows(); ++r) { for (int c = 0; c < arrayCmd->getCols(); ++c) { if (r == 0 && c == 0) continue; double dx = c * arrayCmd->getColSpacing(); double dy = r * arrayCmd->getRowSpacing(); for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->move(dx, dy); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
-                    }
-                }
-                else if (arrayCmd->getType() == ArrayCommand::Type::Polar && arrayCmd->hasPolarCenter()) {
-                    Point2D center = arrayCmd->getPolarCenter(); int count = arrayCmd->getPolarCount(); double angle = arrayCmd->getPolarAngle();
-                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
-                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y)); window.draw(centerMark);
-                }
-                else if (arrayCmd->getType() == ArrayCommand::Type::Polar && !arrayCmd->hasPolarCenter()) {
-                    Point2D center = {mouseWorldPos.x, mouseWorldPos.y}; int count = arrayCmd->getPolarCount(); double angle = arrayCmd->getPolarAngle();
-                    if (count > 1 && angle != 0.0) { double angleStep = angle / count; for (int i = 1; i < count; ++i) { double ang = i * angleStep; for (Entity* e : arrayCmd->getSelectedEntities()) { auto ghost = e->clone(); ghost->rotate(center, ang); auto w2s_l = [&](double x, double y){ return view.worldToScreen(x,y); }; ghost->draw(window, w2s_l, ghostColor, view.getScale()); } } }
-                    sf::CircleShape centerMark(5.0f); centerMark.setFillColor(axisColor); centerMark.setOrigin(5.0f, 5.0f); centerMark.setPosition(view.worldToScreen(center.x, center.y)); window.draw(centerMark);
-                }
-            }
         }
     }
     // --- BLOCK (Feedback visual de creación) ---
