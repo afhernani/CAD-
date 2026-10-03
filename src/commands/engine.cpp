@@ -241,22 +241,63 @@ namespace cad {
 	}
 
 	std::string Engine::getHelpText(std::string_view topic) {
-		std::string upperTopic(topic);
-		std::transform(upperTopic.begin(), upperTopic.end(), upperTopic.begin(), ::toupper);
-		upperTopic.erase(0, upperTopic.find_first_not_of(' '));
-		upperTopic.erase(upperTopic.find_last_not_of(' ') + 1);
-		std::ostringstream oss;
-		if (upperTopic.empty()) {
-			oss << "========================================\n  CAD+ v1.0 - LISTA DE COMANDOS\n========================================\n";
-			oss << "[ DIBUJO ]\n  L, LINEA\n  C, CIRCULO\n  A, ARCO\n  PL, POLILINEA\n  POL, POLIGONO\n  EL, ELIPSE\n";
-			oss << "[ COTA ]\n  DIM, COTA\n";
-			oss << "[ MODIFICACION ]\n  M, MOVER\n  CO, COPIAR\n  RO, ROTAR\n  SC, ESCALAR\n  SI, SIMETRIA\n  TR, RECORTAR\n  EX, ALARGAR\n  AR, ARRAY\n  S, STRETCH\n";
-			oss << "[ EDICION Y SISTEMA ]\n  Z, BORRAR\n  LA, CAPA\n  DIST, MEDIR\n  GRID, REJILLA\n  AYUDA, ?\n  SAVE, GUARDAR\n  LOAD, CARGAR\n========================================\n";
-			return oss.str();
-		}
-		oss << "Comando no reconocido: " << topic << "\nUsa HELP para ver comandos disponibles.\n";
-		return oss.str();
-	}
+        std::string upperTopic(topic);
+        std::transform(upperTopic.begin(), upperTopic.end(), upperTopic.begin(), ::toupper);
+        upperTopic.erase(0, upperTopic.find_first_not_of(' '));
+        upperTopic.erase(upperTopic.find_last_not_of(' ') + 1);
+
+        std::ostringstream oss;
+
+        // 1. Si no se pide un tema específico, mostrar TODOS los comandos registrados
+        if (upperTopic.empty()) {
+            oss << "==================================================\n";
+            oss << "       CAD+ v1.0 - COMANDOS REGISTRADOS           \n";
+            oss << "==================================================\n";
+            oss << " (Escribe HELP <comando> para verificar uno específico)\n\n";
+
+            // >>> MAGIA: Extraer dinámicamente todas las claves del registro <<<
+            std::vector<std::string> commands;
+            for (const auto& pair : commandRegistry_) {
+                commands.push_back(pair.first);
+            }
+
+            // Ordenar alfabéticamente para que se vea profesional y sea fácil de leer
+            std::sort(commands.begin(), commands.end());
+
+            // Imprimir en formato de columnas (4 columnas)
+            int count = 0;
+            for (const auto& cmd : commands) {
+                oss << "  - " << std::left << std::setw(12) << cmd;
+                count++;
+                if (count % 4 == 0) {
+                    oss << "\n";
+                }
+            }
+            // Salto de línea final si no terminó justo en la columna 4
+            if (count % 4 != 0) {
+                oss << "\n";
+            }
+
+            oss << "\n--------------------------------------------------\n";
+            oss << " Total de palabras clave reconocidas: " << commands.size() << "\n";
+            oss << "==================================================\n";
+            
+            return oss.str();
+        }
+
+        // 2. Si se pide un comando específico, verificar si existe en el registro
+        auto it = commandRegistry_.find(upperTopic);
+        if (it != commandRegistry_.end()) {
+            oss << "El comando '" << upperTopic << "' está registrado y listo para usarse.\n";
+            oss << "Escribe '" << upperTopic << "' en la línea de comandos para ejecutarlo.\n";
+            return oss.str();
+        }
+
+        // 3. Si no se encuentra
+        oss << "Comando no reconocido: '" << topic << "'\n";
+        oss << "Usa HELP (sin argumentos) para ver la lista completa de comandos válidos.\n";
+        return oss.str();
+    }
 
 	std::vector<std::string> Engine::getAllCommands() const {
 		return {"LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
