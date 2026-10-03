@@ -1,6 +1,8 @@
 #include "cad/commands/modify/fillet_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/geometry/intersections.hpp"
+#include "cad/core/geometry/entities/line.hpp"   // <<< AÑADIR: Para que conozca 'Line'
+#include "cad/core/geometry/entities/arc.hpp"  
 #include "cad/render/view.hpp"             // OBLIGATORIO
 #include <SFML/Graphics.hpp>               // OBLIGATORIO
 #include "cad/core/constants.hpp"          // Para CANVAS_HEIGHT

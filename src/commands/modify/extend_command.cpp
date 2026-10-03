@@ -5,6 +5,7 @@
 #include "cad/render/view.hpp"                 // OBLIGATORIO
 #include <SFML/Graphics.hpp>                   // OBLIGATORIO
 #include "cad/core/constants.hpp"              // Para CANVAS_HEIGHT
+#include "cad/core/geometry/entities/line.hpp"   // <<< AÑADIR: Para que conozca 'Line'
 #include <sstream>
 #include <cmath>
 #include <limits>

@@ -1,4 +1,5 @@
 #include "cad/app/app.hpp"
+
 #include "cad/core/geometry/entities/line.hpp"
 #include "cad/core/geometry/entities/circle.hpp"
 #include "cad/core/geometry/entities/arc.hpp"
@@ -9,6 +10,13 @@
 #include "cad/core/geometry/entities/block_insert.hpp"
 #include "cad/core/geometry/intersections.hpp"
 #include "cad/persistence/file_manager.hpp"
+
+// >>> AÑADIR ESTOS INCLUDES ESPECÍFICOS QUE app.cpp NECESITA PARA LOS dynamic_cast <<<
+#include "cad/commands/modify/stretch_command.hpp"
+#include "cad/commands/block/block_create_command.hpp"
+#include "cad/commands/block/block_insert_command.hpp"
+#include "cad/commands/draw/dimension_command.hpp" // Por si también lo usas aquí
+
 #include <filesystem>
 #include <iostream>
 #include <sstream>

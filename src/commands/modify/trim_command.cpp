@@ -1,6 +1,7 @@
 #include "cad/commands/modify/trim_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/geometry/intersections.hpp"
+#include "cad/core/geometry/entities/line.hpp"
 #include "cad/render/view.hpp"                 // OBLIGATORIO
 #include <SFML/Graphics.hpp>                   // OBLIGATORIO
 #include "cad/core/constants.hpp"              // Para CANVAS_HEIGHT

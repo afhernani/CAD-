@@ -1,4 +1,33 @@
 #include "cad/commands/engine.hpp"
+// >>> AQUÍ VAN LOS INCLUDES ESPECÍFICOS (El .cpp sí puede conocer los detalles)
+// Comandos de dibujo
+#include "cad/commands/draw/line_command.hpp"
+#include "cad/commands/draw/circle_command.hpp"
+#include "cad/commands/draw/arc_command.hpp"
+#include "cad/commands/draw/polyline_command.hpp"
+#include "cad/commands/draw/polygon_command.hpp"
+#include "cad/commands/draw/ellipse_command.hpp"
+#include "cad/commands/draw/dimension_command.hpp"
+
+// Comandos de modificación
+#include "cad/commands/modify/move_command.hpp"
+#include "cad/commands/modify/copy_command.hpp"
+#include "cad/commands/modify/rotate_command.hpp"
+#include "cad/commands/modify/scale_command.hpp"
+#include "cad/commands/modify/mirror_command.hpp"
+#include "cad/commands/modify/offset_command.hpp"
+#include "cad/commands/modify/fillet_command.hpp"
+#include "cad/commands/modify/chamfer_command.hpp"
+#include "cad/commands/modify/trim_command.hpp"
+#include "cad/commands/modify/extend_command.hpp"
+#include "cad/commands/modify/measure_command.hpp"
+#include "cad/commands/modify/array_command.hpp"
+#include "cad/commands/modify/stretch_command.hpp"
+
+// Comandos de bloque
+#include "cad/commands/block/block_create_command.hpp"
+#include "cad/commands/block/block_insert_command.hpp"
+
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
@@ -8,6 +37,11 @@
 #include <stdexcept>
 
 namespace cad {
+	
+	Engine::Engine() {
+       // ... tus inicializaciones ...
+       initializeCommands(); // ¡IMPORTANTE!
+   }
 
 	void Engine::cancelCommand() {
 		activeCommand_.reset();
@@ -65,80 +99,45 @@ namespace cad {
 		std::string upperCmd(cmd);
 		std::transform(upperCmd.begin(), upperCmd.end(), upperCmd.begin(), ::toupper);
 
-		if (upperCmd == "L" || upperCmd == "LINE" || upperCmd == "LINEA") {
-			activeCommand_ = std::make_unique<LineCommand>(); currentMode = Mode::DRAW_LINE;
-		} else if (upperCmd == "C" || upperCmd == "CIRCLE" || upperCmd == "CIRCULO") {
-			activeCommand_ = std::make_unique<CircleCommand>(); currentMode = Mode::DRAW_CIRCLE;
-		} else if (upperCmd == "A" || upperCmd == "ARC" || upperCmd == "ARCO") {
-			activeCommand_ = std::make_unique<ArcCommand>(); currentMode = Mode::DRAW_ARC;
-		} else if (upperCmd == "PL" || upperCmd == "POLILINEA") {
-			activeCommand_ = std::make_unique<PolylineCommand>(); currentMode = Mode::DRAW_POLYLINE;
-		} else if (upperCmd == "POL" || upperCmd == "POLIGONO") {
-			activeCommand_ = std::make_unique<PolygonCommand>(); currentMode = Mode::DRAW_POLYGON;
-		} else if (upperCmd == "EL" || upperCmd == "ELLIPSE" || upperCmd == "ELIPSE") {
-			activeCommand_ = std::make_unique<EllipseCommand>(); currentMode = Mode::DRAW_ELLIPSE;
-		} else if (upperCmd == "DIM" || upperCmd == "COTA" || upperCmd == "ACOTAR") {
-			activeCommand_ = std::make_unique<DimensionCommand>(); currentMode = Mode::DRAW_DIMENSION;
-		} else if (upperCmd == "Q" || upperCmd == "QUIT" || upperCmd == "SALIR") {
-			statusMessage = "Usa el botón de cerrar ventana para salir."; return;
-		} else if (upperCmd == "Z" || upperCmd == "BORRAR") {
-			saveState(); doc.clear(); lastPoint = {0.0, 0.0}; statusMessage = "Dibujo borrado."; return;
-		} else if (upperCmd == "UNDO" || upperCmd == "DESHACER") { undo(); return; }
-		else if (upperCmd == "REDO" || upperCmd == "REHACER") { redo(); return; }
-		else if (upperCmd == "AXIS" || upperCmd == "EJES") {
-			statusMessage = "Usa el boton en la barra de herramientas para activar/desactivar ejes"; return;
-		} else if (upperCmd == "LA" || upperCmd == "LAYER" || upperCmd == "CAPA") {
-			currentMode = Mode::LAYER_COMMAND; statusMessage = "CAPA | ON <nombre> | OFF <nombre> | NEW <nombre> | SET <nombre> | LIST"; return;
-		} else if (upperCmd == "M" || upperCmd == "MOVE" || upperCmd == "MOVER") {
-			if (selectedEntities.empty()) { statusMessage = "MOVER | Primero selecciona entidades."; return; }
-			activeCommand_ = std::make_unique<MoveCommand>(); currentMode = Mode::MOVE;
-		} else if (upperCmd == "CO" || upperCmd == "COPY" || upperCmd == "COPIAR") {
-			if (selectedEntities.empty()) { statusMessage = "COPIAR | Primero selecciona entidades."; return; }
-			activeCommand_ = std::make_unique<CopyCommand>(); currentMode = Mode::COPY;
-		} else if (upperCmd == "RO" || upperCmd == "ROTATE" || upperCmd == "ROTAR") {
-			if (selectedEntities.empty()) { statusMessage = "ROTAR | Primero selecciona entidades."; return; }
-			activeCommand_ = std::make_unique<RotateCommand>(); currentMode = Mode::ROTATE;
-		} else if (upperCmd == "SC" || upperCmd == "SCALE" || upperCmd == "ESCALAR") {
-			if (selectedEntities.empty()) { statusMessage = "ESCALAR | Primero selecciona entidades."; return; }
-			activeCommand_ = std::make_unique<ScaleCommand>(); currentMode = Mode::SCALE;
-		} else if (upperCmd == "SI" || upperCmd == "SYM" || upperCmd == "MIRROR" || upperCmd == "SIMETRIA") {
-			if (selectedEntities.empty()) { statusMessage = "SIMETRIA | Primero selecciona entidades."; return; }
-			activeCommand_ = std::make_unique<MirrorCommand>(); currentMode = Mode::MIRROR;
-		} else if (upperCmd == "OF" || upperCmd == "OFFSET" || upperCmd == "DESPLAZAR") {
-			activeCommand_ = std::make_unique<OffsetCommand>(); currentMode = Mode::OFFSET;
-		} else if (upperCmd == "F" || upperCmd == "FILLET" || upperCmd == "EMPALME") {
-			activeCommand_ = std::make_unique<FilletCommand>(); currentMode = Mode::FILLET;
-		} else if (upperCmd == "CHA" || upperCmd == "CHAMFER" || upperCmd == "CHAFLAN") {
-			activeCommand_ = std::make_unique<ChamferCommand>(); currentMode = Mode::CHAMFER;
-		} else if (upperCmd == "TR" || upperCmd == "TRIM" || upperCmd == "RECORTAR") {
-			activeCommand_ = std::make_unique<TrimCommand>(); currentMode = Mode::TRIM;
-		} else if (upperCmd == "EX" || upperCmd == "EXTEND" || upperCmd == "ALARGAR") {
-			activeCommand_ = std::make_unique<ExtendCommand>(); currentMode = Mode::EXTEND;
-		} else if (upperCmd == "DIST" || upperCmd == "MEDIR") {
-			activeCommand_ = std::make_unique<MeasureCommand>(); currentMode = Mode::MEASURE_DIST;
-		} else if (upperCmd == "ARR" || upperCmd == "ARRAY") {
-			activeCommand_ = std::make_unique<ArrayCommand>(); currentMode = Mode::ARRAY;
-		} else if (upperCmd == "S" || upperCmd == "STRETCH" || upperCmd == "ESTIRAR") {
-			activeCommand_ = std::make_unique<StretchCommand>(); currentMode = Mode::STRETCH;
-		} else if (upperCmd == "GRID" || upperCmd == "REJILLA") {
-			toggleGrid(); statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada."; return;
-		} else if (upperCmd == "BLOCK" || upperCmd == "BLOQUE") {
-			activeCommand_ = std::make_unique<BlockCreateCommand>(); currentMode = Mode::BLOCK_CREATE;
-		} else if (upperCmd == "INSERT" || upperCmd == "INSERTAR") {
-			activeCommand_ = std::make_unique<BlockInsertCommand>(); currentMode = Mode::BLOCK_INSERT;
-		} else if (upperCmd == "GRIP" || upperCmd == "GRIPS" || upperCmd == "EDIT") {
-			if (selectedEntities.empty()) { statusMessage = "GRIP EDIT | Primero selecciona entidades."; return; }
-			currentMode = Mode::GRIP_EDIT; activeGripEntity = nullptr; activeGripIndex = -1; gripBackup.reset();
-			statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return;
-		} else if (upperCmd == "LIST" || upperCmd == "LISTA") {
-			statusMessage = "LISTA | Panel de propiedades activado/desactivado"; return;
-		} else if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
-			statusMessage = "Ayuda: escribe HELP <comando> para más detalles"; return;
-		} else {
-			statusMessage = "Comando desconocido: " + std::string(cmd); return;
-		}
-		
-		statusMessage = activeCommand_->getStatusMessage();
+		// 1. Intentar ejecutar como comando registrado en la fábrica
+        auto it = commandRegistry_.find(upperCmd);
+        if (it != commandRegistry_.end()) {
+            auto newCommand = it->second(*this); // Llama a la fábrica pasando 'this'
+            if (newCommand) {
+                activeCommand_ = std::move(newCommand);
+                statusMessage = activeCommand_->getStatusMessage();
+            }
+            // Si newCommand es nullptr, la fábrica ya estableció el statusMessage (ej. "Primero selecciona entidades")
+            return;
+        }
+
+        // 2. Comandos del sistema que NO son ICommand
+        if (upperCmd == "Q" || upperCmd == "QUIT" || upperCmd == "SALIR") {
+            statusMessage = "Usa el botón de cerrar ventana para salir."; return;
+        } 
+        if (upperCmd == "Z" || upperCmd == "BORRAR") {
+            saveState(); doc.clear(); lastPoint = {0.0, 0.0}; statusMessage = "Dibujo borrado."; return;
+        } 
+        if (upperCmd == "UNDO" || upperCmd == "DESHACER") { undo(); return; }
+        if (upperCmd == "REDO" || upperCmd == "REHACER") { redo(); return; }
+        if (upperCmd == "AXIS" || upperCmd == "EJES") {
+            statusMessage = "Usa el boton en la barra de herramientas para activar/desactivar ejes"; return;
+        } 
+        if (upperCmd == "LA" || upperCmd == "LAYER" || upperCmd == "CAPA") {
+            currentMode = Mode::LAYER_COMMAND; statusMessage = "CAPA | ON <nombre> | OFF <nombre> | NEW <nombre> | SET <nombre> | LIST"; return;
+        } 
+        if (upperCmd == "GRID" || upperCmd == "REJILLA") {
+            toggleGrid(); statusMessage = gridEnabled ? "Rejilla activada." : "Rejilla desactivada."; return;
+        } 
+        if (upperCmd == "LIST" || upperCmd == "LISTA") {
+            statusMessage = "LISTA | Panel de propiedades activado/desactivado"; return;
+        } 
+        if (upperCmd == "HELP" || upperCmd == "AYUDA" || upperCmd == "?") {
+            statusMessage = "Ayuda: escribe HELP <comando> para más detalles"; return;
+        }
+
+        // 3. Comando desconocido
+        statusMessage = "Comando desconocido: " + std::string(cmd);
 	}
 
 	void Engine::processLayerCommand(std::string_view input) {
@@ -316,5 +315,127 @@ namespace cad {
 		}
 		return oss.str();
 	}
+
+	void Engine::registerCommand(const std::string& name, CommandFactory factory) {
+        std::string upperName = name;
+        std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
+        commandRegistry_[upperName] = factory;
+    }
+
+	// Implementación del método estático
+	bool Engine::checkSelection(Engine& eng) {
+		if (eng.selectedEntities.empty()) {
+			eng.statusMessage = "Primero selecciona entidades.";
+			return false;
+		}
+		return true;
+	}
+
+    void Engine::initializeCommands() {
+        // --- COMANDOS DE DIBUJO ---
+        registerCommand("L", [](Engine& eng) { eng.currentMode = Mode::DRAW_LINE; return std::make_unique<LineCommand>(); });
+        registerCommand("LINE", [](Engine& eng) { eng.currentMode = Mode::DRAW_LINE; return std::make_unique<LineCommand>(); });
+        registerCommand("LINEA", [](Engine& eng) { eng.currentMode = Mode::DRAW_LINE; return std::make_unique<LineCommand>(); });
+
+        registerCommand("C", [](Engine& eng) { eng.currentMode = Mode::DRAW_CIRCLE; return std::make_unique<CircleCommand>(); });
+        registerCommand("CIRCLE", [](Engine& eng) { eng.currentMode = Mode::DRAW_CIRCLE; return std::make_unique<CircleCommand>(); });
+        registerCommand("CIRCULO", [](Engine& eng) { eng.currentMode = Mode::DRAW_CIRCLE; return std::make_unique<CircleCommand>(); });
+
+        registerCommand("A", [](Engine& eng) { eng.currentMode = Mode::DRAW_ARC; return std::make_unique<ArcCommand>(); });
+        registerCommand("ARC", [](Engine& eng) { eng.currentMode = Mode::DRAW_ARC; return std::make_unique<ArcCommand>(); });
+        registerCommand("ARCO", [](Engine& eng) { eng.currentMode = Mode::DRAW_ARC; return std::make_unique<ArcCommand>(); });
+
+        registerCommand("PL", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYLINE; return std::make_unique<PolylineCommand>(); });
+        registerCommand("POLILINEA", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYLINE; return std::make_unique<PolylineCommand>(); });
+
+        registerCommand("POL", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYGON; return std::make_unique<PolygonCommand>(); });
+        registerCommand("POLIGONO", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYGON; return std::make_unique<PolygonCommand>(); });
+
+        registerCommand("EL", [](Engine& eng) { eng.currentMode = Mode::DRAW_ELLIPSE; return std::make_unique<EllipseCommand>(); });
+        registerCommand("ELLIPSE", [](Engine& eng) { eng.currentMode = Mode::DRAW_ELLIPSE; return std::make_unique<EllipseCommand>(); });
+        registerCommand("ELIPSE", [](Engine& eng) { eng.currentMode = Mode::DRAW_ELLIPSE; return std::make_unique<EllipseCommand>(); });
+
+        registerCommand("DIM", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::ALIGNED); });
+        registerCommand("COTA", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::ALIGNED); });
+        registerCommand("ACOTAR", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::ALIGNED); });
+        registerCommand("DIMH", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::HORIZONTAL); });
+        registerCommand("DIMV", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::VERTICAL); });
+        registerCommand("DIMR", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::RADIUS); });
+        registerCommand("DIMDIA", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::DIAMETER); });
+
+        // --- COMANDOS DE MODIFICACION ---
+
+        registerCommand("M", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });
+        registerCommand("MOVE", [](Engine& eng)-> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });
+        registerCommand("MOVER", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });
+
+        registerCommand("CO", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::COPY; return std::make_unique<CopyCommand>(); });
+        registerCommand("COPY", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::COPY; return std::make_unique<CopyCommand>(); });
+        registerCommand("COPIAR", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::COPY; return std::make_unique<CopyCommand>(); });
+
+        registerCommand("RO", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::ROTATE; return std::make_unique<RotateCommand>(); });
+        registerCommand("ROTATE", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::ROTATE; return std::make_unique<RotateCommand>(); });
+        registerCommand("ROTAR", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::ROTATE; return std::make_unique<RotateCommand>(); });
+
+        registerCommand("SC", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::SCALE; return std::make_unique<ScaleCommand>(); });
+        registerCommand("SCALE", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::SCALE; return std::make_unique<ScaleCommand>(); });
+        registerCommand("ESCALAR", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::SCALE; return std::make_unique<ScaleCommand>(); });
+
+        registerCommand("SI", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MIRROR; return std::make_unique<MirrorCommand>(); });
+        registerCommand("MIRROR", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MIRROR; return std::make_unique<MirrorCommand>(); });
+        registerCommand("SIMETRIA", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MIRROR; return std::make_unique<MirrorCommand>(); });
+
+        registerCommand("OF", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::OFFSET; return std::make_unique<OffsetCommand>(); });
+        registerCommand("OFFSET", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::OFFSET; return std::make_unique<OffsetCommand>(); });
+        registerCommand("DESPLAZAR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::OFFSET; return std::make_unique<OffsetCommand>(); });
+
+        registerCommand("F", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::FILLET; return std::make_unique<FilletCommand>(); });
+        registerCommand("FILLET", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::FILLET; return std::make_unique<FilletCommand>(); });
+        registerCommand("EMPALME", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::FILLET; return std::make_unique<FilletCommand>(); });
+
+        registerCommand("CHA", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::CHAMFER; return std::make_unique<ChamferCommand>(); });
+        registerCommand("CHAMFER", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::CHAMFER; return std::make_unique<ChamferCommand>(); });
+        registerCommand("CHAFLAN", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::CHAMFER; return std::make_unique<ChamferCommand>(); });
+
+        registerCommand("TR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::TRIM; return std::make_unique<TrimCommand>(); });
+        registerCommand("TRIM", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::TRIM; return std::make_unique<TrimCommand>(); });
+        registerCommand("RECORTAR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::TRIM; return std::make_unique<TrimCommand>(); });
+
+        registerCommand("EX", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::EXTEND; return std::make_unique<ExtendCommand>(); });
+        registerCommand("EXTEND", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::EXTEND; return std::make_unique<ExtendCommand>(); });
+        registerCommand("ALARGAR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::EXTEND; return std::make_unique<ExtendCommand>(); });
+
+        registerCommand("DIST", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::MEASURE_DIST; return std::make_unique<MeasureCommand>(); });
+        registerCommand("MEDIR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::MEASURE_DIST; return std::make_unique<MeasureCommand>(); });
+
+        registerCommand("ARR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::ARRAY; return std::make_unique<ArrayCommand>(); });
+        registerCommand("ARRAY", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::ARRAY; return std::make_unique<ArrayCommand>(); });
+
+        registerCommand("S", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::STRETCH; return std::make_unique<StretchCommand>(); });
+        registerCommand("STRETCH", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::STRETCH; return std::make_unique<StretchCommand>(); });
+        registerCommand("ESTIRAR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::STRETCH; return std::make_unique<StretchCommand>(); });
+
+        registerCommand("BLOCK", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::BLOCK_CREATE; return std::make_unique<BlockCreateCommand>(); });
+        registerCommand("BLOQUE", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::BLOCK_CREATE; return std::make_unique<BlockCreateCommand>(); });
+
+        registerCommand("INSERT", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::BLOCK_INSERT; return std::make_unique<BlockInsertCommand>(); });
+        registerCommand("INSERTAR", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::BLOCK_INSERT; return std::make_unique<BlockInsertCommand>(); });
+
+        registerCommand("GRIP", [](Engine& eng) -> std::unique_ptr<ICommand> {
+            if (eng.selectedEntities.empty()) { eng.statusMessage = "Primero selecciona entidades."; return nullptr; }
+            eng.currentMode = Mode::GRIP_EDIT; eng.activeGripEntity = nullptr; eng.activeGripIndex = -1; eng.gripBackup.reset();
+            eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
+        });
+        registerCommand("GRIPS", [](Engine& eng) -> std::unique_ptr<ICommand> {
+            if (eng.selectedEntities.empty()) { eng.statusMessage = "Primero selecciona entidades."; return nullptr; }
+            eng.currentMode = Mode::GRIP_EDIT; eng.activeGripEntity = nullptr; eng.activeGripIndex = -1; eng.gripBackup.reset();
+            eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
+        });
+        registerCommand("EDIT", [](Engine& eng) -> std::unique_ptr<ICommand> {
+            if (eng.selectedEntities.empty()) { eng.statusMessage = "Primero selecciona entidades."; return nullptr; }
+            eng.currentMode = Mode::GRIP_EDIT; eng.activeGripEntity = nullptr; eng.activeGripIndex = -1; eng.gripBackup.reset();
+            eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
+        });
+    }
 
 } // namespace cad
