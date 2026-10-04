@@ -40,7 +40,7 @@ namespace cad {
 		void processInput(std::string_view input);
 		void cancelCommand();
 		
-		std::string getHelpForTopic(std::string_view topic) { return getHelpText(topic); }
+		std::string getHelpForTopic(std::string_view topic, int maxCharsPerLine = 80) { return getHelpText(topic, maxCharsPerLine); }
 		std::string getEntityList() const;
 		
 		std::vector<Entity*> selectedEntities;
@@ -85,7 +85,7 @@ namespace cad {
 		void processCoordinate(std::string_view coordStr);
 		void processLayerCommand(std::string_view input);
 		bool isNumericValue(std::string_view str) const;
-		std::string getHelpText(std::string_view topic);
+		std::string getHelpText(std::string_view topic, int maxCharsPerLine = 80);
 		[[nodiscard]] std::optional<Point2D> parseCoordinate(std::string_view str);
 	};
 } // namespace cad

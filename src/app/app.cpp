@@ -140,6 +140,8 @@ namespace cad {
 
     // --- Handle Events ---
     void App::handleEvents() {
+        const int CHARS_PER_PIXEL_FACTOR = 9;
+        int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
         sf::Event event;
         while (window_.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
@@ -322,7 +324,7 @@ namespace cad {
                     }
                     else if (mx >= 220 && mx <= 260) engine_.processInput("Z");
                     else if (mx >= 280 && mx <= 320) {
-                        std::string helpText = engine_.getHelpForTopic("");
+                        std::string helpText = engine_.getHelpForTopic("", maxChars);
                         commandHistory_.push_back("HELP");
                         std::string line;
                         for (char c : helpText) {
@@ -538,7 +540,8 @@ namespace cad {
                             if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
                                 topic = inputBuffer_.substr(spacePos + 1);
                             }
-                            std::string helpText = engine_.getHelpForTopic(topic);
+                            std::string helpText = engine_.getHelpForTopic(topic, maxChars);
+                            
                             std::string line;
                             for (char c : helpText) {
                                 if (c == '\n') {

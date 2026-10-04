@@ -240,7 +240,7 @@ namespace cad {
 		statusMessage = std::to_string(selectedEntities.size()) + " entidades seleccionadas.";
 	}
 
-	std::string Engine::getHelpText(std::string_view topic) {
+	std::string Engine::getHelpText(std::string_view topic, int maxCharsPerLine) {
         std::string upperTopic(topic);
         std::transform(upperTopic.begin(), upperTopic.end(), upperTopic.begin(), ::toupper);
         upperTopic.erase(0, upperTopic.find_first_not_of(' '));
@@ -248,54 +248,46 @@ namespace cad {
 
         std::ostringstream oss;
 
-        // 1. Si no se pide un tema específico, mostrar TODOS los comandos registrados
         if (upperTopic.empty()) {
-            oss << "==================================================\n";
-            oss << "       CAD+ v1.0 - COMANDOS REGISTRADOS           \n";
-            oss << "==================================================\n";
-            oss << " (Escribe HELP <comando> para verificar uno específico)\n\n";
-
-            // >>> MAGIA: Extraer dinámicamente todas las claves del registro <<<
+            oss << "COMANDOS DISPONIBLES:\n";
+            
             std::vector<std::string> commands;
             for (const auto& pair : commandRegistry_) {
                 commands.push_back(pair.first);
             }
-
-            // Ordenar alfabéticamente para que se vea profesional y sea fácil de leer
             std::sort(commands.begin(), commands.end());
 
-            // Imprimir en formato de columnas (4 columnas)
-            int count = 0;
-            for (const auto& cmd : commands) {
-                oss << "  - " << std::left << std::setw(12) << cmd;
-                count++;
-                if (count % 4 == 0) {
-                    oss << "\n";
+            // >>> USAR maxCharsPerLine en lugar de 80 fijo <<<
+            std::string currentLine = "";
+            
+            for (size_t i = 0; i < commands.size(); ++i) {
+                const std::string& cmd = commands[i];
+                std::string separator = (i < commands.size() - 1) ? ", " : "";
+                int neededSpace = static_cast<int>(cmd.length() + separator.length());
+                
+                if (!currentLine.empty() && 
+                    (static_cast<int>(currentLine.length()) + neededSpace > maxCharsPerLine)) {
+                    oss << currentLine << "\n";
+                    currentLine = "";
                 }
+                currentLine += cmd + separator;
             }
-            // Salto de línea final si no terminó justo en la columna 4
-            if (count % 4 != 0) {
-                oss << "\n";
+            
+            if (!currentLine.empty()) {
+                oss << currentLine << "\n";
             }
-
-            oss << "\n--------------------------------------------------\n";
-            oss << " Total de palabras clave reconocidas: " << commands.size() << "\n";
-            oss << "==================================================\n";
             
             return oss.str();
         }
 
-        // 2. Si se pide un comando específico, verificar si existe en el registro
         auto it = commandRegistry_.find(upperTopic);
         if (it != commandRegistry_.end()) {
             oss << "El comando '" << upperTopic << "' está registrado y listo para usarse.\n";
-            oss << "Escribe '" << upperTopic << "' en la línea de comandos para ejecutarlo.\n";
             return oss.str();
         }
 
-        // 3. Si no se encuentra
         oss << "Comando no reconocido: '" << topic << "'\n";
-        oss << "Usa HELP (sin argumentos) para ver la lista completa de comandos válidos.\n";
+        oss << "Usa HELP para ver la lista completa de comandos válidos.\n";
         return oss.str();
     }
 
