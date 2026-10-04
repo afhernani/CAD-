@@ -87,6 +87,14 @@ namespace cad {
         bool isSelectingByWindow_ = false;
         Point2D selectionStartPoint_;
         Point2D selectionEndPoint_;
+        // >>> NUEVOS: Métodos auxiliares para refactorizar handleEvents <<<
+        void handleToolbarClick(int mx, int my);
+        void handleCanvasClick(const Point2D& worldPoint);
+        void processTextInput();
+        void handleKeyboardNavigation(const sf::Event& event);
+        
+        // Constante compartida
+        static constexpr int CHARS_PER_PIXEL_FACTOR = 9;
         
     };
 

@@ -140,8 +140,6 @@ namespace cad {
 
     // --- Handle Events ---
     void App::handleEvents() {
-        const int CHARS_PER_PIXEL_FACTOR = 9;
-        int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
         sf::Event event;
         while (window_.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
@@ -149,7 +147,7 @@ namespace cad {
                 window_.close();
             }
 
-            // --- CAMBIAR CURSOR SEGÚN LA ZONA ---
+            // --- MOVIMIENTO DEL RATÓN ---
             if (event.type == sf::Event::MouseMoved) {
                 int mx = event.mouseMove.x;
                 int my = event.mouseMove.y;
@@ -237,7 +235,8 @@ namespace cad {
             if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
                 isPanning_ = false;
             }
-                        // >>> FIN DE SELECCIÓN POR VENTANA O CLIC SIMPLE (Clic Izquierdo) <<<
+
+            // --- SELECCIÓN POR VENTANA (Clic Izquierdo liberado) ---
             if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
                 if (isSelectingByWindow_) {
                     selectionEndPoint_ = currentMouseWorldPos_;
@@ -245,24 +244,16 @@ namespace cad {
                     auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y);
                     auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y);
                     double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
-                    double tolerance = 5.0 / view_.getScale();
 
                     if (dragDistance > 5.0) {
-                        // --- CASO A: Fue un arrastre (Selección por Ventana) ---
                         bool shiftPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || 
                                             sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
-                        
-                        // Si NO se presiona Shift, limpiamos la selección previa antes de añadir la nueva ventana
                         if (!shiftPressed) {
                             engine_.selectedEntities.clear();
                         }
-                        
-                        // Ejecutar selección (el 'true' indica que añada al vector)
                         engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, true);
-                        
                     } else {
-                        // --- CASO B: Fue un clic simple (≤ 5px) ---
-                        // 1. Verificar si hicimos clic sobre alguna entidad
+                        double tolerance = 5.0 / view_.getScale();
                         Entity* clickedEntity = nullptr;
                         for (auto& entity : engine_.doc.entities) {
                             if (entity->isNear(selectionStartPoint_, tolerance)) {
@@ -272,299 +263,63 @@ namespace cad {
                         }
 
                         if (clickedEntity) {
-                            // 2. Si hay entidad: Comportamiento TOGGLE (Añadir o Quitar)
                             auto it = std::find(engine_.selectedEntities.begin(), 
                                                 engine_.selectedEntities.end(), 
                                                 clickedEntity);
-                            
                             if (it != engine_.selectedEntities.end()) {
-                                engine_.selectedEntities.erase(it); // Ya estaba seleccionada: la quitamos
+                                engine_.selectedEntities.erase(it);
                             } else {
-                                engine_.selectedEntities.push_back(clickedEntity); // No estaba: la añadimos (¡Acumulación!)
+                                engine_.selectedEntities.push_back(clickedEntity);
                             }
                         } else {
-                            // 3. Si NO hay entidad (clic en el vacío): Limpiar toda la selección
                             engine_.selectedEntities.clear();
                         }
                     }
-                    
-                    isSelectingByWindow_ = false; // Resetear estado
+                    isSelectingByWindow_ = false;
                 }
             }
+
+            // --- PAN en movimiento ---
             if (event.type == sf::Event::MouseMoved && isPanning_) {
                 float dx = static_cast<float>(event.mouseMove.x) - panStartMouse_.x;
                 float dy = static_cast<float>(event.mouseMove.y) - panStartMouse_.y;
                 view_.pan({dx, dy});
                 panStartMouse_ = {static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y)};
             }
-            // >>> NUEVO: Actualizar punto final durante la selección por ventana <<<
+
+            // --- Actualizar punto final de selección por ventana ---
             if (event.type == sf::Event::MouseMoved && isSelectingByWindow_) {
                 selectionEndPoint_ = currentMouseWorldPos_;
             }
+
             // --- CLIC IZQUIERDO ---
             if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
                 int mx = event.mouseButton.x;
                 int my = event.mouseButton.y;
                 isDraggingCommandScroll_ = false;
 
+                // Scroll de consola
                 if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
                     my < WINDOW_HEIGHT - STATUS_HEIGHT) {
                     isDraggingCommandScroll_ = true;
                     dragStartY_ = my;
                     dragStartOffset_ = commandScrollOffset_;
                 }
-
-                // A) Barra de Herramientas
-                if (my >= MENU_HEIGHT && my < MENU_HEIGHT + TOOLBAR_HEIGHT) {
-                    if (mx >= 10 && mx <= 50) engine_.processInput("L");
-                    else if (mx >= 60 && mx <= 100) engine_.processInput("C");
-                    else if (mx >= 170 && mx <= 210) {
-                        showAxes_ = !showAxes_;
-                        engine_.statusMessage = showAxes_ ? "Ejes activados" : "Ejes desactivados";
-                    }
-                    else if (mx >= 220 && mx <= 260) engine_.processInput("Z");
-                    else if (mx >= 280 && mx <= 320) {
-                        std::string helpText = engine_.getHelpForTopic("", maxChars);
-                        commandHistory_.push_back("HELP");
-                        std::string line;
-                        for (char c : helpText) {
-                            if (c == '\n') {
-                                if (!line.empty()) commandHistory_.push_back(line);
-                                line.clear();
-                            } else {
-                                line += c;
-                            }
-                        }
-                        if (!line.empty()) commandHistory_.push_back(line);
-                        engine_.statusMessage = "Ayuda mostrada";
-                    }
+                // Barra de herramientas
+                else if (my >= MENU_HEIGHT && my < MENU_HEIGHT + TOOLBAR_HEIGHT) {
+                    handleToolbarClick(mx, my);
                 }
-                // B) Canvas
+                // Canvas
                 else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT &&
                         my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    Point2D worldPoint = currentMouseWorldPos_;
-                    double tolerance = 5.0 / view_.getScale();
-
-                    if (engine_.currentMode == Mode::GRIP_EDIT) {
-                        engine_.currentMode = Mode::IDLE;
-                        engine_.activeGripEntity = nullptr;
-                        engine_.gripBackup.reset();
-                        engine_.statusMessage = "Entidad modificada.";
-                    }
-                    else if (engine_.currentMode == Mode::IDLE) {
-                        Entity* hitEntity = nullptr;
-                        int hitIndex = -1;
-                        for (Entity* e : engine_.selectedEntities) {
-                            auto grips = e->getGripPoints();
-                            for (int i = 0; i < grips.size(); ++i) {
-                                double dist = std::hypot(worldPoint.x - grips[i].x, worldPoint.y - grips[i].y);
-                                if (dist <= tolerance) {
-                                    hitEntity = e;
-                                    hitIndex = i;
-                                    break;
-                                }
-                            }
-                            if (hitEntity) break;
-                        }
-                        if (hitEntity) {
-                            engine_.currentMode = Mode::GRIP_EDIT;
-                            engine_.activeGripEntity = hitEntity;
-                            engine_.activeGripIndex = hitIndex;
-                            engine_.gripBackup = hitEntity->clone();
-                            engine_.statusMessage = "Arrastrando grip...";
-                        } else {
-                            // engine_.selectEntity(worldPoint, tolerance);
-                            // >>> NUEVO: INICIO DE SELECCIÓN POR VENTANA <<<
-                            selectionStartPoint_ = worldPoint;
-                            selectionEndPoint_ = worldPoint;
-                            isSelectingByWindow_ = true;
-                            
-                            if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && 
-                                !sf::Keyboard::isKeyPressed(sf::Keyboard::RShift)) {
-                                engine_.selectedEntities.clear();
-                            }
-                            return; // <<< IMPORTANTE: Salir para no enviar coordenadas gen
-                        }
-                    }
-
-                    // >>> STRETCH <<<
-                    if (engine_.currentMode == Mode::STRETCH && engine_.activeCommand_) {
-                        if (auto* stretchCmd = dynamic_cast<StretchCommand*>(engine_.activeCommand_.get())) {
-                            if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP1) {
-                                stretchCmd->setWindowP1(worldPoint);
-                                engine_.statusMessage = "STRETCH | Esquina opuesta de la ventana:";
-                                return;
-                            }
-                            else if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP2) {
-                                stretchCmd->setWindowP2(worldPoint);
-                                double minX = std::min(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
-                                double maxX = std::max(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
-                                double minY = std::min(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
-                                double maxY = std::max(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
-                                std::vector<Entity*> found;
-                                for (auto& entity : engine_.doc.entities) {
-                                    auto grips = entity->getGripPoints();
-                                    for (const auto& grip : grips) {
-                                        if (grip.x >= minX && grip.x <= maxX &&
-                                            grip.y >= minY && grip.y <= maxY) {
-                                            found.push_back(entity.get());
-                                            break;
-                                        }
-                                    }
-                                }
-                                if (!found.empty()) {
-                                    stretchCmd->setSelectedEntities(found);
-                                    stretchCmd->advanceToBasePoint();
-                                    engine_.statusMessage = "STRETCH | Punto base:";
-                                } else {
-                                    engine_.statusMessage = "STRETCH | No hay entidades. Intenta de nuevo:";
-                                    stretchCmd->resetWindow();
-                                }
-                                return;
-                            }
-                        }
-                    }
-
-                    // >>> BLOCK CREATE <<<
-                    if (engine_.currentMode == Mode::BLOCK_CREATE && engine_.activeCommand_) {
-                        if (auto* blockCmd = dynamic_cast<BlockCreateCommand*>(engine_.activeCommand_.get())) {
-                            if (blockCmd->getStep() == BlockCreateCommand::Step::WaitingBasePoint) {
-                                std::ostringstream ossCoord;
-                                ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
-                                engine_.processInput(ossCoord.str());
-                                inputBuffer_.clear();
-                                return;
-                            }
-                            else if (blockCmd->getStep() == BlockCreateCommand::Step::SelectingEntities) {
-                                double minDist = 10.0 / view_.getScale();
-                                Entity* found = nullptr;
-                                for (auto& entity : engine_.doc.entities) {
-                                    if (dynamic_cast<BlockInsert*>(entity.get())) continue;
-                                    if (entity->isNear(worldPoint, minDist)) {
-                                        found = entity.get();
-                                        break;
-                                    }
-                                }
-                                if (found) {
-                                    blockCmd->addSelectedEntity(found);
-                                    engine_.statusMessage = "BLOQUE | " +
-                                        std::to_string(blockCmd->getSelectedEntities().size()) +
-                                        " entidades. Enter para terminar:";
-                                }
-                                return;
-                            }
-                        }
-                    }
-
-                    // >>> BLOCK INSERT <<<
-                    if (engine_.currentMode == Mode::BLOCK_INSERT && engine_.activeCommand_) {
-                        if (auto* insertCmd = dynamic_cast<BlockInsertCommand*>(engine_.activeCommand_.get())) {
-                            if (insertCmd->getStep() == BlockInsertCommand::Step::WaitingInsertPoint) {
-                                std::ostringstream ossCoord;
-                                ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
-                                engine_.processInput(ossCoord.str());
-                                inputBuffer_.clear();
-                                return;
-                            }
-                        }
-                    }
-
-                    // ENVÍO GENÉRICO DE COORDENADAS
-                    Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
-                    std::ostringstream ossCoord;
-                    ossCoord << std::fixed << std::setprecision(6);
-                    ossCoord << targetPoint.x << "," << targetPoint.y;
-                    engine_.processInput(ossCoord.str());
-                    inputBuffer_.clear();
+                    handleCanvasClick(currentMouseWorldPos_);
                 }
             }
 
             // --- ESCRITURA EN LÍNEA DE COMANDOS ---
             if (event.type == sf::Event::TextEntered && isTyping_) {
                 if (event.text.unicode == 13) {
-                    if (!inputBuffer_.empty()) {
-                        if (commandHistory_.empty() || commandHistory_.back() != inputBuffer_) {
-                            commandHistory_.push_back(inputBuffer_);
-                        }
-                        if (commandHistory_.size() > 100) {
-                            commandHistory_.erase(commandHistory_.begin());
-                        }
-                    }
-                    historyIndex_ = commandHistory_.size();
-                    autocompleteIndex_ = -1;
-                    autocompleteBase_.clear();
-
-                    if (!inputBuffer_.empty()) {
-                        std::string upperInput(inputBuffer_);
-                        std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
-                        if (upperInput == "GUARDAR" || upperInput == "SAVE") {
-                            std::string path = showSaveFileDialog();
-                            if (!path.empty()) {
-                                // Asegurar que tenga extensión .json
-                                std::string ext = FileManager::getFileExtension(path);
-                                if (ext != ".json" && ext != ".JSON") {
-                                    path += ".json";
-                                }
-
-                                if (FileManager::saveDocument(engine_.doc, path)) {
-                                    engine_.statusMessage = "Dibujo guardado en: " + path;
-                                } else {
-                                    engine_.statusMessage = "Error al guardar el dibujo.";
-                                }
-                            } else {
-                                engine_.statusMessage = "Guardado cancelado.";
-                            }
-                        }
-                        else if (upperInput == "CARGAR" || upperInput == "LOAD") {
-                            std::string path = showOpenFileDialog();
-                            if (!path.empty()) {
-                                // Limpiar estado actual antes de cargar
-                                engine_.selectedEntities.clear();
-                                engine_.currentMode = Mode::IDLE;
-                                engine_.cancelCommand();
-
-                                // Cargar usando FileManager (modifica el documento existente)
-                                if (FileManager::loadDocument(engine_.doc, path)) {
-                                    engine_.statusMessage = "Dibujo cargado desde: " + path;
-                                } else {
-                                    engine_.statusMessage = "Error al cargar el dibujo.";
-                                }
-                            } else {
-                                engine_.statusMessage = "Carga cancelada.";
-                            }
-                        }
-                        else if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
-                                upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
-                            std::string topic = "";
-                            size_t spacePos = inputBuffer_.find(' ');
-                            if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
-                                topic = inputBuffer_.substr(spacePos + 1);
-                            }
-                            std::string helpText = engine_.getHelpForTopic(topic, maxChars);
-                            
-                            std::string line;
-                            for (char c : helpText) {
-                                if (c == '\n') {
-                                    if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
-                                    line.clear();
-                                } else {
-                                    line += c;
-                                }
-                            }
-                            if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
-                            engine_.statusMessage = "Ayuda mostrada";
-                        }
-                        else {
-                            engine_.processInput(inputBuffer_);
-                        }
-                    }
-                    else {
-                        if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
-                            engine_.processInput("");
-                        }
-                    }
-                    inputBuffer_.clear();
-                    commandScrollOffset_ = 0;
+                    processTextInput();
                 }
                 else if (event.text.unicode == 8) {
                     if (!inputBuffer_.empty()) {
@@ -582,11 +337,9 @@ namespace cad {
 
             // --- TECLA ESCAPE ---
             if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-                // >>> NUEVO: Cancelar selección por ventana si está activa <<<
                 if (isSelectingByWindow_) {
                     isSelectingByWindow_ = false;
                 }
-
                 if (engine_.currentMode == Mode::GRIP_EDIT && engine_.gripBackup) {
                     engine_.activeGripEntity->copyFrom(*engine_.gripBackup);
                     engine_.gripBackup.reset();
@@ -610,58 +363,7 @@ namespace cad {
 
             // --- TECLAS DE NAVEGACIÓN ---
             if (event.type == sf::Event::KeyPressed && isTyping_) {
-                if (event.key.code == sf::Keyboard::L && event.key.control) {
-                    showEntityListPanel_ = !showEntityListPanel_;
-                    if (showEntityListPanel_) updateEntityList();
-                    engine_.statusMessage = showEntityListPanel_ ?
-                        "Panel activado" : "Panel desactivado";
-                }
-                else if (event.key.code == sf::Keyboard::Up) {
-                    if (!commandHistory_.empty()) {
-                        if (historyIndex_ > 0) historyIndex_--;
-                        else historyIndex_ = commandHistory_.size() - 1;
-                        inputBuffer_ = commandHistory_[historyIndex_];
-                        autocompleteIndex_ = -1;
-                        autocompleteBase_.clear();
-                    }
-                }
-                else if (event.key.code == sf::Keyboard::Down) {
-                    if (!commandHistory_.empty()) {
-                        if (historyIndex_ < commandHistory_.size() - 1) {
-                            historyIndex_++;
-                            inputBuffer_ = commandHistory_[historyIndex_];
-                        } else {
-                            historyIndex_ = commandHistory_.size();
-                            inputBuffer_.clear();
-                        }
-                        autocompleteIndex_ = -1;
-                        autocompleteBase_.clear();
-                    }
-                }
-                else if (event.key.code == sf::Keyboard::Tab) {
-                    if (!inputBuffer_.empty()) {
-                        if (autocompleteBase_.empty()) {
-                            autocompleteBase_ = inputBuffer_;
-                            std::transform(autocompleteBase_.begin(), autocompleteBase_.end(),
-                                        autocompleteBase_.begin(), ::toupper);
-                            autocompleteIndex_ = 0;
-                        } else {
-                            autocompleteIndex_++;
-                        }
-                        auto allCmds = engine_.getAllCommands();
-                        std::vector<std::string> matches;
-                        for (const auto& cmd : allCmds) {
-                            if (cmd.find(autocompleteBase_) == 0) matches.push_back(cmd);
-                        }
-                        if (!matches.empty()) {
-                            if (autocompleteIndex_ >= matches.size()) autocompleteIndex_ = 0;
-                            inputBuffer_ = matches[autocompleteIndex_];
-                        } else {
-                            autocompleteIndex_ = -1;
-                            autocompleteBase_.clear();
-                        }
-                    }
-                }
+                handleKeyboardNavigation(event);
             }
 
             // --- DESHACER / REHACER ---
@@ -694,6 +396,334 @@ namespace cad {
     void App::updateEntityList() {
         entityListText_ = engine_.getEntityList();
         entityListScrollOffset_ = 0;
+    }
+
+    void App::handleToolbarClick(int mx, int my) {
+        // Botón Línea
+        if (mx >= 10 && mx <= 50) {
+            engine_.processInput("L");
+        }
+        // Botón Círculo
+        else if (mx >= 60 && mx <= 100) {
+            engine_.processInput("C");
+        }
+        // Botón Ejes
+        else if (mx >= 170 && mx <= 210) {
+            showAxes_ = !showAxes_;
+            engine_.statusMessage = showAxes_ ? "Ejes activados" : "Ejes desactivados";
+        }
+        // Botón Borrar
+        else if (mx >= 220 && mx <= 260) {
+            engine_.processInput("Z");
+        }
+        // Botón Ayuda
+        else if (mx >= 280 && mx <= 320) {
+            int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
+            std::string helpText = engine_.getHelpForTopic("", maxChars);
+            commandHistory_.push_back("HELP");
+            
+            std::string line;
+            for (char c : helpText) {
+                if (c == '\n') {
+                    if (!line.empty()) commandHistory_.push_back(line);
+                    line.clear();
+                } else {
+                    line += c;
+                }
+            }
+            if (!line.empty()) commandHistory_.push_back(line);
+            engine_.statusMessage = "Ayuda mostrada";
+        }
+    }
+
+    void App::handleCanvasClick(const Point2D& worldPoint) {
+        double tolerance = 5.0 / view_.getScale();
+
+        // 1. Modo GRIP_EDIT: terminar edición
+        if (engine_.currentMode == Mode::GRIP_EDIT) {
+            engine_.currentMode = Mode::IDLE;
+            engine_.activeGripEntity = nullptr;
+            engine_.gripBackup.reset();
+            engine_.statusMessage = "Entidad modificada.";
+            return;
+        }
+
+        // 2. Modo IDLE: buscar grips o iniciar selección por ventana
+        if (engine_.currentMode == Mode::IDLE) {
+            Entity* hitEntity = nullptr;
+            int hitIndex = -1;
+            
+            for (Entity* e : engine_.selectedEntities) {
+                auto grips = e->getGripPoints();
+                for (int i = 0; i < static_cast<int>(grips.size()); ++i) {
+                    double dist = std::hypot(worldPoint.x - grips[i].x, worldPoint.y - grips[i].y);
+                    if (dist <= tolerance) {
+                        hitEntity = e;
+                        hitIndex = i;
+                        break;
+                    }
+                }
+                if (hitEntity) break;
+            }
+
+            if (hitEntity) {
+                engine_.currentMode = Mode::GRIP_EDIT;
+                engine_.activeGripEntity = hitEntity;
+                engine_.activeGripIndex = hitIndex;
+                engine_.gripBackup = hitEntity->clone();
+                engine_.statusMessage = "Arrastrando grip...";
+            } else {
+                // Iniciar selección por ventana
+                selectionStartPoint_ = worldPoint;
+                selectionEndPoint_ = worldPoint;
+                isSelectingByWindow_ = true;
+                
+                if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && 
+                    !sf::Keyboard::isKeyPressed(sf::Keyboard::RShift)) {
+                    engine_.selectedEntities.clear();
+                }
+            }
+            return;
+        }
+
+        // 3. Comandos activos con lógica especial
+        // >>> STRETCH <<<
+        if (engine_.currentMode == Mode::STRETCH && engine_.activeCommand_) {
+            if (auto* stretchCmd = dynamic_cast<StretchCommand*>(engine_.activeCommand_.get())) {
+                if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP1) {
+                    stretchCmd->setWindowP1(worldPoint);
+                    engine_.statusMessage = "STRETCH | Esquina opuesta de la ventana:";
+                    return;
+                }
+                else if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP2) {
+                    stretchCmd->setWindowP2(worldPoint);
+                    double minX = std::min(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
+                    double maxX = std::max(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
+                    double minY = std::min(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
+                    double maxY = std::max(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
+                    
+                    std::vector<Entity*> found;
+                    for (auto& entity : engine_.doc.entities) {
+                        auto grips = entity->getGripPoints();
+                        for (const auto& grip : grips) {
+                            if (grip.x >= minX && grip.x <= maxX && grip.y >= minY && grip.y <= maxY) {
+                                found.push_back(entity.get());
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!found.empty()) {
+                        stretchCmd->setSelectedEntities(found);
+                        stretchCmd->advanceToBasePoint();
+                        engine_.statusMessage = "STRETCH | Punto base:";
+                    } else {
+                        engine_.statusMessage = "STRETCH | No hay entidades. Intenta de nuevo:";
+                        stretchCmd->resetWindow();
+                    }
+                    return;
+                }
+            }
+        }
+
+        // >>> BLOCK CREATE <<<
+        if (engine_.currentMode == Mode::BLOCK_CREATE && engine_.activeCommand_) {
+            if (auto* blockCmd = dynamic_cast<BlockCreateCommand*>(engine_.activeCommand_.get())) {
+                if (blockCmd->getStep() == BlockCreateCommand::Step::WaitingBasePoint) {
+                    std::ostringstream ossCoord;
+                    ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
+                    engine_.processInput(ossCoord.str());
+                    inputBuffer_.clear();
+                    return;
+                }
+                else if (blockCmd->getStep() == BlockCreateCommand::Step::SelectingEntities) {
+                    double minDist = 10.0 / view_.getScale();
+                    Entity* found = nullptr;
+                    for (auto& entity : engine_.doc.entities) {
+                        if (dynamic_cast<BlockInsert*>(entity.get())) continue;
+                        if (entity->isNear(worldPoint, minDist)) {
+                            found = entity.get();
+                            break;
+                        }
+                    }
+                    if (found) {
+                        blockCmd->addSelectedEntity(found);
+                        engine_.statusMessage = "BLOQUE | " +
+                            std::to_string(blockCmd->getSelectedEntities().size()) +
+                            " entidades. Enter para terminar:";
+                    }
+                    return;
+                }
+            }
+        }
+
+        // >>> BLOCK INSERT <<<
+        if (engine_.currentMode == Mode::BLOCK_INSERT && engine_.activeCommand_) {
+            if (auto* insertCmd = dynamic_cast<BlockInsertCommand*>(engine_.activeCommand_.get())) {
+                if (insertCmd->getStep() == BlockInsertCommand::Step::WaitingInsertPoint) {
+                    std::ostringstream ossCoord;
+                    ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
+                    engine_.processInput(ossCoord.str());
+                    inputBuffer_.clear();
+                    return;
+                }
+            }
+        }
+
+        // 4. Envío genérico de coordenadas al comando activo
+        Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
+        std::ostringstream ossCoord;
+        ossCoord << std::fixed << std::setprecision(6);
+        ossCoord << targetPoint.x << "," << targetPoint.y;
+        engine_.processInput(ossCoord.str());
+        inputBuffer_.clear();
+    }
+
+    void App::processTextInput() {
+        if (!inputBuffer_.empty()) {
+            if (commandHistory_.empty() || commandHistory_.back() != inputBuffer_) {
+                commandHistory_.push_back(inputBuffer_);
+            }
+            if (commandHistory_.size() > 100) {
+                commandHistory_.erase(commandHistory_.begin());
+            }
+        }
+        historyIndex_ = commandHistory_.size();
+        autocompleteIndex_ = -1;
+        autocompleteBase_.clear();
+
+        if (!inputBuffer_.empty()) {
+            std::string upperInput(inputBuffer_);
+            std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+
+            // >>> GUARDAR <<<
+            if (upperInput == "GUARDAR" || upperInput == "SAVE") {
+                std::string path = showSaveFileDialog();
+                if (!path.empty()) {
+                    std::string ext = FileManager::getFileExtension(path);
+                    if (ext != ".json" && ext != ".JSON") {
+                        path += ".json";
+                    }
+                    if (FileManager::saveDocument(engine_.doc, path)) {
+                        engine_.statusMessage = "Dibujo guardado en: " + path;
+                    } else {
+                        engine_.statusMessage = "Error al guardar el dibujo.";
+                    }
+                } else {
+                    engine_.statusMessage = "Guardado cancelado.";
+                }
+            }
+            // >>> CARGAR <<<
+            else if (upperInput == "CARGAR" || upperInput == "LOAD") {
+                std::string path = showOpenFileDialog();
+                if (!path.empty()) {
+                    engine_.selectedEntities.clear();
+                    engine_.currentMode = Mode::IDLE;
+                    engine_.cancelCommand();
+
+                    if (FileManager::loadDocument(engine_.doc, path)) {
+                        engine_.statusMessage = "Dibujo cargado desde: " + path;
+                    } else {
+                        engine_.statusMessage = "Error al cargar el dibujo.";
+                    }
+                } else {
+                    engine_.statusMessage = "Carga cancelada.";
+                }
+            }
+            // >>> AYUDA <<<
+            else if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
+                    upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
+                std::string topic = "";
+                size_t spacePos = inputBuffer_.find(' ');
+                if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
+                    topic = inputBuffer_.substr(spacePos + 1);
+                }
+                int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
+                std::string helpText = engine_.getHelpForTopic(topic, maxChars);
+                
+                std::string line;
+                for (char c : helpText) {
+                    if (c == '\n') {
+                        if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
+                        line.clear();
+                    } else {
+                        line += c;
+                    }
+                }
+                if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
+                engine_.statusMessage = "Ayuda mostrada";
+            }
+            // >>> COMANDO NORMAL <<<
+            else {
+                engine_.processInput(inputBuffer_);
+            }
+        }
+        else {
+            // Enter vacío: terminar comando activo
+            if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
+                engine_.processInput("");
+            }
+        }
+        inputBuffer_.clear();
+        commandScrollOffset_ = 0;
+    }
+
+    void App::handleKeyboardNavigation(const sf::Event& event) {
+        // Ctrl+L: Toggle panel de lista de entidades
+        if (event.key.code == sf::Keyboard::L && event.key.control) {
+            showEntityListPanel_ = !showEntityListPanel_;
+            if (showEntityListPanel_) updateEntityList();
+            engine_.statusMessage = showEntityListPanel_ ? "Panel activado" : "Panel desactivado";
+        }
+        // Flecha arriba: historial
+        else if (event.key.code == sf::Keyboard::Up) {
+            if (!commandHistory_.empty()) {
+                if (historyIndex_ > 0) historyIndex_--;
+                else historyIndex_ = commandHistory_.size() - 1;
+                inputBuffer_ = commandHistory_[historyIndex_];
+                autocompleteIndex_ = -1;
+                autocompleteBase_.clear();
+            }
+        }
+        // Flecha abajo: historial
+        else if (event.key.code == sf::Keyboard::Down) {
+            if (!commandHistory_.empty()) {
+                if (historyIndex_ < commandHistory_.size() - 1) {
+                    historyIndex_++;
+                    inputBuffer_ = commandHistory_[historyIndex_];
+                } else {
+                    historyIndex_ = commandHistory_.size();
+                    inputBuffer_.clear();
+                }
+                autocompleteIndex_ = -1;
+                autocompleteBase_.clear();
+            }
+        }
+        // Tab: autocompletado
+        else if (event.key.code == sf::Keyboard::Tab) {
+            if (!inputBuffer_.empty()) {
+                if (autocompleteBase_.empty()) {
+                    autocompleteBase_ = inputBuffer_;
+                    std::transform(autocompleteBase_.begin(), autocompleteBase_.end(),
+                                autocompleteBase_.begin(), ::toupper);
+                    autocompleteIndex_ = 0;
+                } else {
+                    autocompleteIndex_++;
+                }
+                auto allCmds = engine_.getAllCommands();
+                std::vector<std::string> matches;
+                for (const auto& cmd : allCmds) {
+                    if (cmd.find(autocompleteBase_) == 0) matches.push_back(cmd);
+                }
+                if (!matches.empty()) {
+                    if (autocompleteIndex_ >= static_cast<int>(matches.size())) autocompleteIndex_ = 0;
+                    inputBuffer_ = matches[autocompleteIndex_];
+                } else {
+                    autocompleteIndex_ = -1;
+                    autocompleteBase_.clear();
+                }
+            }
+        }
     }
 
 } // namespace cad
