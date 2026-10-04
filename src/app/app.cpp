@@ -58,6 +58,34 @@ namespace cad {
         return "";
     }
 
+    // --- Diálogo de Selección de Color de Windows ---
+    sf::Color showColorDialog(sf::Color initialColor) {
+        CHOOSECOLORA cc;
+        static COLORREF customColors[16]; // Array para colores personalizados
+        
+        ZeroMemory(&cc, sizeof(cc));
+        cc.lStructSize = sizeof(cc);
+        cc.hwndOwner = NULL; // Puedes pasar el HWND de tu ventana si lo tienes a mano
+        cc.lpCustColors = customColors;
+        
+        // Convertir sf::Color (RGB) a COLORREF (BGR) de Windows
+        cc.rgbResult = RGB(initialColor.r, initialColor.g, initialColor.b);
+        cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+
+        if (ChooseColorA(&cc)) {
+            // El usuario eligió un color. Convertir de BGR (Windows) a RGB (SFML)
+            COLORREF chosenColor = cc.rgbResult;
+            unsigned char r = GetRValue(chosenColor);
+            unsigned char g = GetGValue(chosenColor);
+            unsigned char b = GetBValue(chosenColor);
+            
+            return sf::Color(r, g, b);
+        }
+        
+        // El usuario canceló el diálogo
+        return initialColor; 
+    }
+
     // --- Constructor ---
     App::App() : ui_(font_) {
         std::cout << "Iniciando aplicación..." << std::endl;
@@ -661,6 +689,31 @@ namespace cad {
                 if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
                 engine_.statusMessage = "Ayuda mostrada";
             }
+            // >>> CAMBIAR COLOR DE CAPA (Diálogo Windows) <<<
+            else if (upperInput.find("CAPA COLOR ") == 0 || upperInput.find("LAYER COLOR ") == 0) {
+                // 1. Extraer el nombre de la capa (quitando el prefijo)
+                size_t prefixLen = (upperInput.find("CAPA COLOR ") == 0) ? 11 : 12;
+                std::string layerName = upperInput.substr(prefixLen);
+                
+                // 2. Limpiar espacios en blanco sobrantes
+                layerName.erase(0, layerName.find_first_not_of(' '));
+                layerName.erase(layerName.find_last_not_of(' ') + 1);
+
+                // 3. Validar y ejecutar
+                if (!layerName.empty() && engine_.doc.layers.find(layerName) != engine_.doc.layers.end()) {
+                    const Layer* currentLayer = engine_.doc.getLayer(layerName);
+                    sf::Color startColor = currentLayer ? currentLayer->color : sf::Color::White;
+                    
+                    // Abrir el diálogo de color de Windows
+                    sf::Color newColor = showColorDialog(startColor);
+                    
+                    // Actualizar el documento (¡Asegúrate de haber añadido setLayerColor en Document!)
+                    engine_.doc.setLayerColor(layerName, newColor);
+                    engine_.statusMessage = "Color de la capa '" + layerName + "' actualizado.";
+                } else {
+                    engine_.statusMessage = "Error: Capa no encontrada. Uso: CAPA COLOR <nombre>";
+                }
+            }
             // >>> COMANDO NORMAL <<<
             else {
                 engine_.processInput(inputBuffer_);
@@ -732,6 +785,21 @@ namespace cad {
                 }
             }
         }
+    }
+
+    // Ejemplo dentro de tu App, cuando el usuario selecciona una capa y pulsa "Color":
+    void App::changeLayerColor(const std::string& layerName) {
+        // 1. Obtener el color actual de la capa
+        const Layer* currentLayer = engine_.doc.getLayer(layerName);
+        sf::Color startColor = currentLayer ? currentLayer->color : sf::Color::White;
+
+        // 2. Abrir el diálogo de Windows
+        sf::Color newColor = showColorDialog(startColor);
+
+        // 3. Si el color cambió (o simplemente para confirmar), actualizar el Engine
+        // (Puedes añadir un método setLayerColor en Engine o llamar directamente al doc)
+        engine_.doc.setLayerColor(layerName, newColor);
+        engine_.statusMessage = "Color de la capa '" + layerName + "' actualizado.";
     }
 
 } // namespace cad

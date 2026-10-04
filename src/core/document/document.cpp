@@ -65,6 +65,12 @@ namespace cad {
         return (it != layers.end()) ? &(it->second) : nullptr;
     }
 
+    void Document::setLayerColor(const std::string& name, const sf::Color& color) {
+        if (layers.find(name) != layers.end()) {
+            layers[name].color = color;
+        }
+    }
+
     void Document::saveToFile(const std::string& filename) {
         nlohmann::json j;
         j["version"] = "1.0";

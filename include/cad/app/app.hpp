@@ -92,6 +92,7 @@ namespace cad {
         void handleCanvasClick(const Point2D& worldPoint);
         void processTextInput();
         void handleKeyboardNavigation(const sf::Event& event);
+        void changeLayerColor(const std::string& layerName);
         
         // Constante compartida
         static constexpr int CHARS_PER_PIXEL_FACTOR = 9;

@@ -110,6 +110,30 @@
             "p2_x": 185.0,
             "p2_y": 123.0,
             "type": "LINE"
+        },
+        {
+            "layer": "ESQUELETO",
+            "p1_x": 272.0,
+            "p1_y": 35.0,
+            "p2_x": 459.0,
+            "p2_y": 173.0,
+            "type": "LINE"
+        },
+        {
+            "layer": "ESQUELETO",
+            "p1_x": 459.0,
+            "p1_y": 173.0,
+            "p2_x": 338.0,
+            "p2_y": 286.0,
+            "type": "LINE"
+        },
+        {
+            "layer": "ESQUELETO",
+            "p1_x": 338.0,
+            "p1_y": 286.0,
+            "p2_x": 141.0,
+            "p2_y": 259.0,
+            "type": "LINE"
         }
     ],
     "version": "1.0"

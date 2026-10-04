@@ -37,6 +37,7 @@ namespace cad {
         void setLayerVisibility(const std::string& name, bool visible);
         void setLayerFrozen(const std::string& name, bool frozen);
         void setLayerLocked(const std::string& name, bool locked);
+        void setLayerColor(const std::string& name, const sf::Color& color);
         
         const Layer* getCurrentLayer() const;
         const Layer* getLayer(const std::string& name) const;
