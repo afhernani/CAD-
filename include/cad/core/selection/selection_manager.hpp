@@ -1,6 +1,7 @@
 #pragma once
 #include "../geometry/entity.hpp"
 #include "../geometry/point.hpp"
+#include "cad/core/document/document.hpp"
 #include <vector>
 #include <memory>
 
@@ -20,7 +21,8 @@ public:
     void selectByWindow(const Point2D& p1, const Point2D& p2,
                         const std::vector<std::unique_ptr<Entity>>& entities,
                         std::vector<Entity*>& selectedEntities,
-                        bool addToSelection = false);
+                        bool addToSelection,
+                        const Document& doc);
 
     static SelectionMode determineMode(const Point2D& start, const Point2D& end);
 

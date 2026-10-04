@@ -97,6 +97,11 @@ void Renderer::drawEntities(sf::RenderWindow& window, const View& view, const En
         
         sf::Color drawColor = layer->color;
         
+        // >>> AÑADIR ESTO: Feedback visual de capa bloqueada <<<
+        if (layer->locked) {
+            drawColor.a = 100; // Atenuar al ~40% de opacidad
+        }
+
         // Lambda para transformar coordenadas usando View
         auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
         entity->draw(window, w2s, drawColor, view.getScale());
@@ -109,6 +114,10 @@ void Renderer::drawGrips(sf::RenderWindow& window, const View& view, const Engin
     sf::Color activeGripColor(255, 0, 0);
 
     for (Entity* entity : engine.selectedEntities) {
+        // >>> FILTRO AÑADIDO <<<
+        const Layer* layer = engine.doc.getLayer(entity->layerName);
+        if (!layer || !layer->visible || layer->frozen) continue;
+
         auto grips = entity->getGripPoints();
         for (int i = 0; i < grips.size(); ++i) {
             sf::Vector2f screenPos = view.worldToScreen(grips[i].x, grips[i].y);
@@ -131,6 +140,13 @@ void Renderer::drawDimensionTexts(sf::RenderWindow& window, const View& view, co
     const double PI = 3.14159265358979323846;
     for (const auto& entity : engine.doc.entities) {
         if (auto* dim = dynamic_cast<Dimension*>(entity.get())) {
+
+            // >>> FILTRO DE VISIBILIDAD DE CAPA PARA COTAS <<<
+            const Layer* layer = engine.doc.getLayer(dim->layerName);
+            if (!layer || !layer->visible || layer->frozen || layer->locked) {
+                continue; // Si la capa no es visible o está congelada, no dibujamos el texto
+            }
+
             std::ostringstream oss;
             oss << std::fixed << std::setprecision(2) << dim->value;
             double textX, textY;

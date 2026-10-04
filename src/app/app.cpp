@@ -256,6 +256,10 @@ namespace cad {
                         double tolerance = 5.0 / view_.getScale();
                         Entity* clickedEntity = nullptr;
                         for (auto& entity : engine_.doc.entities) {
+                            // >>> FILTRO DE SEGURIDAD: No seleccionar entidades de capas bloqueadas/congeladas <<<
+                            const Layer* layer = engine_.doc.getLayer(entity->layerName);
+                            if (!layer || !layer->visible || layer->frozen || layer->locked) continue;
+                            
                             if (entity->isNear(selectionStartPoint_, tolerance)) {
                                 clickedEntity = entity.get();
                                 break;
@@ -454,6 +458,10 @@ namespace cad {
             int hitIndex = -1;
             
             for (Entity* e : engine_.selectedEntities) {
+                // >>> FILTRO DE SEGURIDAD: No permitir grips en capas bloqueadas/congeladas <<<
+                const Layer* layer = engine_.doc.getLayer(e->layerName);
+                if (!layer || !layer->visible || layer->frozen || layer->locked) continue;
+
                 auto grips = e->getGripPoints();
                 for (int i = 0; i < static_cast<int>(grips.size()); ++i) {
                     double dist = std::hypot(worldPoint.x - grips[i].x, worldPoint.y - grips[i].y);

@@ -16,7 +16,8 @@ SelectionMode SelectionManager::determineMode(const Point2D& start, const Point2
 void SelectionManager::selectByWindow(const Point2D& p1, const Point2D& p2,
                                       const std::vector<std::unique_ptr<Entity>>& entities,
                                       std::vector<Entity*>& selectedEntities,
-                                      bool addToSelection) {
+                                      bool addToSelection,
+                                      const Document& doc) {
     double minX = std::min(p1.x, p2.x);
     double maxX = std::max(p1.x, p2.x);
     double minY = std::min(p1.y, p2.y);
@@ -29,6 +30,12 @@ void SelectionManager::selectByWindow(const Point2D& p1, const Point2D& p2,
     }
 
     for (const auto& entity : entities) {
+        // >>> FILTRO DE SEGURIDAD DE CAPAS <<<
+        const Layer* layer = doc.getLayer(entity->layerName);
+        if (!layer || !layer->visible || layer->frozen || layer->locked) {
+            continue; // Ignorar entidades de capas no seleccionables
+        }
+        
         bool shouldSelect = false;
 
         if (mode == SelectionMode::WINDOW) {
