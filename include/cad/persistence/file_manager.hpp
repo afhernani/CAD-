@@ -7,7 +7,7 @@ namespace cad {
 class FileManager {
 public:
     // Guardar documento en archivo
-    static bool saveDocument(const Document& doc, const std::string& filePath);
+    static bool saveDocument(Document& doc, const std::string& filePath);
     
     // Cargar documento desde archivo (modifica el doc existente)
     static bool loadDocument(Document& doc, const std::string& filePath);

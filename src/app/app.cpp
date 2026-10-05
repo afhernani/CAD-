@@ -628,6 +628,39 @@ namespace cad {
         autocompleteIndex_ = -1;
         autocompleteBase_.clear();
 
+        // >>> PRIORIDAD MÁXIMA: INTERCEPTAR CONFIRMACIÓN DE NUEVO DOCUMENTO <<<
+        if (engine_.currentMode == Mode::CONFIRM_NEW) {
+            std::string upperResp = inputBuffer_;
+            std::transform(upperResp.begin(), upperResp.end(), upperResp.begin(), ::toupper);
+            
+            if (upperResp == "S" || upperResp == "SI" || upperResp == "Y" || upperResp == "YES") {
+                // El usuario quiere guardar. Abrimos el diálogo.
+                std::string path = showSaveFileDialog();
+                if (!path.empty()) {
+                    std::string ext = FileManager::getFileExtension(path);
+                    if (ext != ".json" && ext != ".JSON") path += ".json";
+                    
+                    if (FileManager::saveDocument(engine_.doc, path)) {
+                        engine_.statusMessage = "Dibujo guardado. Creando nuevo...";
+                    } else {
+                        engine_.statusMessage = "Error al guardar. Nuevo dibujo cancelado.";
+                        inputBuffer_.clear();
+                        return; // Salimos sin borrar nada si falla el guardado
+                    }
+                } else {
+                    engine_.statusMessage = "Guardado cancelado. Nuevo dibujo cancelado.";
+                    engine_.currentMode = Mode::IDLE;
+                    inputBuffer_.clear();
+                    return; // Si cancela el diálogo, no borramos el dibujo actual
+                }
+            }
+            
+            // Si respondió "N" o guardó con éxito, limpiamos el documento
+            engine_.clearDocument();
+            inputBuffer_.clear();
+            return; // Importante: salir para no procesar el input como comando normal
+        }
+        // 2. Flujo normal de comandos (GUARDAR, CARGAR, AYUDA, etc.)
         if (!inputBuffer_.empty()) {
             std::string upperInput(inputBuffer_);
             std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);

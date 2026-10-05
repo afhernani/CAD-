@@ -27,7 +27,7 @@ namespace cad {
         ~Document() = default;
 
         void clear();
-
+        bool isModified = false; 
         // Gestión de entidades
         void addEntity(std::unique_ptr<Entity> entity);
 

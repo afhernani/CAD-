@@ -7,7 +7,7 @@
 
 namespace cad {
 
-    bool FileManager::saveDocument(const Document& doc, const std::string& filePath) {
+    bool FileManager::saveDocument(Document& doc, const std::string& filePath) {
         try {
             // >>> PASAR EL DOCUMENTO COMPLETO AL SERIALIZER <<<
             std::string json = Serializer::serialize(doc);
@@ -22,6 +22,7 @@ namespace cad {
             file.close();
             
             std::cout << "[FileManager] Documento guardado: " << filePath << std::endl;
+            doc.isModified = false; // Marcar como no modificado después de guardar
             return true;
             
         } catch (const std::exception& e) {
@@ -49,6 +50,7 @@ namespace cad {
             std::cout << "[FileManager] Documento cargado: " << filePath 
                     << " (" << doc.entities.size() << " entidades, " 
                     << doc.layers.size() << " capas)" << std::endl;
+            doc.isModified = false; // Marcar como no modificado después de cargar
             return true;
             
         } catch (const std::exception& e) {

@@ -21,7 +21,7 @@ namespace cad {
 		 DRAW_DIM_RADIUS, DRAW_DIM_DIAMETER, DRAW_DIM_ANGULAR, LAYER_COMMAND,
 		 COPY, ROTATE, SCALE, MOVE, MIRROR, MEASURE_DIST, TRIM, EXTEND,
 		 UNDO, ARRAY, STRETCH, REDO, OFFSET, FILLET, CHAMFER,
-		 BLOCK_CREATE, BLOCK_INSERT, GRIP_EDIT, DRAW_TEXT
+		 BLOCK_CREATE, BLOCK_INSERT, GRIP_EDIT, DRAW_TEXT, CONFIRM_NEW
 	};
 
 	enum class ArrayType { RECTANGULAR, POLAR };
@@ -59,6 +59,7 @@ namespace cad {
 		void saveState();
 		void undo();
 		void redo();
+		void clearDocument();
 		
 		bool gridEnabled = false;
 		void toggleGrid() { gridEnabled = !gridEnabled; }

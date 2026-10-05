@@ -42,7 +42,18 @@ namespace cad {
 	Engine::Engine() {
        // ... tus inicializaciones ...
        initializeCommands(); // ¡IMPORTANTE!
-   }
+    }
+
+	void Engine::clearDocument() {
+        doc.clear();
+        doc.isModified = false;
+        selectedEntities.clear();
+        undoStack.clear();
+        redoStack.clear();
+        currentMode = Mode::IDLE;
+        cancelCommand();
+        statusMessage = "Nuevo dibujo creado.";
+    }
 
 	void Engine::cancelCommand() {
 		activeCommand_.reset();
@@ -118,7 +129,17 @@ namespace cad {
         } 
         if (upperCmd == "Z" || upperCmd == "BORRAR") {
             saveState(); doc.clear(); lastPoint = {0.0, 0.0}; statusMessage = "Dibujo borrado."; return;
-        } 
+        }
+		// ... otros comandos ...
+        if (upperCmd == "NEW" || upperCmd == "NUEVO") {
+            if (doc.isModified) {
+                currentMode = Mode::CONFIRM_NEW;
+                statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
+            } else {
+                clearDocument();
+            }
+            return;
+        }
         if (upperCmd == "UNDO" || upperCmd == "DESHACER") { undo(); return; }
         if (upperCmd == "REDO" || upperCmd == "REHACER") { redo(); return; }
         if (upperCmd == "AXIS" || upperCmd == "EJES") {
@@ -306,6 +327,7 @@ namespace cad {
 		undoStack.push_back(std::move(state));
 		redoStack.clear();
 		if (undoStack.size() > 50) undoStack.erase(undoStack.begin());
+		doc.isModified = true;
 	}
 
 	void Engine::undo() {
