@@ -318,7 +318,7 @@ namespace cad {
 				"MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME",
 				"CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT",
 				"BORRAR", "CAPA", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA",
-				"Q", "QUIT", "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO" };
+				"Q", "QUIT", "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW"};
 	}
 
 	void Engine::saveState() {
@@ -495,6 +495,26 @@ namespace cad {
             if (eng.selectedEntities.empty()) { eng.statusMessage = "Primero selecciona entidades."; return nullptr; }
             eng.currentMode = Mode::GRIP_EDIT; eng.activeGripEntity = nullptr; eng.activeGripIndex = -1; eng.gripBackup.reset();
             eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
+        });
+		// --- COMANDOS DE SISTEMA ---
+        registerCommand("NEW", [](Engine& eng) -> std::unique_ptr<ICommand> {
+            if (eng.doc.isModified) {
+                eng.currentMode = Mode::CONFIRM_NEW;
+                eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
+            } else {
+                eng.clearDocument();
+            }
+            return nullptr; // Es una acción de sistema, no un comando activo
+        });
+
+        registerCommand("NUEVO", [](Engine& eng) -> std::unique_ptr<ICommand> {
+            if (eng.doc.isModified) {
+                eng.currentMode = Mode::CONFIRM_NEW;
+                eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
+            } else {
+                eng.clearDocument();
+            }
+            return nullptr;
         });
     }
 
