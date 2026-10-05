@@ -8,6 +8,7 @@
 #include "cad/commands/draw/polygon_command.hpp"
 #include "cad/commands/draw/ellipse_command.hpp"
 #include "cad/commands/draw/dimension_command.hpp"
+#include "cad/commands/draw/text_command.hpp"
 
 // Comandos de modificación
 #include "cad/commands/modify/move_command.hpp"
@@ -396,6 +397,9 @@ namespace cad {
         registerCommand("DIMR", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::RADIUS); });
         registerCommand("DIMDIA", [](Engine& eng) { eng.currentMode = Mode::DRAW_DIMENSION; return std::make_unique<DimensionCommand>(DimType::DIAMETER); });
 
+		registerCommand("T", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
+		registerCommand("TEXT", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
+		registerCommand("TEXTO", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
         // --- COMANDOS DE MODIFICACION ---
 
         registerCommand("M", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });

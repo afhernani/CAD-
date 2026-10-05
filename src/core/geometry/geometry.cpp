@@ -86,6 +86,16 @@ namespace cad {
             //La definición se resuelve después de cargar todo (ver Corrección 6)
             return e;
         }
+        // >>> SOPORTE PARA TEXTO <<<
+        else if (type == "Text") {
+            auto e = std::make_unique<Text>();
+            e->position = {j["position"]["x"].get<double>(), j["position"]["y"].get<double>()};
+            e->content = j.value("content", "");
+            e->height = j.value("height", 1.0);
+            e->rotation = j.value("rotation", 0.0);
+            e->layerName = layer;
+            return e;
+        }
         return nullptr; // Tipo desconocido
     }
  
