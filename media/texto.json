@@ -1,5 +1,5 @@
 {
-    "currentLayer": "TORTUGA",
+    "currentLayer": "CONDA",
     "entities": [
         {
             "content": "Testo de prueba, joder",
@@ -63,6 +63,112 @@
                 }
             ],
             "type": "Polyline"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 67.0,
+                "y": 62.0
+            },
+            "p2": {
+                "x": 210.0,
+                "y": 238.0
+            },
+            "type": "Line"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 210.0,
+                "y": 238.0
+            },
+            "p2": {
+                "x": 271.0,
+                "y": 183.0
+            },
+            "type": "Line"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 271.0,
+                "y": 183.0
+            },
+            "p2": {
+                "x": 412.0,
+                "y": 302.0
+            },
+            "type": "Line"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 240.5,
+                "y": 210.5
+            },
+            "p2": {
+                "x": 169.0,
+                "y": 8.0
+            },
+            "type": "Line"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 240.5,
+                "y": 210.5
+            },
+            "p2": {
+                "x": 295.0,
+                "y": 336.0
+            },
+            "type": "Line"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 240.5,
+                "y": 210.5
+            },
+            "p2": {
+                "x": 295.0,
+                "y": 336.0
+            },
+            "type": "Line"
+        },
+        {
+            "center": {
+                "x": 240.5,
+                "y": 210.5
+            },
+            "endAngle": 38.48898055659936,
+            "layer": "CONDA",
+            "radius": 136.82287820390272,
+            "startAngle": 66.52647983294943,
+            "type": "Arc"
+        },
+        {
+            "layer": "CONDA",
+            "p1": {
+                "x": 240.5,
+                "y": 210.5
+            },
+            "p2": {
+                "x": 347.59508,
+                "y": 295.653649
+            },
+            "type": "Line"
+        },
+        {
+            "content": "ESX",
+            "height": 25.0,
+            "layer": "CONDA",
+            "position": {
+                "x": 215.92974853515625,
+                "y": 297.0829162597656
+            },
+            "rotation": 0.0,
+            "type": "Text"
         }
     ],
     "layers": [
@@ -82,12 +188,25 @@
         {
             "color": {
                 "a": 255,
+                "b": 192,
+                "g": 128,
+                "r": 255
+            },
+            "frozen": false,
+            "isCurrent": true,
+            "locked": false,
+            "name": "CONDA",
+            "visible": true
+        },
+        {
+            "color": {
+                "a": 255,
                 "b": 255,
                 "g": 255,
                 "r": 0
             },
             "frozen": false,
-            "isCurrent": true,
+            "isCurrent": false,
             "locked": false,
             "name": "TORTUGA",
             "visible": true

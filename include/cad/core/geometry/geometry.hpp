@@ -12,6 +12,7 @@
 #include "entities/ellipse.hpp"
 #include "entities/dimension.hpp"
 #include "entities/text.hpp"
+#include "entities/hatch.hpp"
 #include "entities/block_insert.hpp"
 #include "../document/block.hpp"
 // Incluir SFML y JSON para las entidades

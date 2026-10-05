@@ -9,6 +9,7 @@
 #include "cad/commands/draw/ellipse_command.hpp"
 #include "cad/commands/draw/dimension_command.hpp"
 #include "cad/commands/draw/text_command.hpp"
+#include "cad/commands/draw/hatch_command.hpp"
 
 // Comandos de modificación
 #include "cad/commands/modify/move_command.hpp"
@@ -423,7 +424,13 @@ namespace cad {
 		registerCommand("T", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
 		registerCommand("TEXT", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
 		registerCommand("TEXTO", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_TEXT; return std::make_unique<TextCommand>(); });
-        // --- COMANDOS DE MODIFICACION ---
+        
+		// Dentro de initializeCommands():
+		registerCommand("H", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
+		registerCommand("HATCH", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
+		registerCommand("SOMBREADO", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
+
+		// --- COMANDOS DE MODIFICACION ---
 
         registerCommand("M", [](Engine& eng) -> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });
         registerCommand("MOVE", [](Engine& eng)-> std::unique_ptr<ICommand> { if (!Engine::checkSelection(eng)) return nullptr; eng.currentMode = Mode::MOVE; return std::make_unique<MoveCommand>(); });

@@ -96,6 +96,7 @@ namespace cad {
             e->layerName = layer;
             return e;
         }
+        else if (type == "Hatch") return Hatch::fromJson(j);
         return nullptr; // Tipo desconocido
     }
  
