@@ -1,18 +1,16 @@
 #pragma once
+#include "cad/core/document/document.hpp"
 #include <string>
-#include <vector>
-#include <memory>
-#include "cad/core/geometry/entity.hpp"
 
 namespace cad {
 
-class Serializer {
-public:
-    // Serializa una lista de entidades a JSON
-    static std::string serialize(const std::vector<std::unique_ptr<Entity>>& entities);
-
-    // Deserializa JSON a una lista de entidades
-    static std::vector<std::unique_ptr<Entity>> deserialize(const std::string& json);
-};
+    class Serializer {
+    public:
+        // >>> AHORA RECIBE EL DOCUMENTO COMPLETO <<<
+        static std::string serialize(const Document& doc);
+        
+        // >>> AHORA MODIFICA EL DOCUMENTO COMPLETO <<<
+        static void deserialize(const std::string& jsonStr, Document& doc);
+    };
 
 } // namespace cad

@@ -6,6 +6,7 @@
 #include "cad/core/constants.hpp"
 #include <sstream>
 #include <cmath>
+#include <iostream>
 
 namespace cad {
 
@@ -81,8 +82,12 @@ namespace cad {
         text->rotation = rotation_;
         text->layerName = engine.doc.currentLayerName;
         
+        std::cout << "[DEBUG] Intentando crear texto: '" << text->content << "' en capa: " << text->layerName << std::endl;
+
         engine.saveState();
         engine.doc.addEntity(std::move(text));
+
+        std::cout << "[DEBUG] Entidades totales en el documento: " << engine.doc.entities.size() << std::endl;
     }
 
     void TextCommand::onCancel() { 

@@ -1,0 +1,67 @@
+{
+    "currentLayer": "TORTUGA",
+    "entities": [
+        {
+            "content": "Testo de prueba, joder",
+            "height": 20.0,
+            "layer": "0",
+            "position": {
+                "x": 271.0,
+                "y": 108.0
+            },
+            "rotation": 0.0,
+            "type": "Text"
+        },
+        {
+            "content": "Capa TORTUGA",
+            "height": 30.0,
+            "layer": "TORTUGA",
+            "position": {
+                "x": 507.0,
+                "y": 213.0
+            },
+            "rotation": 0.0,
+            "type": "Text"
+        },
+        {
+            "center": {
+                "x": 624.0,
+                "y": 129.0
+            },
+            "layer": "TORTUGA",
+            "radius": 83.00602387778854,
+            "rotationOffset": 0.0,
+            "sides": 7,
+            "type": "Polygon"
+        }
+    ],
+    "layers": [
+        {
+            "color": {
+                "a": 255,
+                "b": 255,
+                "g": 255,
+                "r": 255
+            },
+            "frozen": false,
+            "isCurrent": false,
+            "locked": false,
+            "name": "0",
+            "visible": true
+        },
+        {
+            "color": {
+                "a": 255,
+                "b": 255,
+                "g": 255,
+                "r": 0
+            },
+            "frozen": false,
+            "isCurrent": true,
+            "locked": false,
+            "name": "TORTUGA",
+            "visible": true
+        }
+    ],
+    "version": "1.0"
+}

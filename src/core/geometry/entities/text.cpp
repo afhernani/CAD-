@@ -1,5 +1,6 @@
 #include "cad/core/geometry/entities/text.hpp"
 #include <cmath>
+#include <iostream>
 
 namespace cad {
 
@@ -17,8 +18,21 @@ namespace cad {
     }
 
     bool Text::isNear(const Point2D& point, double tolerance) const {
-        double dist = std::hypot(point.x - position.x, point.y - position.y);
-        return dist < (height + tolerance);
+        // 1. Estimación del ancho del texto: 
+        // Cada carácter ocupa aproximadamente el 60% de la altura en fuentes estándar.
+        double textWidth = content.length() * height * 0.6;
+        double textHeight = height;
+        
+        // 2. Definir la caja delimitadora (Bounding Box) con la tolerancia incluida.
+        // El texto en SFML se dibuja alineado abajo-izquierda desde 'position'.
+        double minX = position.x - tolerance;
+        double maxX = position.x + textWidth + tolerance;
+        double minY = position.y - textHeight - tolerance;
+        double maxY = position.y + tolerance;
+        
+        // 3. Comprobar si el punto del clic está dentro de este rectángulo
+        return (point.x >= minX && point.x <= maxX && 
+                point.y >= minY && point.y <= maxY);
     }
 
     void Text::move(double dx, double dy) {
@@ -75,6 +89,8 @@ namespace cad {
     }
 
     nlohmann::json Text::toJson() const {
+        std::cout << "[DEBUG] Serializando Text a JSON: '" << content << "'" << std::endl;
+        
         nlohmann::json j;
         j["type"] = "Text";
         j["layer"] = layerName;
