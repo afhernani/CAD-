@@ -10,8 +10,13 @@
 #include <cmath>
 #include <sstream>
 #include <algorithm>
+#include <iostream>
 
 namespace cad {
+
+    namespace{
+        constexpr double PI = 3.14159265358979323846;
+    }
 
     HatchCommand::HatchCommand() {
         statusMessage_ = "SOMBREADO | Seleccionar objeto cerrado (haz clic SOBRE la línea del borde):";
@@ -20,6 +25,17 @@ namespace cad {
     void HatchCommand::execute(const std::string& input, Engine& engine) {
         std::string upper = input;
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+
+        // 0. Si estamos en modo de selección, intentar parsear coordenada "x,y" del clic
+        if (step_ == Step::SelectingObject) {
+            std::istringstream iss(input);
+            double x, y;
+            char comma;
+            if (iss >> x >> comma >> y && comma == ',') {
+                onPoint({x, y}, engine);
+                return; // Salimos porque onPoint ya actualizó el estado
+            }
+        }
 
         // Cancelar en cualquier momento
         if (upper == "C" || upper == "S" || upper == "CANCELAR" || upper == "EXIT") {
@@ -83,8 +99,8 @@ namespace cad {
         }
         else if (auto* polygon = dynamic_cast<Polygon*>(entity)) {
             int sides = polygon->sides;
-            double angleStep = 2 * 3.14159265358979323846 / sides;
-            double offset = polygon->rotationOffset * 3.14159265358979323846 / 180.0;
+            double angleStep = 2 * PI / sides;
+            double offset = polygon->rotationOffset * PI / 180.0;
             for (int i = 0; i < sides; ++i) {
                 double angle = i * angleStep + offset;
                 pts.push_back({polygon->center.x + polygon->radius * std::cos(angle),
@@ -93,7 +109,7 @@ namespace cad {
         }
         else if (auto* circle = dynamic_cast<Circle*>(entity)) {
             int segments = 32;
-            double angleStep = 2 * 3.14159265358979323846 / segments;
+            double angleStep = 2 * PI / segments;
             for (int i = 0; i < segments; ++i) {
                 double angle = i * angleStep;
                 pts.push_back({circle->center.x + circle->radius * std::cos(angle),
@@ -103,23 +119,46 @@ namespace cad {
         return pts;
     }
 
+    // En el método onPoint:
     void HatchCommand::onPoint(const Point2D& point, Engine& engine) {
-        if (step_ != Step::SelectingObject) return;
+        std::cout << "[DEBUG] HatchCommand::onPoint llamado con punto: (" 
+                << point.x << ", " << point.y << ")" << std::endl;
+        
+        if (step_ != Step::SelectingObject) {
+            std::cout << "[DEBUG] No estoy en modo SelectingObject, estoy en: " 
+                    << static_cast<int>(step_) << std::endl;
+            return;
+        }
 
         double tolerance = 15.0 / engine.viewScale;
+        std::cout << "[DEBUG] Tolerancia de selección: " << tolerance << std::endl;
+        
         Entity* targetEntity = nullptr;
 
         for (auto& entity : engine.doc.entities) {
-            if (dynamic_cast<Hatch*>(entity.get())) continue;
+            if (dynamic_cast<Hatch*>(entity.get())) {
+                std::cout << "[DEBUG] Ignorando entidad Hatch" << std::endl;
+                continue;
+            }
 
-            if (entity->isNear(point, tolerance)) {
+            bool isNearResult = entity->isNear(point, tolerance);
+            std::cout << "[DEBUG] Probando entidad, isNear: " << isNearResult << std::endl;
+
+            if (isNearResult) {
                 if (auto* poly = dynamic_cast<Polyline*>(entity.get())) {
                     if (poly->closed && poly->points.size() >= 3) {
+                        std::cout << "[DEBUG] ¡Polilínea cerrada encontrada!" << std::endl;
                         targetEntity = entity.get();
                         break;
                     }
                 }
-                else if (dynamic_cast<Polygon*>(entity.get()) || dynamic_cast<Circle*>(entity.get())) {
+                else if (dynamic_cast<Polygon*>(entity.get())) {
+                    std::cout << "[DEBUG] ¡Polígono encontrado!" << std::endl;
+                    targetEntity = entity.get();
+                    break;
+                }
+                else if (dynamic_cast<Circle*>(entity.get())) {
+                    std::cout << "[DEBUG] ¡Círculo encontrado!" << std::endl;
                     targetEntity = entity.get();
                     break;
                 }
@@ -127,15 +166,19 @@ namespace cad {
         }
 
         if (targetEntity) {
+            std::cout << "[DEBUG] Entidad seleccionada correctamente" << std::endl;
             hatchPoints_ = extractPointsFromEntity(targetEntity);
             if (!hatchPoints_.empty()) {
                 selectedEntity_ = targetEntity;
                 step_ = Step::DefiningAngle;
                 statusMessage_ = "SOMBREADO | Objeto seleccionado. Especificar ángulo de rayado <0>:";
+                std::cout << "[DEBUG] Cambiado a modo DefiningAngle" << std::endl;
             } else {
+                std::cout << "[DEBUG] No se pudieron extraer puntos de la entidad" << std::endl;
                 statusMessage_ = "SOMBREADO | El objeto no es válido para sombrear.";
             }
         } else {
+            std::cout << "[DEBUG] No se encontró ninguna entidad válida" << std::endl;
             statusMessage_ = "SOMBREADO | No se ha seleccionado ningún objeto cerrado. Intenta de nuevo (o Esc para salir):";
         }
     }
@@ -172,8 +215,8 @@ namespace cad {
                 sf::ConvexShape shape;
                 shape.setPointCount(polygon->sides);
                 for (int i = 0; i < polygon->sides; ++i) {
-                    double angle = i * 2 * 3.14159265358979323846 / polygon->sides + 
-                                   polygon->rotationOffset * 3.14159265358979323846 / 180.0;
+                    double angle = i * 2 * PI / polygon->sides + 
+                                   polygon->rotationOffset * PI / 180.0;
                     shape.setPoint(i, view.worldToScreen(
                         polygon->center.x + polygon->radius * std::cos(angle),
                         polygon->center.y + polygon->radius * std::sin(angle)

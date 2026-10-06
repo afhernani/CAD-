@@ -72,6 +72,9 @@ namespace cad {
 	}
 
 	void Engine::processInput(std::string_view input) {
+		std::cout << "[DEBUG ENGINE] processInput llamado con: '" << input << "'" << std::endl;
+    	std::cout << "[DEBUG ENGINE] Comando activo: " << (activeCommand_ ? "SÍ" : "NO") << std::endl;
+    
 		std::string cleanInput(input);
 		cleanInput.erase(0, cleanInput.find_first_not_of(' '));
 		cleanInput.erase(cleanInput.find_last_not_of(' ') + 1);

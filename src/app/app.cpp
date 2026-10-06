@@ -469,6 +469,10 @@ namespace cad {
     }
 
     void App::handleCanvasClick(const Point2D& worldPoint) {
+        std::cout << "[DEBUG APP] handleCanvasClick llamado con punto: (" 
+              << worldPoint.x << ", " << worldPoint.y << ")" << std::endl;
+        std::cout << "[DEBUG APP] Modo actual: " << static_cast<int>(engine_.currentMode) << std::endl;
+        
         double tolerance = 5.0 / view_.getScale();
 
         // 1. Modo GRIP_EDIT: terminar edición
