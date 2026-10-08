@@ -5,6 +5,9 @@
 # Directorio de compilación de CMake
 build/
 
+# Directorio de opacidad
+media/
+
 # Entorno de Pixi
 .pixi/
 
