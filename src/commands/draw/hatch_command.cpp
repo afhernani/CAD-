@@ -43,8 +43,22 @@ namespace cad {
             statusMessage_ = "SOMBREADO | Cancelado.";
             return;
         }
-
-        // Paso 2: Definir Ángulo
+        // 1. Si aún no ha hecho clic, recordamos la instrucción
+        if (step_ == Step::SelectingObject) {
+            statusMessage_ = "SOMBREADO | Haz clic SOBRE el borde de la entidad cerrada.";
+            return;
+        }
+        // 2. Esperamos un "Enter" (input vacío) para avanzar
+        if (step_ == Step::Confirming) {
+            if (input.empty()) { 
+                step_ = Step::DefiningAngle;
+                statusMessage_ = "SOMBREADO | Especificar ángulo de rayado <0>:";
+            } else {
+                statusMessage_ = "SOMBREADO | Pulsa ENTER para confirmar o Esc para cancelar.";
+            }
+            return;
+        }
+        // Paso 3: Definir Ángulo
         if (step_ == Step::DefiningAngle) {
             if (input.empty()) {
                 angle_ = 0.0;
@@ -61,7 +75,7 @@ namespace cad {
             return;
         }
 
-        // Paso 3: Definir Espaciado y Crear
+        // Paso 4: Definir Espaciado y Crear
         if (step_ == Step::DefiningSpacing) {
             if (input.empty()) {
                 spacing_ = 1.0;
@@ -121,6 +135,7 @@ namespace cad {
 
     // En el método onPoint:
     void HatchCommand::onPoint(const Point2D& point, Engine& engine) {
+        
         std::cout << "[DEBUG] HatchCommand::onPoint llamado con punto: (" 
                 << point.x << ", " << point.y << ")" << std::endl;
         
@@ -170,9 +185,9 @@ namespace cad {
             hatchPoints_ = extractPointsFromEntity(targetEntity);
             if (!hatchPoints_.empty()) {
                 selectedEntity_ = targetEntity;
-                step_ = Step::DefiningAngle;
-                statusMessage_ = "SOMBREADO | Objeto seleccionado. Especificar ángulo de rayado <0>:";
-                std::cout << "[DEBUG] Cambiado a modo DefiningAngle" << std::endl;
+                step_ = Step::Confirming;
+                statusMessage_ = "SOMBREADO | Entidad seleccionada. Pulsa ENTER para confirmar.";
+                std::cout << "[DEBUG] Cambiado a modo Confirming" << std::endl;
             } else {
                 std::cout << "[DEBUG] No se pudieron extraer puntos de la entidad" << std::endl;
                 statusMessage_ = "SOMBREADO | El objeto no es válido para sombrear.";

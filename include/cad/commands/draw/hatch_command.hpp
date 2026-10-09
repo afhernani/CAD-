@@ -22,7 +22,7 @@ namespace cad {
                         const Point2D& mouseWorldPos, sf::Font& font) const override;
 
     private:
-        enum class Step { SelectingObject, DefiningAngle, DefiningSpacing, Finished };
+        enum class Step { SelectingObject, Confirming,  DefiningAngle, DefiningSpacing, Finished };
     
         Step step_ = Step::SelectingObject;
         bool finished_ = false;

@@ -43,7 +43,7 @@ namespace cad {
             return;
         }
 
-        // Calcular Bounding Box con padding
+        // Calcular Bounding Box
         double minX = points[0].x, maxX = points[0].x;
         double minY = points[0].y, maxY = points[0].y;
         for (const auto& p : points) {
@@ -51,89 +51,89 @@ namespace cad {
             minY = std::min(minY, p.y); maxY = std::max(maxY, p.y);
         }
         
-        double padding = std::max(maxX - minX, maxY - minY) * 0.5;
-        minX -= padding; maxX += padding;
-        minY -= padding; maxY += padding;
-
-        sf::VertexArray lines(sf::Lines);
-        double rad = angle * PI / 180.0;
-        double cosA = std::cos(rad), sinA = std::sin(rad);
-        double realSpacing = spacing * 5.0;
         double cx = (minX + maxX) / 2.0;
         double cy = (minY + maxY) / 2.0;
+        double diagLen = std::hypot(maxX - minX, maxY - minY);
 
-        // Función para rotar un punto
-        auto rotatePoint = [&](Point2D p) -> Point2D {
-            double dx = p.x - cx;
-            double dy = p.y - cy;
-            return {
-                cx + dx * cosA - dy * sinA,
-                cy + dx * sinA + dy * cosA
-            };
+        double rad = angle * PI / 180.0;
+        double cosA = std::cos(rad), sinA = std::sin(rad);
+        
+        double realSpacing = spacing;
+        if (realSpacing <= 0.0) realSpacing = 1.0;
+
+        sf::VertexArray lines(sf::Lines);
+
+        // Función auxiliar: intersección de dos segmentos
+        auto segmentIntersect = [](const Point2D& p1, const Point2D& p2,
+                                const Point2D& p3, const Point2D& p4,
+                                Point2D& result) -> bool {
+            double d = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
+            if (std::abs(d) < 1e-10) return false;
+            
+            double ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / d;
+            double ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / d;
+            
+            if (ua >= 0.0 && ua <= 1.0 && ub >= 0.0 && ub <= 1.0) {
+                result.x = p1.x + ua * (p2.x - p1.x);
+                result.y = p1.y + ua * (p2.y - p1.y);
+                return true;
+            }
+            return false;
         };
 
-        // Función CORRECTA para recortar línea al polígono
-        auto clipLineToPolygon = [&](const Point2D& l1, const Point2D& l2) {
-            // Encontrar TODAS las intersecciones con los bordes del polígono
-            std::vector<std::pair<double, Point2D>> intersections; // (parámetro t, punto)
+        // Generar líneas de rayado
+        for (double offset = -diagLen; offset <= diagLen; offset += realSpacing) {
+            // Crear línea larga perpendicular al ángulo
+            double perpX = -sinA * offset;
+            double perpY = cosA * offset;
+            
+            double lineLen = diagLen * 2.0;
+            Point2D lineStart = {
+                cx + cosA * (-lineLen) + perpX,
+                cy + sinA * (-lineLen) + perpY
+            };
+            Point2D lineEnd = {
+                cx + cosA * lineLen + perpX,
+                cy + sinA * lineLen + perpY
+            };
+
+            // Encontrar todas las intersecciones con los bordes del polígono
+            std::vector<std::pair<double, Point2D>> intersections;
             
             for (size_t i = 0; i < points.size(); ++i) {
                 size_t j = (i + 1) % points.size();
+                Point2D intersection;
                 
-                double denom = (l2.x - l1.x) * (points[j].y - points[i].y) -
-                            (l2.y - l1.y) * (points[j].x - points[i].x);
-                
-                if (std::abs(denom) < 1e-10) continue; // Paralelas
-                
-                double t = ((points[i].x - l1.x) * (points[i].y - points[j].y) -
-                        (points[i].y - l1.y) * (points[i].x - points[j].x)) / denom;
-                
-                double u = -((points[i].x - l1.x) * (l1.y - l2.y) -
-                            (points[i].y - l1.y) * (l1.x - l2.x)) / denom;
-                
-                // Solo intersecciones válidas (dentro de ambos segmentos)
-                if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
-                    Point2D intersection;
-                    intersection.x = l1.x + t * (l2.x - l1.x);
-                    intersection.y = l1.y + t * (l2.y - l1.y);
+                if (segmentIntersect(lineStart, lineEnd, points[i], points[j], intersection)) {
+                    // Calcular posición a lo largo de la línea (0 a 1)
+                    double t = std::hypot(intersection.x - lineStart.x, 
+                                        intersection.y - lineStart.y) / 
+                            std::hypot(lineEnd.x - lineStart.x, 
+                                        lineEnd.y - lineStart.y);
                     intersections.push_back({t, intersection});
                 }
             }
-            
-            // Necesitamos al menos 2 intersecciones para dibujar un segmento
-            if (intersections.size() < 2) return;
-            
-            // Ordenar por parámetro t (posición a lo largo de la línea)
-            std::sort(intersections.begin(), intersections.end(),
-                [](const auto& a, const auto& b) { return a.first < b.first; });
-            
-            // Dibujar segmentos entre pares consecutivos de intersecciones
-            for (size_t i = 0; i + 1 < intersections.size(); i += 2) {
-                Point2D mid = {(intersections[i].second.x + intersections[i+1].second.x) / 2.0,
-                            (intersections[i].second.y + intersections[i+1].second.y) / 2.0};
+
+            // Si tenemos al menos 2 intersecciones, dibujar segmentos
+            if (intersections.size() >= 2) {
+                // Ordenar por posición a lo largo de la línea
+                std::sort(intersections.begin(), intersections.end(),
+                    [](const auto& a, const auto& b) { return a.first < b.first; });
                 
-                // Solo dibujar si el punto medio está dentro del polígono
-                if (isPointInPolygon(mid)) {
-                    lines.append(sf::Vertex(w2s(intersections[i].second.x, intersections[i].second.y), color));
-                    lines.append(sf::Vertex(w2s(intersections[i+1].second.x, intersections[i+1].second.y), color));
+                // Dibujar segmentos alternos (dentro del polígono)
+                for (size_t i = 0; i + 1 < intersections.size(); i += 2) {
+                    Point2D mid = {
+                        (intersections[i].second.x + intersections[i+1].second.x) / 2.0,
+                        (intersections[i].second.y + intersections[i+1].second.y) / 2.0
+                    };
+                    
+                    // Verificar que el punto medio está dentro del polígono
+                    if (isPointInPolygon(mid)) {
+                        lines.append(sf::Vertex(w2s(intersections[i].second.x, intersections[i].second.y), color));
+                        lines.append(sf::Vertex(w2s(intersections[i+1].second.x, intersections[i+1].second.y), color));
+                    }
                 }
             }
-        };
-
-        // Generar líneas paralelas y recortarlas
-        double diagLen = std::hypot(maxX - minX, maxY - minY);
-        
-        for (double offset = -diagLen; offset <= diagLen; offset += realSpacing) {
-            // Línea base horizontal que cubre todo el bounding box
-            Point2D p1 = {minX, minY + offset};
-            Point2D p2 = {maxX, minY + offset};
-            
-            // Rotar la línea
-            Point2D rp1 = rotatePoint(p1);
-            Point2D rp2 = rotatePoint(p2);
-            
-            // Recortar al polígono
-            clipLineToPolygon(rp1, rp2);
         }
         
         window.draw(lines);
