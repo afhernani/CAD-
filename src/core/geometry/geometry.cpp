@@ -36,6 +36,7 @@ namespace cad {
         }
         else if (type == "Polyline") {
             auto e = std::make_unique<Polyline>();
+            e->closed = j.value("closed", false);
             for (const auto& pt : j["points"]) {
                 e->points.push_back({pt["x"].get<double>(), pt["y"].get<double>()});
             }
