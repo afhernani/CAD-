@@ -101,6 +101,7 @@ namespace cad {
             if (selectedEntity_) {
                 hatch->boundaryId = selectedEntity_->id; 
             }
+            hatch->markDirty(); //accedemos a la variable privada isGeometryDirty para marcar la geometría como sucia y forzar la regeneración de la geometría en el próximo renderizado.
 
             engine.saveState();
             engine.doc.addEntity(std::move(hatch));

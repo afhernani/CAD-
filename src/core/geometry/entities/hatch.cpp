@@ -36,6 +36,7 @@ namespace cad {
                  const sf::Color& color, float viewScale) const {
         if (points.size() < 3) return;
 
+        // 1. Patrón Sólido (caso especial)
         if (pattern == HatchPattern::SOLID) {
             sf::ConvexShape shape;
             shape.setPointCount(points.size());
@@ -49,7 +50,41 @@ namespace cad {
             return;
         }
 
-        // Calcular Bounding Box
+        // 2. Si la geometría cambió (ej. se movió el borde), la recalculamos AHORA
+        if (isGeometryDirty) {
+            regenerateGeometry();
+        }
+
+        // 3. Dibujar desde el caché (¡Operación ultrarrápida!)
+        if (!cachedSegments.empty()) {
+            sf::VertexArray lines(sf::Lines, cachedSegments.size() * 2);
+            size_t vertexIndex = 0;
+            
+            for (const auto& segment : cachedSegments) {
+                lines[vertexIndex++].position = w2s(segment.first.x, segment.first.y);
+                lines[vertexIndex++].color = color;
+                
+                lines[vertexIndex++].position = w2s(segment.second.x, segment.second.y);
+                lines[vertexIndex++].color = color;
+            }
+            
+            window.draw(lines);
+        }
+    }
+
+    void Hatch::regenerateGeometry() const {
+        cachedSegments.clear();
+        if (points.size() < 3) {
+            isGeometryDirty = false;
+            return;
+        }
+
+        if (pattern == HatchPattern::SOLID) {
+            isGeometryDirty = false;
+            return; // El sólido se dibuja directo, no necesita segmentos de línea
+        }
+
+        // 1. Calcular Bounding Box
         double minX = points[0].x, maxX = points[0].x;
         double minY = points[0].y, maxY = points[0].y;
         for (const auto& p : points) {
@@ -67,82 +102,58 @@ namespace cad {
         double realSpacing = spacing;
         if (realSpacing <= 0.0) realSpacing = 1.0;
 
-        sf::VertexArray lines(sf::Lines);
-
-        // Función auxiliar: intersección de dos segmentos
-        auto segmentIntersect = [](const Point2D& p1, const Point2D& p2,
-                                const Point2D& p3, const Point2D& p4,
-                                Point2D& result) -> bool {
-            double d = (p4.y - p3.y) * (p2.x - p1.x) - (p4.x - p3.x) * (p2.y - p1.y);
-            if (std::abs(d) < 1e-10) return false;
-            
-            double ua = ((p4.x - p3.x) * (p1.y - p3.y) - (p4.y - p3.y) * (p1.x - p3.x)) / d;
-            double ub = ((p2.x - p1.x) * (p1.y - p3.y) - (p2.y - p1.y) * (p1.x - p3.x)) / d;
-            
-            if (ua >= 0.0 && ua <= 1.0 && ub >= 0.0 && ub <= 1.0) {
-                result.x = p1.x + ua * (p2.x - p1.x);
-                result.y = p1.y + ua * (p2.y - p1.y);
-                return true;
-            }
-            return false;
-        };
-
-        // Generar líneas de rayado
-        for (double offset = -diagLen; offset <= diagLen; offset += realSpacing) {
-            // Crear línea larga perpendicular al ángulo
-            double perpX = -sinA * offset;
-            double perpY = cosA * offset;
-            
-            double lineLen = diagLen * 2.0;
-            Point2D lineStart = {
-                cx + cosA * (-lineLen) + perpX,
-                cy + sinA * (-lineLen) + perpY
-            };
-            Point2D lineEnd = {
-                cx + cosA * lineLen + perpX,
-                cy + sinA * lineLen + perpY
-            };
-
-            // Encontrar todas las intersecciones con los bordes del polígono
+        // Función de recorte (la misma que ya tenías, pero ahora guarda en cachedSegments)
+        auto clipLineToPolygon = [&](const Point2D& l1, const Point2D& l2) {
             std::vector<std::pair<double, Point2D>> intersections;
             
             for (size_t i = 0; i < points.size(); ++i) {
                 size_t j = (i + 1) % points.size();
-                Point2D intersection;
+                double x1 = l1.x, y1 = l1.y;
+                double x2 = l2.x, y2 = l2.y;
+                double x3 = points[i].x, y3 = points[i].y;
+                double x4 = points[j].x, y4 = points[j].y;
                 
-                if (segmentIntersect(lineStart, lineEnd, points[i], points[j], intersection)) {
-                    // Calcular posición a lo largo de la línea (0 a 1)
-                    double t = std::hypot(intersection.x - lineStart.x, 
-                                        intersection.y - lineStart.y) / 
-                            std::hypot(lineEnd.x - lineStart.x, 
-                                        lineEnd.y - lineStart.y);
+                double denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+                if (std::abs(denom) < 1e-10) continue;
+                
+                double t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
+                double u = -((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denom;
+                
+                if (t >= 0.0 && t <= 1.0 && u >= 0.0 && u <= 1.0) {
+                    Point2D intersection = {x1 + t * (x2 - x1), y1 + t * (y2 - y1)};
                     intersections.push_back({t, intersection});
                 }
             }
-
-            // Si tenemos al menos 2 intersecciones, dibujar segmentos
-            if (intersections.size() >= 2) {
-                // Ordenar por posición a lo largo de la línea
-                std::sort(intersections.begin(), intersections.end(),
-                    [](const auto& a, const auto& b) { return a.first < b.first; });
+            
+            if (intersections.size() < 2) return;
+            
+            std::sort(intersections.begin(), intersections.end(),
+                [](const auto& a, const auto& b) { return a.first < b.first; });
+            
+            for (size_t i = 0; i + 1 < intersections.size(); i += 2) {
+                Point2D mid = {(intersections[i].second.x + intersections[i+1].second.x) / 2.0,
+                            (intersections[i].second.y + intersections[i+1].second.y) / 2.0};
                 
-                // Dibujar segmentos alternos (dentro del polígono)
-                for (size_t i = 0; i + 1 < intersections.size(); i += 2) {
-                    Point2D mid = {
-                        (intersections[i].second.x + intersections[i+1].second.x) / 2.0,
-                        (intersections[i].second.y + intersections[i+1].second.y) / 2.0
-                    };
-                    
-                    // Verificar que el punto medio está dentro del polígono
-                    if (isPointInPolygon(mid)) {
-                        lines.append(sf::Vertex(w2s(intersections[i].second.x, intersections[i].second.y), color));
-                        lines.append(sf::Vertex(w2s(intersections[i+1].second.x, intersections[i+1].second.y), color));
-                    }
+                if (isPointInPolygon(mid)) {
+                    // GUARDAMOS EL SEGMENTO EN EL CACHÉ EN LUGAR DE DIBUJARLO
+                    cachedSegments.push_back({intersections[i].second, intersections[i+1].second});
                 }
             }
+        };
+
+        // Generar líneas
+        for (double offset = -diagLen * 2.0; offset <= diagLen * 2.0; offset += realSpacing) {
+            double perpX = -sinA * offset;
+            double perpY =  cosA * offset;
+            double lineLength = diagLen * 3.0;
+            
+            Point2D lp1 = {cx + cosA * (-lineLength) + perpX, cy + sinA * (-lineLength) + perpY};
+            Point2D lp2 = {cx + cosA * (lineLength) + perpX, cy + sinA * (lineLength) + perpY};
+            
+            clipLineToPolygon(lp1, lp2);
         }
         
-        window.draw(lines);
+        isGeometryDirty = false; // Marcamos como limpio
     }
 
     bool Hatch::isPointInPolygon(const Point2D& p) const {
@@ -268,6 +279,7 @@ namespace cad {
                 if (newPoints.size() >= 3) {
                     //std::cout << "[HATCH UPDATE] Actualizando " << newPoints.size() << " puntos." << std::endl;
                     points = std::move(newPoints);
+                    isGeometryDirty = true;
                 } else {
                     //std::cout << "[HATCH UPDATE] No se pudieron extraer puntos válidos." << std::endl;
                 }
