@@ -99,9 +99,9 @@ namespace cad {
             
             // Vinculación asociativa
             if (selectedEntity_) {
+                std::cout << "[DEBUG HATCH] ID de la entidad seleccionada: '" << selectedEntity_->id << "'" << std::endl;
                 hatch->boundaryId = selectedEntity_->id; 
             }
-            hatch->markDirty(); //accedemos a la variable privada isGeometryDirty para marcar la geometría como sucia y forzar la regeneración de la geometría en el próximo renderizado.
 
             engine.saveState();
             engine.doc.addEntity(std::move(hatch));
@@ -119,13 +119,9 @@ namespace cad {
             if (poly->closed && poly->points.size() >= 3) pts = poly->points;
         }
         else if (auto* polygon = dynamic_cast<Polygon*>(entity)) {
-            int sides = polygon->sides;
-            double angleStep = 2 * PI / sides;
-            double offset = polygon->rotationOffset * PI / 180.0;
-            for (int i = 0; i < sides; ++i) {
-                double angle = i * angleStep + offset;
-                pts.push_back({polygon->center.x + polygon->radius * std::cos(angle),
-                               polygon->center.y + polygon->radius * std::sin(angle)});
+            // Ahora es directo: usamos los vértices ya calculados
+            if (polygon->points.size() >= 3) {
+                pts = polygon->points;
             }
         }
         else if (auto* circle = dynamic_cast<Circle*>(entity)) {
@@ -235,13 +231,11 @@ namespace cad {
             }
             else if (auto* polygon = dynamic_cast<Polygon*>(selectedEntity_)) {
                 sf::ConvexShape shape;
-                shape.setPointCount(polygon->sides);
-                for (int i = 0; i < polygon->sides; ++i) {
-                    double angle = i * 2 * PI / polygon->sides + 
-                                   polygon->rotationOffset * PI / 180.0;
+                shape.setPointCount(polygon->points.size());
+                for (size_t i = 0; i < polygon->points.size(); ++i) {
                     shape.setPoint(i, view.worldToScreen(
-                        polygon->center.x + polygon->radius * std::cos(angle),
-                        polygon->center.y + polygon->radius * std::sin(angle)
+                        polygon->points[i].x,
+                        polygon->points[i].y
                     ));
                 }
                 shape.setFillColor(sf::Color::Transparent);

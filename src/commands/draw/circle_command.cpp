@@ -123,6 +123,7 @@ namespace cad {
             }
             
             auto circle = std::make_unique<Circle>();
+            circle->id = Entity::generateId(); // Generar un ID único
             circle->center = center_;
             circle->radius = radius;
             circle->layerName = engine.doc.currentLayerName;

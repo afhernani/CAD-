@@ -32,6 +32,7 @@ namespace cad {
             if (points_.size() >= 2) {
                 // points_.push_back(points_.front()); // Cerrar polilínea
                 auto polyline = std::make_unique<Polyline>();
+                polyline->id = Entity::generateId(); // Generar un ID único
                 polyline->points = points_;
                 polyline->closed = true;
                 polyline->layerName = engine.doc.currentLayerName;

@@ -47,16 +47,7 @@ namespace cad {
             e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
-        else if (type == "Polygon") {
-            auto e = std::make_unique<Polygon>();
-            e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
-            e->sides = j["sides"].get<int>();
-            e->radius = j["radius"].get<double>();
-            e->rotationOffset = j.value("rotationOffset", 0.0);
-            e->layerName = layer;
-            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
-            return e;
-        }
+        else if (type == "Polygon") return Polygon::fromJson(j);
         else if (type == "Ellipse") {
             auto e = std::make_unique<Ellipse>();
             e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};

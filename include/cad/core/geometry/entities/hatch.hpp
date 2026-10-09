@@ -35,18 +35,12 @@ namespace cad {
         void copyFrom(const Entity& src) override;
 
         void update(const Document& doc) override;
-        void markDirty() { isGeometryDirty = true; }
 
         nlohmann::json toJson() const override;
         static std::unique_ptr<Hatch> fromJson(const nlohmann::json& j);
 
     private:
         bool isPointInPolygon(const Point2D& p) const;
-        // Caché de geometría para renderizado ultrarrápido
-        mutable std::vector<std::pair<Point2D, Point2D>> cachedSegments;
-        mutable bool isGeometryDirty = true; // true = necesita recalcularse
-        // Método que hace los cálculos pesados una sola vez
-        void regenerateGeometry() const; 
     };
 
 } // namespace cad
