@@ -10,7 +10,7 @@ namespace cad {
     class Hatch : public Entity {
     public:
         std::vector<Point2D> points;
-        //std::string id;
+        std::string boundaryId;
         HatchPattern pattern = HatchPattern::DIAGONAL;
         double patternScale = 1.0; 
         double angle = 0.0;      // >>> NUEVO: Ángulo en grados

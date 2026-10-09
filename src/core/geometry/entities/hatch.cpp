@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <algorithm>
+#include <iostream>
 
 namespace cad {
 
@@ -216,19 +217,31 @@ namespace cad {
     }
 
     void Hatch::update(const Document& doc) {
-        if (id.empty()) return; // No tiene borde asociado, es un hatch "libre"
-
+        if (id.empty()) {
+            //std::cout << "[HATCH UPDATE] id está vacío. Hatch libre." << std::endl;
+            return; 
+        }// No tiene borde asociado, es un hatch "libre"
+        //std::cout << "[HATCH UPDATE] Buscando entidad con ID: " << id << std::endl;
+        //std::cout << "[HATCH UPDATE] Mi propio ID es: " << id << std::endl;
         // 1. Buscar la entidad original por su ID
         for (const auto& entity : doc.entities) {
-            if (entity->id == id) {
-                
+            //std::cout << "[HATCH UPDATE] Revisando entidad con ID: " << entity->id 
+            //      << " (tipo: " << typeid(*entity).name() << ")" << std::endl;
+
+            if (entity->id == boundaryId) {
+                //std::cout << "[HATCH UPDATE] ¡ENCONTRADA! Actualizando puntos..." << std::endl;
+            
                 // 2. Si la encontramos, extraemos sus puntos actualizados
                 std::vector<Point2D> newPoints;
                 
                 if (auto* poly = dynamic_cast<Polyline*>(entity.get())) {
+                    //std::cout << "[HATCH UPDATE] Es una Polyline. Cerrada: " << poly->closed 
+                    //      << ", puntos: " << poly->points.size() << std::endl;
+
                     if (poly->closed && poly->points.size() >= 3) newPoints = poly->points;
                 }
                 else if (auto* polygon = dynamic_cast<Polygon*>(entity.get())) {
+                    //std::cout << "[HATCH UPDATE] Es un Polygon." << std::endl;
                     //constexpr double PI = 3.14159265358979323846;
                     int sides = polygon->sides;
                     double angleStep = 2 * PI / sides;
@@ -240,6 +253,7 @@ namespace cad {
                     }
                 }
                 else if (auto* circle = dynamic_cast<Circle*>(entity.get())) {
+                    // std::cout << "[HATCH UPDATE] Es un Circle." << std::endl;
                     //constexpr double PI = 3.14159265358979323846;
                     int segments = 32;
                     double angleStep = 2 * PI / segments;
@@ -251,13 +265,16 @@ namespace cad {
                 }
 
                 // 3. Si la extracción fue válida, actualizamos los puntos del hatch
-                if (!newPoints.empty()) {
+                if (newPoints.size() >= 3) {
+                    //std::cout << "[HATCH UPDATE] Actualizando " << newPoints.size() << " puntos." << std::endl;
                     points = std::move(newPoints);
+                } else {
+                    //std::cout << "[HATCH UPDATE] No se pudieron extraer puntos válidos." << std::endl;
                 }
                 return; // ¡Actualización completada! Salimos.
             }
         }
-        
+        //std::cout << "[HATCH UPDATE] No se encontró la entidad con ID: " << id << std::endl;
         // Si el bucle termina sin encontrar la entidad, significa que el usuario 
         // borró el borde original. El hatch se queda con sus últimos puntos conocidos 
         // (o podrías añadir una lógica para borrarlo o marcarlo como "huérfano").

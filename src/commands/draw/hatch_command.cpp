@@ -99,7 +99,7 @@ namespace cad {
             
             // Vinculación asociativa
             if (selectedEntity_) {
-                hatch->id = selectedEntity_->id; 
+                hatch->boundaryId = selectedEntity_->id; 
             }
 
             engine.saveState();
