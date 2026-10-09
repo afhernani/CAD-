@@ -221,6 +221,7 @@ namespace cad {
         c->type = type;
         c->isAligned = isAligned;
         c->layerName = layerName;
+        c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
         return c;
     }
 
@@ -232,6 +233,7 @@ namespace cad {
         type = d.type;
         isAligned = d.isAligned;
         layerName = d.layerName;
+        id = d.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     }
 
     std::vector<Point2D> Dimension::getGripPoints() const {
@@ -304,22 +306,24 @@ namespace cad {
             {"location", {{"x", location.x}, {"y", location.y}}},
             {"value", value},
             {"isHorizontal", isHorizontal},
-            {"layer", layerName}
+            {"layer", layerName},
+            {"id", id}
         };
     }
 
-    std::unique_ptr<Dimension> Dimension::fromJson(const nlohmann::json& j) {
-        auto d = std::make_unique<Dimension>();
-        d->layerName = j.value("layer", "0");
-        d->type = static_cast<DimType>(j.value("dimType", 0));
-        if (j.contains("p1")) { d->p1.x = j["p1"]["x"].get<double>(); d->p1.y = j["p1"]["y"].get<double>(); }
-        if (j.contains("p2")) { d->p2.x = j["p2"]["x"].get<double>(); d->p2.y = j["p2"]["y"].get<double>(); }
-        if (j.contains("location")) { d->location.x = j["location"]["x"].get<double>(); d->location.y = j["location"]["y"].get<double>(); }
-        if (j.contains("p3")) { d->p3.x = j["p3"]["x"].get<double>(); d->p3.y = j["p3"]["y"].get<double>(); }
-        d->value = j.value("value", 0.0);
-        d->isAligned = j.value("isAligned", false);
-        d->isHorizontal = j.value("isHorizontal", true);
-        return d;
-    }
+    // std::unique_ptr<Dimension> Dimension::fromJson(const nlohmann::json& j) {
+    //     auto d = std::make_unique<Dimension>();
+    //     d->layerName = j.value("layer", "0");
+    //     d->id = j.value("id", Entity::generateId());
+    //     d->type = static_cast<DimType>(j.value("dimType", 0));
+    //     if (j.contains("p1")) { d->p1.x = j["p1"]["x"].get<double>(); d->p1.y = j["p1"]["y"].get<double>(); }
+    //     if (j.contains("p2")) { d->p2.x = j["p2"]["x"].get<double>(); d->p2.y = j["p2"]["y"].get<double>(); }
+    //     if (j.contains("location")) { d->location.x = j["location"]["x"].get<double>(); d->location.y = j["location"]["y"].get<double>(); }
+    //     if (j.contains("p3")) { d->p3.x = j["p3"]["x"].get<double>(); d->p3.y = j["p3"]["y"].get<double>(); }
+    //     d->value = j.value("value", 0.0);
+    //     d->isAligned = j.value("isAligned", false);
+    //     d->isHorizontal = j.value("isHorizontal", true);
+    //     return d;
+    // }
 
 } // namespace cad

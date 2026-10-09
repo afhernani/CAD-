@@ -51,6 +51,7 @@ namespace cad {
                         double radius = value;
                         // Si el usuario escribió directamente un número sin R/D, asumir radio
                         auto circle = std::make_unique<Circle>();
+                        circle->id = Entity::generateId(); // Generar un ID único
                         circle->center = center_;
                         circle->radius = radius;
                         circle->layerName = engine.doc.currentLayerName;
@@ -86,6 +87,7 @@ namespace cad {
                 }
                 
                 auto circle = std::make_unique<Circle>();
+                circle->id = Entity::generateId(); // Generar un ID único
                 circle->center = center_;
                 circle->radius = radius;
                 circle->layerName = engine.doc.currentLayerName;

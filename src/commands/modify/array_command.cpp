@@ -147,6 +147,7 @@ namespace cad {
                     
                     for (Entity* original : selectedEntities_) {
                         auto clone = original->clone();
+                        clone->id = Entity::generateId(); // Generar un nuevo ID único
                         clone->move(dx, dy);
                         clone->layerName = engine.doc.currentLayerName;
                         engine.doc.addEntity(std::move(clone));
@@ -165,6 +166,7 @@ namespace cad {
                 
                 for (Entity* original : selectedEntities_) {
                     auto clone = original->clone();
+                    clone->id = Entity::generateId(); // Generar un nuevo ID único
                     clone->rotate(polarCenter_, angle);
                     clone->layerName = engine.doc.currentLayerName;
                     engine.doc.addEntity(std::move(clone));

@@ -54,6 +54,7 @@ std::unique_ptr<Entity> Polygon::clone() const {
     c->radius = radius;
     c->rotationOffset = rotationOffset;
     c->layerName = layerName;
+    c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     return c;
 }
 
@@ -122,6 +123,7 @@ void Polygon::copyFrom(const Entity& src) {
     radius = p.radius;
     rotationOffset = p.rotationOffset;
     layerName = p.layerName;
+    id = p.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
 }
 
 nlohmann::json Polygon::toJson() const {
@@ -131,7 +133,8 @@ nlohmann::json Polygon::toJson() const {
         {"sides", sides},
         {"radius", radius},
         {"rotationOffset", rotationOffset},
-        {"layer", layerName}
+        {"layer", layerName},
+        {"id", id}
     };
 }
 

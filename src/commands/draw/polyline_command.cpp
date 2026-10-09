@@ -60,6 +60,7 @@ namespace cad {
         if (input.empty()) {
             if (points_.size() >= 2) {
                 auto polyline = std::make_unique<Polyline>();
+                polyline->id = Entity::generateId(); // Generar un ID único
                 polyline->points = points_;
                 polyline->layerName = engine.doc.currentLayerName;
                 engine.saveState();

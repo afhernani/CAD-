@@ -66,6 +66,7 @@ namespace cad {
         copy->blockScale = blockScale;
         copy->blockRotation = blockRotation;
         copy->layerName = layerName;
+        copy->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
         return copy;
     }
 
@@ -116,6 +117,7 @@ namespace cad {
             blockScale = other->blockScale;
             blockRotation = other->blockRotation;
             layerName = other->layerName;
+            id = other->id; // Copiar el mismo ID, o generar uno nuevo si es necesario
         }
     }
 
@@ -123,6 +125,7 @@ namespace cad {
         nlohmann::json j;
         j["type"] = "BlockInsert";
         j["layer"] = layerName;
+        j["id"] = id;
         j["insertPoint"] = {{"x", insertPoint.x}, {"y", insertPoint.y}};
         j["blockName"] = definition ? definition->name : "";
         j["scale"] = blockScale;

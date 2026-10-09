@@ -119,6 +119,7 @@ namespace cad {
                 double sign = (side >= 0) ? 1.0 : -1.0;
                 
                 auto newLine = std::make_unique<Line>();
+                newLine->id = Entity::generateId(); // Generar un nuevo ID único
                 newLine->p1 = {line->p1.x + nx * distance_ * sign, line->p1.y + ny * distance_ * sign};
                 newLine->p2 = {line->p2.x + nx * distance_ * sign, line->p2.y + ny * distance_ * sign};
                 newLine->layerName = engine.doc.currentLayerName;
@@ -127,6 +128,7 @@ namespace cad {
         }
         else if (auto* circle = dynamic_cast<Circle*>(entity)) {
             auto newCircle = std::make_unique<Circle>();
+            newCircle->id = Entity::generateId(); // Generar un nuevo ID único
             newCircle->center = circle->center;
             newCircle->radius = circle->radius + distance_;
             if (newCircle->radius < 0) newCircle->radius = std::abs(newCircle->radius);
@@ -135,6 +137,7 @@ namespace cad {
         }
         else if (auto* arc = dynamic_cast<Arc*>(entity)) {
             auto newArc = std::make_unique<Arc>();
+            newArc->id = Entity::generateId(); // Generar un nuevo ID único
             newArc->center = arc->center;
             newArc->radius = arc->radius + distance_;
             newArc->startAngle = arc->startAngle;

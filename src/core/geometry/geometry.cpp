@@ -16,6 +16,7 @@ namespace cad {
             e->p1 = {j["p1"]["x"].get<double>(), j["p1"]["y"].get<double>()};
             e->p2 = {j["p2"]["x"].get<double>(), j["p2"]["y"].get<double>()};
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Circle") {
@@ -23,6 +24,7 @@ namespace cad {
             e->center = {j["center"]["x"].get<double>(), j["center"]["y"].get<double>()};
             e->radius = j["radius"].get<double>();
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Arc") {
@@ -32,6 +34,7 @@ namespace cad {
             e->startAngle = j["startAngle"].get<double>();
             e->endAngle = j["endAngle"].get<double>();
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Polyline") {
@@ -41,6 +44,7 @@ namespace cad {
                 e->points.push_back({pt["x"].get<double>(), pt["y"].get<double>()});
             }
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Polygon") {
@@ -50,6 +54,7 @@ namespace cad {
             e->radius = j["radius"].get<double>();
             e->rotationOffset = j.value("rotationOffset", 0.0);
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Ellipse") {
@@ -59,6 +64,7 @@ namespace cad {
             e->minorRadius = j["minorRadius"].get<double>();
             e->rotationAngle = j.value("rotationAngle", 0.0);
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         // >>> COTA <<<
@@ -70,6 +76,7 @@ namespace cad {
             e->value = j["value"].get<double>();
             e->isHorizontal = j.value("isHorizontal", false);
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             // Cargar tipo de cota
             e->type = static_cast<DimType>(j.value("dimType", 0));
             e->isAligned = j.value("isAligned", false);
@@ -84,6 +91,7 @@ namespace cad {
             e->layerName = layer;
             e->blockScale = j.value("scale", 1.0);
             e->blockRotation = j.value("rotation", 0.0);
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             //La definición se resuelve después de cargar todo (ver Corrección 6)
             return e;
         }
@@ -95,6 +103,7 @@ namespace cad {
             e->height = j.value("height", 1.0);
             e->rotation = j.value("rotation", 0.0);
             e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
             return e;
         }
         else if (type == "Hatch") return Hatch::fromJson(j);

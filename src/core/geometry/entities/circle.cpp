@@ -37,6 +37,7 @@ std::unique_ptr<Entity> Circle::clone() const {
     c->center = center;
     c->radius = radius;
     c->layerName = layerName;
+    c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     return c;
 }
 
@@ -86,6 +87,7 @@ void Circle::copyFrom(const Entity& src) {
     center = c.center;
     radius = c.radius;
     layerName = c.layerName;
+    id = c.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
 }
 
 nlohmann::json Circle::toJson() const {
@@ -93,7 +95,8 @@ nlohmann::json Circle::toJson() const {
         {"type", "Circle"},
         {"center", {{"x", center.x}, {"y", center.y}}},
         {"radius", radius},
-        {"layer", layerName}
+        {"layer", layerName},
+        {"id", id}
     };
 }
 

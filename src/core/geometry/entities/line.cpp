@@ -42,6 +42,7 @@ namespace cad {
         auto c = std::make_unique<Line>();
         c->p1 = p1; c->p2 = p2;
         c->layerName = layerName;
+        c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
         return c;
     }
     void Line::rotate(const Point2D& center, double angleDeg) {
@@ -111,7 +112,7 @@ namespace cad {
     }
     void Line::copyFrom(const Entity& src) {
         auto& l = dynamic_cast<const Line&>(src);
-        p1 = l.p1; p2 = l.p2; layerName = l.layerName;
+        p1 = l.p1; p2 = l.p2; layerName = l.layerName; id = l.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     }
     
     std::vector<Point2D> Line::getSnapPoints() const {
@@ -121,7 +122,7 @@ namespace cad {
 
     // --- Implementaciones JSON ---
     nlohmann::json Line::toJson() const {
-        return {{"type", "Line"}, {"p1", {{"x", p1.x}, {"y", p1.y}}}, {"p2", {{"x", p2.x}, {"y", p2.y}}}, {"layer", layerName}};
+        return {{"type", "Line"}, {"p1", {{"x", p1.x}, {"y", p1.y}}}, {"p2", {{"x", p2.x}, {"y", p2.y}}}, {"layer", layerName},{"id", id}};
     }
 
 

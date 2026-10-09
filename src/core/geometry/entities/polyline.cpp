@@ -53,6 +53,7 @@ namespace cad {
         c->points = points;
         c->closed = closed; 
         c->layerName = layerName;
+        c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
         return c;
     }
 
@@ -106,6 +107,7 @@ namespace cad {
         points = pl.points;
         layerName = pl.layerName;
         closed = pl.closed;
+        id = pl.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     }
 
     nlohmann::json Polyline::toJson() const {
@@ -117,7 +119,8 @@ namespace cad {
             {"type", "Polyline"},
             {"points", pts},
             {"layer", layerName},
-            {"closed", closed}
+            {"closed", closed},
+            {"id", id}
         };
     }
 

@@ -31,6 +31,7 @@ namespace cad {
             if (step_ == Step::WaitingMinorRadius && value > 0) {
                 // Crear la elipse
                 auto ellipse = std::make_unique<Ellipse>();
+                ellipse->id = Entity::generateId(); // Generar un ID único
                 ellipse->center = center_;
                 ellipse->majorRadius = majorRadius_;
                 ellipse->minorRadius = value;
@@ -82,6 +83,7 @@ namespace cad {
             }
             
             auto ellipse = std::make_unique<Ellipse>();
+            ellipse->id = Entity::generateId(); // Generar un ID único
             ellipse->center = center_;
             ellipse->majorRadius = majorRadius_;
             ellipse->minorRadius = minorRadius;

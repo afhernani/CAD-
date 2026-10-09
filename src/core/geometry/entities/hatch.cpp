@@ -1,4 +1,9 @@
 #include "cad/core/geometry/entities/hatch.hpp"
+#include "cad/core/document/document.hpp"
+#include "cad/core/geometry/entities/polyline.hpp"
+#include "cad/core/geometry/entities/polygon.hpp"
+#include "cad/core/geometry/entities/circle.hpp"
+
 #include <cmath>
 #include <algorithm>
 
@@ -210,10 +215,60 @@ namespace cad {
         if (index >= 0 && index < points.size()) points[index] = newPos;
     }
 
+    void Hatch::update(const Document& doc) {
+        if (id.empty()) return; // No tiene borde asociado, es un hatch "libre"
+
+        // 1. Buscar la entidad original por su ID
+        for (const auto& entity : doc.entities) {
+            if (entity->id == id) {
+                
+                // 2. Si la encontramos, extraemos sus puntos actualizados
+                std::vector<Point2D> newPoints;
+                
+                if (auto* poly = dynamic_cast<Polyline*>(entity.get())) {
+                    if (poly->closed && poly->points.size() >= 3) newPoints = poly->points;
+                }
+                else if (auto* polygon = dynamic_cast<Polygon*>(entity.get())) {
+                    //constexpr double PI = 3.14159265358979323846;
+                    int sides = polygon->sides;
+                    double angleStep = 2 * PI / sides;
+                    double offset = polygon->rotationOffset * PI / 180.0;
+                    for (int i = 0; i < sides; ++i) {
+                        double angle = i * angleStep + offset;
+                        newPoints.push_back({polygon->center.x + polygon->radius * std::cos(angle),
+                                             polygon->center.y + polygon->radius * std::sin(angle)});
+                    }
+                }
+                else if (auto* circle = dynamic_cast<Circle*>(entity.get())) {
+                    //constexpr double PI = 3.14159265358979323846;
+                    int segments = 32;
+                    double angleStep = 2 * PI / segments;
+                    for (int i = 0; i < segments; ++i) {
+                        double angle = i * angleStep;
+                        newPoints.push_back({circle->center.x + circle->radius * std::cos(angle),
+                                             circle->center.y + circle->radius * std::sin(angle)});
+                    }
+                }
+
+                // 3. Si la extracción fue válida, actualizamos los puntos del hatch
+                if (!newPoints.empty()) {
+                    points = std::move(newPoints);
+                }
+                return; // ¡Actualización completada! Salimos.
+            }
+        }
+        
+        // Si el bucle termina sin encontrar la entidad, significa que el usuario 
+        // borró el borde original. El hatch se queda con sus últimos puntos conocidos 
+        // (o podrías añadir una lógica para borrarlo o marcarlo como "huérfano").
+    }
+
+
     void Hatch::copyFrom(const Entity& src) {
         const Hatch* h = dynamic_cast<const Hatch*>(&src);
         if (h) {
             layerName = h->layerName;
+            id = h->id; // Copiar el mismo ID, o generar uno nuevo si es necesario
             points = h->points;
             pattern = h->pattern;
             patternScale = h->patternScale;
@@ -225,6 +280,7 @@ namespace cad {
     nlohmann::json Hatch::toJson() const {
         nlohmann::json j;
         j["type"] = "Hatch";
+        j["id"] = id;
         j["layer"] = layerName;
         j["pattern"] = static_cast<int>(pattern);
         j["patternScale"] = patternScale;
@@ -240,6 +296,7 @@ namespace cad {
     std::unique_ptr<Hatch> Hatch::fromJson(const nlohmann::json& j) {
         auto h = std::make_unique<Hatch>();
         h->layerName = j.value("layer", "0");
+        h->id = j.value("id", Entity::generateId());  // Generar un ID único si no existe
         h->pattern = static_cast<HatchPattern>(j.value("pattern", 1));
         h->patternScale = j.value("patternScale", 1.0);
         h->angle = j.value("angle", 0.0);      // >>> NUEVO

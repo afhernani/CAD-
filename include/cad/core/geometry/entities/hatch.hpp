@@ -9,7 +9,8 @@ namespace cad {
 
     class Hatch : public Entity {
     public:
-        std::vector<Point2D> points; 
+        std::vector<Point2D> points;
+        //std::string id;
         HatchPattern pattern = HatchPattern::DIAGONAL;
         double patternScale = 1.0; 
         double angle = 0.0;      // >>> NUEVO: Ángulo en grados
@@ -31,6 +32,8 @@ namespace cad {
         std::vector<Point2D> getSnapPoints() const override;
         void moveGrip(int index, const Point2D& newPos) override;
         void copyFrom(const Entity& src) override;
+
+        void update(const Document& doc) override;
 
         nlohmann::json toJson() const override;
         static std::unique_ptr<Hatch> fromJson(const nlohmann::json& j);

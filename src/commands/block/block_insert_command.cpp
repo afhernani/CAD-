@@ -33,6 +33,7 @@ namespace cad {
             engine.saveState();
             
             auto newInsert = std::make_unique<BlockInsert>();
+            newInsert->id = Entity::generateId(); // Generar un nuevo ID único
             newInsert->definition = definition_;
             newInsert->insertPoint = point;
             newInsert->layerName = engine.doc.currentLayerName;
@@ -71,8 +72,8 @@ namespace cad {
                 // y las movemos directamente a la posición del ratón.
                 // Si tus entidades ya tienen coordenadas absolutas del dibujo original, 
                 // necesitarás ajustar este offset restando el punto base original del bloque.
-                double offsetX = mouseWorldPos.x; // Ajustar si tienes basePoint
-                double offsetY = mouseWorldPos.y; // Ajustar si tienes basePoint
+                double offsetX = mouseWorldPos.x - definition_->basePoint.x;
+                double offsetY = mouseWorldPos.y - definition_->basePoint.y;
                 
                 ghost->move(offsetX, offsetY);
                 ghost->draw(window, w2s, ghostColor, view.getScale());

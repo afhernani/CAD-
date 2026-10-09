@@ -62,6 +62,7 @@ namespace cad {
             else if (step_ == Step::WaitingLocation) {
                 double val = std::hypot(p2_.x - p1_.x, p2_.y - p1_.y);
                 auto dim = std::make_unique<Dimension>();
+                dim->id = Entity::generateId(); // Generar un ID único
                 dim->type = type_;
                 dim->p1 = p1_; dim->p2 = p2_; dim->location = point;
                 dim->value = val;
@@ -97,7 +98,7 @@ namespace cad {
                 Point2D center = {0,0}; double radius = 0;
                 if (auto* c = dynamic_cast<Circle*>(selectedCircleOrArc_)) { center = c->center; radius = c->radius; }
                 else if (auto* a = dynamic_cast<Arc*>(selectedCircleOrArc_)) { center = a->center; radius = a->radius; }
-                
+                dim->id = Entity::generateId(); // Generar un ID único
                 dim->p1 = center; 
                 dim->p2 = point; // El punto donde se hace clic define la dirección de la línea
                 dim->location = point;

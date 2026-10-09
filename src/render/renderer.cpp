@@ -92,7 +92,13 @@ namespace cad {
         window.draw(origin);
     }
 
-    void Renderer::drawEntities(sf::RenderWindow& window, const View& view, const Engine& engine) const {
+    void Renderer::drawEntities(sf::RenderWindow& window, const View& view, Engine& engine) const {
+
+        // 1. Actualizar entidades asociativas ANTES de dibujar
+        for (auto& entity : engine.doc.entities) {
+            entity->update(engine.doc); 
+        }
+
         for (const auto& entity : engine.doc.entities) {
             const Layer* layer = engine.doc.getLayer(entity->layerName);
             if (!layer || !layer->visible || layer->frozen) continue;

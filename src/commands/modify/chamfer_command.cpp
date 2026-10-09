@@ -148,6 +148,7 @@ namespace cad {
         // Crear línea de chaflán si las distancias son > 0
         if (dist1_ > 0.001 || dist2_ > 0.001) {
             auto newLine = std::make_unique<Line>();
+            newLine->id = Entity::generateId(); // Generar un nuevo ID único
             newLine->p1 = T1;
             newLine->p2 = T2;
             newLine->layerName = engine.doc.currentLayerName;

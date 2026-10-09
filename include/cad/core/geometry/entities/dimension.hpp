@@ -34,7 +34,7 @@ public:
     void copyFrom(const Entity& src) override;
     
     nlohmann::json toJson() const override;
-    static std::unique_ptr<Dimension> fromJson(const nlohmann::json& j);
+    // static std::unique_ptr<Dimension> fromJson(const nlohmann::json& j);
 };
 
 } // namespace cad

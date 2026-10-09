@@ -47,6 +47,7 @@ namespace cad {
             else if (step_ == Step::WaitingRadius && value > 0) {
                 // Crear el polígono
                 auto polygon = std::make_unique<Polygon>();
+                polygon->id = Entity::generateId(); // Generar un ID único
                 polygon->center = center_;
                 polygon->sides = sides_;
                 polygon->radius = value;
@@ -83,6 +84,7 @@ namespace cad {
             }
             
             auto polygon = std::make_unique<Polygon>();
+            polygon->id = Entity::generateId(); // Generar un ID único
             polygon->center = center_;
             polygon->sides = sides_;
             polygon->radius = radius;

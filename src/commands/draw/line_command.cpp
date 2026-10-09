@@ -33,6 +33,7 @@ namespace cad {
         } else {
             // Segundo punto: crear la línea
             auto line = std::make_unique<Line>();
+            line->id = Entity::generateId(); // Generar un ID único
             line->p1 = p1_;
             line->p2 = point;
             line->layerName = engine.doc.currentLayerName;

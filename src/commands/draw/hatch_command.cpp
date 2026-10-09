@@ -90,12 +90,18 @@ namespace cad {
 
             // Crear la entidad final
             auto hatch = std::make_unique<Hatch>();
+            hatch->id = Entity::generateId();  // Generar un ID único
             hatch->points = hatchPoints_;
             hatch->pattern = HatchPattern::DIAGONAL;
             hatch->angle = angle_;
             hatch->spacing = spacing_;
             hatch->layerName = engine.doc.currentLayerName;
             
+            // Vinculación asociativa
+            if (selectedEntity_) {
+                hatch->id = selectedEntity_->id; 
+            }
+
             engine.saveState();
             engine.doc.addEntity(std::move(hatch));
             

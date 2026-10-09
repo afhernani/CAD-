@@ -175,6 +175,7 @@ namespace cad {
                 if (diff > std::numbers::pi) std::swap(a1, a2);
                 
                 auto newArc = std::make_unique<Arc>();
+                newArc->id = Entity::generateId(); // Generar un nuevo ID único
                 newArc->center = center;
                 newArc->radius = radius_;
                 newArc->startAngle = a1 * 180.0 / std::numbers::pi;

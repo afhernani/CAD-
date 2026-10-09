@@ -82,7 +82,7 @@ namespace cad {
     void Text::copyFrom(const Entity& src) {
         const Text* t = dynamic_cast<const Text*>(&src);
         if (t) {
-            layerName = t->layerName;
+            layerName = t->layerName; id = t->id; // Copiar el mismo ID, o generar uno nuevo si es necesario
             position = t->position; content = t->content;
             height = t->height; rotation = t->rotation;
         }
@@ -94,6 +94,7 @@ namespace cad {
         nlohmann::json j;
         j["type"] = "Text";
         j["layer"] = layerName;
+        j["id"] = id;
         j["position"] = {{"x", position.x}, {"y", position.y}};
         j["content"] = content;
         j["height"] = height;
@@ -104,6 +105,7 @@ namespace cad {
     std::unique_ptr<Text> Text::fromJson(const nlohmann::json& j) {
         auto t = std::make_unique<Text>();
         t->layerName = j.value("layer", "0");
+        t->id = j.value("id", Entity::generateId());
         if (j.contains("position")) { t->position.x = j["position"]["x"].get<double>(); t->position.y = j["position"]["y"].get<double>(); }
         t->content = j.value("content", "");
         t->height = j.value("height", 1.0);

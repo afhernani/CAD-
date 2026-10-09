@@ -44,6 +44,7 @@ std::unique_ptr<Entity> Arc::clone() const {
     c->startAngle = startAngle;
     c->endAngle = endAngle;
     c->layerName = layerName;
+    c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     return c;
 }
 
@@ -125,6 +126,7 @@ void Arc::copyFrom(const Entity& src) {
     startAngle = a.startAngle;
     endAngle = a.endAngle;
     layerName = a.layerName;
+    id = a.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
 }
 
 nlohmann::json Arc::toJson() const {
@@ -134,7 +136,8 @@ nlohmann::json Arc::toJson() const {
         {"radius", radius},
         {"startAngle", startAngle},
         {"endAngle", endAngle},
-        {"layer", layerName}
+        {"layer", layerName},
+        {"id", id}
     };
 }
 

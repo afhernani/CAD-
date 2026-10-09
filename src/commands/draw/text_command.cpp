@@ -76,6 +76,7 @@ namespace cad {
 
     void TextCommand::createTextEntity(Engine& engine) {
         auto text = std::make_unique<Text>();
+        text->id = Entity::generateId(); // Generar un ID único
         text->position = position_;
         text->content = content_;
         text->height = height_;

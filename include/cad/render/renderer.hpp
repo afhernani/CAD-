@@ -30,7 +30,7 @@ private:
 
     void drawGrid(sf::RenderWindow& window, const View& view, const Engine& engine) const;
     void drawAxes(sf::RenderWindow& window, const View& view) const;
-    void drawEntities(sf::RenderWindow& window, const View& view, const Engine& engine) const;
+    void drawEntities(sf::RenderWindow& window, const View& view, Engine& engine) const;
     void drawGrips(sf::RenderWindow& window, const View& view, const Engine& engine) const;
     void drawDimensionTexts(sf::RenderWindow& window, const View& view, const Engine& engine, sf::Font& font) const;
     void drawCrosshair(sf::RenderWindow& window, const View& view, const sf::Vector2i& mouseScreenPos, 

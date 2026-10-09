@@ -64,6 +64,7 @@ namespace cad {
             
             // Crear el arco
             auto arc = std::make_unique<Arc>();
+            arc->id = Entity::generateId(); // Generar un ID único
             arc->center = center_;
             arc->radius = radius_;
             arc->startAngle = startAngle_;

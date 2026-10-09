@@ -69,6 +69,7 @@ namespace cad {
         // Clonar y trasladar las entidades seleccionadas al origen del bloque
         for (Entity* e : selectedEntities_) {
             auto copy = e->clone();
+            copy->id = Entity::generateId(); // Generar un nuevo ID único
             copy->move(-basePoint_.x, -basePoint_.y);
             newDef->entities.push_back(std::move(copy));
         }
@@ -78,6 +79,7 @@ namespace cad {
         
         // 2. Crear una instancia (BlockInsert) en la posición del punto base
         auto newInsert = std::make_unique<BlockInsert>();
+        newInsert->id = Entity::generateId(); // Generar un nuevo ID único
         newInsert->definition = defPtr;
         newInsert->insertPoint = basePoint_;
         newInsert->layerName = engine.doc.currentLayerName;

@@ -78,6 +78,7 @@ std::unique_ptr<Entity> Ellipse::clone() const {
     c->minorRadius = minorRadius;
     c->rotationAngle = rotationAngle;
     c->layerName = layerName;
+    c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
     return c;
 }
 
@@ -88,6 +89,7 @@ void Ellipse::copyFrom(const Entity& src) {
     minorRadius = e.minorRadius;
     rotationAngle = e.rotationAngle;
     layerName = e.layerName;
+    id = e.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
 }
 
 std::vector<Point2D> Ellipse::getGripPoints() const {
@@ -148,7 +150,8 @@ nlohmann::json Ellipse::toJson() const {
         {"majorRadius", majorRadius},
         {"minorRadius", minorRadius},
         {"rotationAngle", rotationAngle},
-        {"layer", layerName}
+        {"layer", layerName},
+        {"id", id}
     };
 }
 

@@ -42,6 +42,7 @@ namespace cad {
             // Para cada entidad seleccionada, crear copia reflejada
             for (Entity* entity : engine.selectedEntities) {
                 auto copy = entity->clone();
+                copy->id = Entity::generateId(); // Generar un nuevo ID único
                 copy->mirror(axisP1_, axisP2);
                 engine.doc.addEntity(std::move(copy));
             }

@@ -41,6 +41,7 @@ namespace cad {
             // Clonar y mover cada entidad seleccionada
             for (Entity* entity : engine.selectedEntities) {
                 auto copy = entity->clone();
+                copy->id = Entity::generateId(); // Generar un nuevo ID único
                 copy->move(dx, dy);
                 engine.doc.addEntity(std::move(copy));
             }
