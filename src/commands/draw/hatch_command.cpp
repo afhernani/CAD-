@@ -19,46 +19,48 @@ namespace cad {
     }
 
     HatchCommand::HatchCommand() {
-        statusMessage_ = "SOMBREADO | Seleccionar objeto cerrado (haz clic SOBRE la línea del borde):";
+        statusMessage_ = "SOMBREADO | Seleccionar borde exterior (clic SOBRE la línea):";
+        finished_ = false;
+        step_ = Step::SelectingOuter;
     }
 
     void HatchCommand::execute(const std::string& input, Engine& engine) {
         std::string upper = input;
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-        // 0. Si estamos en modo de selección, intentar parsear coordenada "x,y" del clic
-        if (step_ == Step::SelectingObject) {
+        if (step_ == Step::SelectingOuter || step_ == Step::SelectingIslands) {
             std::istringstream iss(input);
             double x, y;
             char comma;
             if (iss >> x >> comma >> y && comma == ',') {
                 onPoint({x, y}, engine);
-                return; // Salimos porque onPoint ya actualizó el estado
+                return;
             }
         }
 
-        // Cancelar en cualquier momento
         if (upper == "C" || upper == "S" || upper == "CANCELAR" || upper == "EXIT") {
             finished_ = true;
             statusMessage_ = "SOMBREADO | Cancelado.";
             return;
         }
-        // 1. Si aún no ha hecho clic, recordamos la instrucción
-        if (step_ == Step::SelectingObject) {
-            statusMessage_ = "SOMBREADO | Haz clic SOBRE el borde de la entidad cerrada.";
-            return;
-        }
-        // 2. Esperamos un "Enter" (input vacío) para avanzar
-        if (step_ == Step::Confirming) {
-            if (input.empty()) { 
+
+        // En SelectingIslands, ENTER termina la selección de islas
+        if (step_ == Step::SelectingIslands && input.empty()) {
+            if (selectedEntities_.empty()) {
+                statusMessage_ = "SOMBREADO | No hay borde exterior. Comando cancelado.";
+                finished_ = true;
+            } else {
                 step_ = Step::DefiningAngle;
                 statusMessage_ = "SOMBREADO | Especificar ángulo de rayado <0>:";
-            } else {
-                statusMessage_ = "SOMBREADO | Pulsa ENTER para confirmar o Esc para cancelar.";
             }
             return;
         }
-        // Paso 3: Definir Ángulo
+
+        if (step_ == Step::SelectingOuter) {
+            statusMessage_ = "SOMBREADO | Haz clic SOBRE el borde exterior de la entidad cerrada.";
+            return;
+        }
+
         if (step_ == Step::DefiningAngle) {
             if (input.empty()) {
                 angle_ = 0.0;
@@ -75,7 +77,6 @@ namespace cad {
             return;
         }
 
-        // Paso 4: Definir Espaciado y Crear
         if (step_ == Step::DefiningSpacing) {
             if (input.empty()) {
                 spacing_ = 1.0;
@@ -90,17 +91,24 @@ namespace cad {
 
             // Crear la entidad final
             auto hatch = std::make_unique<Hatch>();
-            hatch->id = Entity::generateId();  // Generar un ID único
-            hatch->points = hatchPoints_;
+            hatch->id = Entity::generateId();
             hatch->pattern = HatchPattern::DIAGONAL;
             hatch->angle = angle_;
             hatch->spacing = spacing_;
             hatch->layerName = engine.doc.currentLayerName;
             
-            // Vinculación asociativa
-            if (selectedEntity_) {
-                std::cout << "[DEBUG HATCH] ID de la entidad seleccionada: '" << selectedEntity_->id << "'" << std::endl;
-                hatch->boundaryId = selectedEntity_->id; 
+            if (!selectedEntities_.empty()) {
+                // Primera entidad = borde exterior
+                Entity* outer = selectedEntities_[0];
+                hatch->boundaryId = outer->id;
+                hatch->points = extractPointsFromEntity(outer);
+                
+                // Resto = islas
+                for (size_t i = 1; i < selectedEntities_.size(); ++i) {
+                    Entity* island = selectedEntities_[i];
+                    hatch->islandIds.push_back(island->id);
+                    hatch->islands.push_back(extractPointsFromEntity(island));
+                }
             }
 
             engine.saveState();
@@ -119,10 +127,7 @@ namespace cad {
             if (poly->closed && poly->points.size() >= 3) pts = poly->points;
         }
         else if (auto* polygon = dynamic_cast<Polygon*>(entity)) {
-            // Ahora es directo: usamos los vértices ya calculados
-            if (polygon->points.size() >= 3) {
-                pts = polygon->points;
-            }
+            if (polygon->points.size() >= 3) pts = polygon->points;
         }
         else if (auto* circle = dynamic_cast<Circle*>(entity)) {
             int segments = 32;
@@ -136,47 +141,27 @@ namespace cad {
         return pts;
     }
 
-    // En el método onPoint:
     void HatchCommand::onPoint(const Point2D& point, Engine& engine) {
-        
-        std::cout << "[DEBUG] HatchCommand::onPoint llamado con punto: (" 
-                << point.x << ", " << point.y << ")" << std::endl;
-        
-        if (step_ != Step::SelectingObject) {
-            std::cout << "[DEBUG] No estoy en modo SelectingObject, estoy en: " 
-                    << static_cast<int>(step_) << std::endl;
-            return;
-        }
+        if (step_ != Step::SelectingOuter && step_ != Step::SelectingIslands) return;
 
         double tolerance = 15.0 / engine.viewScale;
-        std::cout << "[DEBUG] Tolerancia de selección: " << tolerance << std::endl;
-        
         Entity* targetEntity = nullptr;
 
         for (auto& entity : engine.doc.entities) {
-            if (dynamic_cast<Hatch*>(entity.get())) {
-                std::cout << "[DEBUG] Ignorando entidad Hatch" << std::endl;
-                continue;
-            }
+            if (dynamic_cast<Hatch*>(entity.get())) continue;
 
-            bool isNearResult = entity->isNear(point, tolerance);
-            std::cout << "[DEBUG] Probando entidad, isNear: " << isNearResult << std::endl;
-
-            if (isNearResult) {
+            if (entity->isNear(point, tolerance)) {
                 if (auto* poly = dynamic_cast<Polyline*>(entity.get())) {
                     if (poly->closed && poly->points.size() >= 3) {
-                        std::cout << "[DEBUG] ¡Polilínea cerrada encontrada!" << std::endl;
                         targetEntity = entity.get();
                         break;
                     }
                 }
                 else if (dynamic_cast<Polygon*>(entity.get())) {
-                    std::cout << "[DEBUG] ¡Polígono encontrado!" << std::endl;
                     targetEntity = entity.get();
                     break;
                 }
                 else if (dynamic_cast<Circle*>(entity.get())) {
-                    std::cout << "[DEBUG] ¡Círculo encontrado!" << std::endl;
                     targetEntity = entity.get();
                     break;
                 }
@@ -184,20 +169,29 @@ namespace cad {
         }
 
         if (targetEntity) {
-            std::cout << "[DEBUG] Entidad seleccionada correctamente" << std::endl;
-            hatchPoints_ = extractPointsFromEntity(targetEntity);
-            if (!hatchPoints_.empty()) {
-                selectedEntity_ = targetEntity;
-                step_ = Step::Confirming;
-                statusMessage_ = "SOMBREADO | Entidad seleccionada. Pulsa ENTER para confirmar.";
-                std::cout << "[DEBUG] Cambiado a modo Confirming" << std::endl;
-            } else {
-                std::cout << "[DEBUG] No se pudieron extraer puntos de la entidad" << std::endl;
-                statusMessage_ = "SOMBREADO | El objeto no es válido para sombrear.";
+            if (step_ == Step::SelectingOuter) {
+                selectedEntities_.push_back(targetEntity);
+                step_ = Step::SelectingIslands;
+                statusMessage_ = "SOMBREADO | Selecciona islas (agujeros) o pulsa ENTER para terminar:";
+            }
+            else if (step_ == Step::SelectingIslands) {
+                // Evitar duplicados y evitar que sea la misma que el exterior
+                bool alreadySelected = false;
+                for (Entity* e : selectedEntities_) {
+                    if (e == targetEntity) {
+                        alreadySelected = true;
+                        break;
+                    }
+                }
+                if (!alreadySelected) {
+                    selectedEntities_.push_back(targetEntity);
+                    statusMessage_ = "SOMBREADO | Isla añadida. Selecciona más o pulsa ENTER para terminar:";
+                } else {
+                    statusMessage_ = "SOMBREADO | Esa entidad ya está seleccionada.";
+                }
             }
         } else {
-            std::cout << "[DEBUG] No se encontró ninguna entidad válida" << std::endl;
-            statusMessage_ = "SOMBREADO | No se ha seleccionado ningún objeto cerrado. Intenta de nuevo (o Esc para salir):";
+            statusMessage_ = "SOMBREADO | No se encontró entidad válida. Intenta de nuevo:";
         }
     }
 
@@ -216,54 +210,94 @@ namespace cad {
 
     void HatchCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                     const Point2D& mouseWorldPos, sf::Font& font) const {
-        // Feedback 1: Resaltar el objeto seleccionado en amarillo
-        if (selectedEntity_ != nullptr && step_ != Step::Finished) {
-            sf::Color highlightColor(255, 255, 0, 200); // Amarillo brillante
-            
-            if (auto* circle = dynamic_cast<Circle*>(selectedEntity_)) {
-                sf::CircleShape shape(circle->radius * view.getScale());
-                shape.setOrigin(circle->radius * view.getScale(), circle->radius * view.getScale());
-                shape.setPosition(view.worldToScreen(circle->center.x, circle->center.y));
-                shape.setFillColor(sf::Color::Transparent);
-                shape.setOutlineColor(highlightColor);
-                shape.setOutlineThickness(3.0f);
-                window.draw(shape);
-            }
-            else if (auto* polygon = dynamic_cast<Polygon*>(selectedEntity_)) {
-                sf::ConvexShape shape;
-                shape.setPointCount(polygon->points.size());
-                for (size_t i = 0; i < polygon->points.size(); ++i) {
-                    shape.setPoint(i, view.worldToScreen(
-                        polygon->points[i].x,
-                        polygon->points[i].y
-                    ));
-                }
-                shape.setFillColor(sf::Color::Transparent);
-                shape.setOutlineColor(highlightColor);
-                shape.setOutlineThickness(3.0f);
-                window.draw(shape);
-            }
-            else if (auto* poly = dynamic_cast<Polyline*>(selectedEntity_)) {
+        if (selectedEntities_.empty()) return;
+
+        sf::Color outerColor(0, 255, 0, 200); // Verde para borde exterior
+        sf::Color islandColor(255, 165, 0, 200); // Naranja para islas
+
+        auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
+
+        // Dibujar borde exterior
+        if (!selectedEntities_.empty()) {
+            Entity* outer = selectedEntities_[0];
+            if (auto* poly = dynamic_cast<Polyline*>(outer)) {
                 sf::VertexArray lines(sf::LineStrip, poly->points.size() + 1);
                 for (size_t i = 0; i < poly->points.size(); ++i) {
-                    lines[i].position = view.worldToScreen(poly->points[i].x, poly->points[i].y);
-                    lines[i].color = highlightColor;
+                    lines[i].position = w2s(poly->points[i].x, poly->points[i].y);
+                    lines[i].color = outerColor;
                 }
                 lines[poly->points.size()] = lines[0];
                 window.draw(lines);
             }
+            else if (auto* polygon = dynamic_cast<Polygon*>(outer)) {
+                sf::ConvexShape shape;
+                shape.setPointCount(polygon->points.size());
+                for (size_t i = 0; i < polygon->points.size(); ++i) {
+                    shape.setPoint(i, w2s(polygon->points[i].x, polygon->points[i].y));
+                }
+                shape.setFillColor(sf::Color::Transparent);
+                shape.setOutlineColor(outerColor);
+                shape.setOutlineThickness(3.0f);
+                window.draw(shape);
+            }
+            else if (auto* circle = dynamic_cast<Circle*>(outer)) {
+                sf::CircleShape shape(circle->radius * view.getScale());
+                shape.setOrigin(circle->radius * view.getScale(), circle->radius * view.getScale());
+                shape.setPosition(w2s(circle->center.x, circle->center.y));
+                shape.setFillColor(sf::Color::Transparent);
+                shape.setOutlineColor(outerColor);
+                shape.setOutlineThickness(3.0f);
+                window.draw(shape);
+            }
         }
 
-        // Feedback 2: Preview del sombreado en tiempo real
-        if ((step_ == Step::DefiningAngle || step_ == Step::DefiningSpacing) && !hatchPoints_.empty()) {
+        // Dibujar islas
+        for (size_t i = 1; i < selectedEntities_.size(); ++i) {
+            Entity* island = selectedEntities_[i];
+            if (auto* poly = dynamic_cast<Polyline*>(island)) {
+                sf::VertexArray lines(sf::LineStrip, poly->points.size() + 1);
+                for (size_t j = 0; j < poly->points.size(); ++j) {
+                    lines[j].position = w2s(poly->points[j].x, poly->points[j].y);
+                    lines[j].color = islandColor;
+                }
+                lines[poly->points.size()] = lines[0];
+                window.draw(lines);
+            }
+            else if (auto* polygon = dynamic_cast<Polygon*>(island)) {
+                sf::ConvexShape shape;
+                shape.setPointCount(polygon->points.size());
+                for (size_t j = 0; j < polygon->points.size(); ++j) {
+                    shape.setPoint(j, w2s(polygon->points[j].x, polygon->points[j].y));
+                }
+                shape.setFillColor(sf::Color::Transparent);
+                shape.setOutlineColor(islandColor);
+                shape.setOutlineThickness(3.0f);
+                window.draw(shape);
+            }
+            else if (auto* circle = dynamic_cast<Circle*>(island)) {
+                sf::CircleShape shape(circle->radius * view.getScale());
+                shape.setOrigin(circle->radius * view.getScale(), circle->radius * view.getScale());
+                shape.setPosition(w2s(circle->center.x, circle->center.y));
+                shape.setFillColor(sf::Color::Transparent);
+                shape.setOutlineColor(islandColor);
+                shape.setOutlineThickness(3.0f);
+                window.draw(shape);
+            }
+        }
+
+        // Preview del sombreado
+        if ((step_ == Step::DefiningAngle || step_ == Step::DefiningSpacing) && !selectedEntities_.empty()) {
             Hatch tempHatch;
-            tempHatch.points = hatchPoints_;
+            tempHatch.points = extractPointsFromEntity(selectedEntities_[0]);
             tempHatch.pattern = HatchPattern::DIAGONAL;
             tempHatch.angle = angle_;
             tempHatch.spacing = spacing_;
             
-            sf::Color previewColor(255, 165, 0, 180); // Naranja semitransparente
-            auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
+            for (size_t i = 1; i < selectedEntities_.size(); ++i) {
+                tempHatch.islands.push_back(extractPointsFromEntity(selectedEntities_[i]));
+            }
+            
+            sf::Color previewColor(255, 165, 0, 180);
             tempHatch.draw(window, w2s, previewColor, view.getScale());
         }
     }

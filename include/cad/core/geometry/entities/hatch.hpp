@@ -10,12 +10,17 @@ namespace cad {
 
     class Hatch : public Entity {
     public:
+        // Borde exterior del hatch, definido por un polígono simple (no necesariamente convexo)
         std::vector<Point2D> points;
-        std::string boundaryId;
+        // lista de islas (agujeros) dentro del hatch, cada una definida por un polígono simple
+        std::vector<std::vector<Point2D>> islands;
+        std::string boundaryId; // id borde exterior, para asociatividad con otras entidades
+        std::vector<std::string> islandIds; // ids de islas, para asociatividad con otras entidades
+
         HatchPattern pattern = HatchPattern::DIAGONAL;
         double patternScale = 1.0; 
         double angle = 0.0;      // >>> NUEVO: Ángulo en grados
-        double spacing = 1.0;    // >>> NUEVO: Distancia entre líneas
+        double spacing = 2.0;    // >>> NUEVO: Distancia entre líneas
 
         Hatch() = default;
         ~Hatch() override = default;
@@ -40,7 +45,8 @@ namespace cad {
         static std::unique_ptr<Hatch> fromJson(const nlohmann::json& j);
 
     private:
-        bool isPointInPolygon(const Point2D& p) const;
+        bool isPointInPolygon(const Point2D& p, const std::vector<Point2D>& poly) const;
+        bool isPointInAnyIsland(const Point2D& p) const;
     };
 
 } // namespace cad
