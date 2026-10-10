@@ -10,6 +10,7 @@
 #include "cad/commands/draw/dimension_command.hpp"
 #include "cad/commands/draw/text_command.hpp"
 #include "cad/commands/draw/hatch_command.hpp"
+#include "cad/commands/draw/triangle_command.hpp"
 
 // Comandos de modificación
 #include "cad/commands/modify/move_command.hpp"
@@ -318,11 +319,12 @@ namespace cad {
     }
 
 	std::vector<std::string> Engine::getAllCommands() const {
-		return {"LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "ELIPSE", "COTA", "ACOTAR", "DIM", "DIST", "MEDIR",
-				"MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME",
-				"CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT",
-				"BORRAR", "CAPA", "AYUDA", "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA",
-				"Q", "QUIT", "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW"};
+		return {"LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "TRIANGULO", "TRIANGLE", "TRI", "ELIPSE", 
+                "COTA", "ACOTAR", "DIM", "DIST", "MEDIR", "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", 
+                "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", "CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", 
+                "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT", "BORRAR", "CAPA", "AYUDA", 
+                "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA", "Q", "QUIT", 
+                "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW"};
 	}
 
 	void Engine::saveState() {
@@ -411,6 +413,10 @@ namespace cad {
 
         registerCommand("POL", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYGON; return std::make_unique<PolygonCommand>(); });
         registerCommand("POLIGONO", [](Engine& eng) { eng.currentMode = Mode::DRAW_POLYGON; return std::make_unique<PolygonCommand>(); });
+
+		registerCommand("TRI", [](Engine& eng) { eng.currentMode = Mode::DRAW_TRIANGLE; return std::make_unique<TriangleCommand>(); });
+        registerCommand("TRIANGLE", [](Engine& eng) { eng.currentMode = Mode::DRAW_TRIANGLE; return std::make_unique<TriangleCommand>(); });
+        registerCommand("TRIANGULO", [](Engine& eng) { eng.currentMode = Mode::DRAW_TRIANGLE; return std::make_unique<TriangleCommand>(); });
 
         registerCommand("EL", [](Engine& eng) { eng.currentMode = Mode::DRAW_ELLIPSE; return std::make_unique<EllipseCommand>(); });
         registerCommand("ELLIPSE", [](Engine& eng) { eng.currentMode = Mode::DRAW_ELLIPSE; return std::make_unique<EllipseCommand>(); });
