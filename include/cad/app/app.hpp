@@ -18,6 +18,10 @@ namespace cad {
         App();
         void run();
 
+        bool confirmUnsavedChanges();
+        void handleFileCommand(const std::string& upperCmd);
+
+
     private:
         sf::RenderWindow window_;
         sf::Font font_;

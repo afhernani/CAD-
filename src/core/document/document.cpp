@@ -13,6 +13,17 @@ namespace cad {
 
     void Document::clear() {
         entities.clear();
+        blockDefinitions.clear();
+        layers.clear();
+        
+        Layer defaultLayer("0");
+        defaultLayer.isCurrent = true;
+        defaultLayer.color = sf::Color::White;
+        layers["0"] = defaultLayer;
+        currentLayerName = "0";
+
+        filePath = "";
+        isModified = false;
     }
 
     void Document::addEntity(std::unique_ptr<Entity> entity) {
@@ -69,6 +80,31 @@ namespace cad {
         if (layers.find(name) != layers.end()) {
             layers[name].color = color;
         }
+    }
+
+    // Guarda en la ruta actual. Si está vacío, falla (el Engine debe manejar el "Guardar Como")
+    bool Document::save() {
+        if (isUntitled()) return false;
+        saveToFile(filePath);
+        isModified = false;
+        return true;
+        // Nota: Si saveToFile lanza excepciones, podrías envolverlo en un try/catch aquí.
+    }
+
+    // Guarda en una ruta nueva, actualiza la memoria y marca como limpio
+    bool Document::saveAs(const std::string& path) {
+        saveToFile(path);
+        filePath = path;
+        isModified = false;
+        return true;
+    }
+
+    // Carga los datos, actualiza la ruta y marca como limpio
+    bool Document::load(const std::string& path) {
+        loadFromFile(path); // Tu método existente que ya maneja entidades y bloques
+        filePath = path;
+        isModified = false;
+        return true;
     }
 
     void Document::saveToFile(const std::string& filename) {

@@ -27,7 +27,8 @@ namespace cad {
         ~Document() = default;
 
         void clear();
-        bool isModified = false; 
+        bool isModified = false;
+        std::string filePath = "";
         // Gestión de entidades
         void addEntity(std::unique_ptr<Entity> entity);
 
@@ -49,6 +50,11 @@ namespace cad {
         std::vector<std::unique_ptr<BlockDefinition>> blockDefinitions;
         BlockDefinition* addBlockDefinition(std::unique_ptr<BlockDefinition> def);
         BlockDefinition* findBlockDefinition(const std::string& name);
+
+        bool isUntitled() const { return filePath.empty(); }
+        bool save();                              // Guarda en la ruta actual. Devuelve false si no tiene ruta.
+        bool saveAs(const std::string& path);     // Guarda en una nueva ruta y actualiza el estado.
+        bool load(const std::string& path);       // Carga desde una ruta, limpia datos y actualiza el estado
         
     };
 

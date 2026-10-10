@@ -1,4 +1,5 @@
 #include "cad/commands/engine.hpp"
+#include "cad/persistence/file_manager.hpp"
 // >>> AQUÍ VAN LOS INCLUDES ESPECÍFICOS (El .cpp sí puede conocer los detalles)
 // Comandos de dibujo
 #include "cad/commands/draw/line_command.hpp"
@@ -48,6 +49,7 @@ namespace cad {
 
 	void Engine::clearDocument() {
         doc.clear();
+		doc.filePath = "";
         doc.isModified = false;
         selectedEntities.clear();
         undoStack.clear();
@@ -261,7 +263,7 @@ namespace cad {
 		selectedEntities.clear();
 		statusMessage = "Entidades borradas.";
 	}
-	//
+	
 	void Engine::performWindowSelection(const Point2D& p1, const Point2D& p2, bool addToSelection) {
 		selectionManager.selectByWindow(p1, p2, doc.entities, selectedEntities, addToSelection, doc);
 		statusMessage = std::to_string(selectedEntities.size()) + " entidades seleccionadas.";
@@ -512,6 +514,7 @@ namespace cad {
             eng.currentMode = Mode::GRIP_EDIT; eng.activeGripEntity = nullptr; eng.activeGripIndex = -1; eng.gripBackup.reset();
             eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
         });
+		
 		// --- COMANDOS DE SISTEMA ---
         registerCommand("NEW", [](Engine& eng) -> std::unique_ptr<ICommand> {
             if (eng.doc.isModified) {

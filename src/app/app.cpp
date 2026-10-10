@@ -632,136 +632,66 @@ namespace cad {
         autocompleteIndex_ = -1;
         autocompleteBase_.clear();
 
-        // >>> PRIORIDAD MÁXIMA: INTERCEPTAR CONFIRMACIÓN DE NUEVO DOCUMENTO <<<
-        if (engine_.currentMode == Mode::CONFIRM_NEW) {
-            std::string upperResp = inputBuffer_;
-            std::transform(upperResp.begin(), upperResp.end(), upperResp.begin(), ::toupper);
+        std::string upperInput = inputBuffer_;
+        std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
+
+        // 1. La App intercepta y gestiona TODOS los comandos de archivo/sistema
+        if (upperInput == "SAVE" || upperInput == "GUARDAR" || upperInput == "G" ||
+            upperInput == "SAVEAS" || upperInput == "GUARDARCOMO" ||
+            upperInput == "OPEN" || upperInput == "CARGAR" || upperInput == "O" ||
+            upperInput == "NEW" || upperInput == "NUEVO") {
             
-            if (upperResp == "S" || upperResp == "SI" || upperResp == "Y" || upperResp == "YES") {
-                // El usuario quiere guardar. Abrimos el diálogo.
-                std::string path = showSaveFileDialog();
-                if (!path.empty()) {
-                    std::string ext = FileManager::getFileExtension(path);
-                    if (ext != ".json" && ext != ".JSON") path += ".json";
-                    
-                    if (FileManager::saveDocument(engine_.doc, path)) {
-                        engine_.statusMessage = "Dibujo guardado. Creando nuevo...";
-                    } else {
-                        engine_.statusMessage = "Error al guardar. Nuevo dibujo cancelado.";
-                        inputBuffer_.clear();
-                        return; // Salimos sin borrar nada si falla el guardado
-                    }
-                } else {
-                    engine_.statusMessage = "Guardado cancelado. Nuevo dibujo cancelado.";
-                    engine_.currentMode = Mode::IDLE;
-                    inputBuffer_.clear();
-                    return; // Si cancela el diálogo, no borramos el dibujo actual
-                }
-            }
-            
-            // Si respondió "N" o guardó con éxito, limpiamos el documento
-            engine_.clearDocument();
+            handleFileCommand(upperInput); // Delegamos la lógica limpia
             inputBuffer_.clear();
-            return; // Importante: salir para no procesar el input como comando normal
+            commandScrollOffset_ = 0;
+            return; // Salimos, no se lo pasamos al Engine
         }
-        // 2. Flujo normal de comandos (GUARDAR, CARGAR, AYUDA, etc.)
-        if (!inputBuffer_.empty()) {
-            std::string upperInput(inputBuffer_);
-            std::transform(upperInput.begin(), upperInput.end(), upperInput.begin(), ::toupper);
 
-            // >>> GUARDAR <<<
-            if (upperInput == "GUARDAR" || upperInput == "SAVE") {
-                std::string path = showSaveFileDialog();
-                if (!path.empty()) {
-                    std::string ext = FileManager::getFileExtension(path);
-                    if (ext != ".json" && ext != ".JSON") {
-                        path += ".json";
-                    }
-                    if (FileManager::saveDocument(engine_.doc, path)) {
-                        engine_.statusMessage = "Dibujo guardado en: " + path;
-                    } else {
-                        engine_.statusMessage = "Error al guardar el dibujo.";
-                    }
+        // ✅ 2. La App gestiona comandos de UI específicos (Ayuda, Color de capa)
+        if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
+            upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
+            
+            std::string topic = "";
+            size_t spacePos = inputBuffer_.find(' ');
+            if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
+                topic = inputBuffer_.substr(spacePos + 1);
+            }
+            int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
+            std::string helpText = engine_.getHelpForTopic(topic, maxChars);
+            
+            std::string line;
+            for (char c : helpText) {
+                if (c == '\n') {
+                    if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
+                    line.clear();
                 } else {
-                    engine_.statusMessage = "Guardado cancelado.";
+                    line += c;
                 }
             }
-            // >>> CARGAR <<<
-            else if (upperInput == "CARGAR" || upperInput == "LOAD") {
-                std::string path = showOpenFileDialog();
-                if (!path.empty()) {
-                    engine_.selectedEntities.clear();
-                    engine_.currentMode = Mode::IDLE;
-                    engine_.cancelCommand();
+            if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
+            engine_.statusMessage = "Ayuda mostrada";
+        }
+        else if (upperInput.find("CAPA COLOR ") == 0 || upperInput.find("LAYER COLOR ") == 0) {
+            size_t prefixLen = (upperInput.find("CAPA COLOR ") == 0) ? 11 : 12;
+            std::string layerName = upperInput.substr(prefixLen);
+            layerName.erase(0, layerName.find_first_not_of(' '));
+            layerName.erase(layerName.find_last_not_of(' ') + 1);
 
-                    if (FileManager::loadDocument(engine_.doc, path)) {
-                        engine_.statusMessage = "Dibujo cargado desde: " + path;
-                    } else {
-                        engine_.statusMessage = "Error al cargar el dibujo.";
-                    }
-                } else {
-                    engine_.statusMessage = "Carga cancelada.";
-                }
-            }
-            // >>> AYUDA <<<
-            else if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
-                    upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
-                std::string topic = "";
-                size_t spacePos = inputBuffer_.find(' ');
-                if (spacePos != std::string::npos && spacePos + 1 < inputBuffer_.size()) {
-                    topic = inputBuffer_.substr(spacePos + 1);
-                }
-                int maxChars = config_.window.width / CHARS_PER_PIXEL_FACTOR;
-                std::string helpText = engine_.getHelpForTopic(topic, maxChars);
-                
-                std::string line;
-                for (char c : helpText) {
-                    if (c == '\n') {
-                        if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
-                        line.clear();
-                    } else {
-                        line += c;
-                    }
-                }
-                if (!line.empty()) commandHistory_.push_back("  [AYUDA] " + line);
-                engine_.statusMessage = "Ayuda mostrada";
-            }
-            // >>> CAMBIAR COLOR DE CAPA (Diálogo Windows) <<<
-            else if (upperInput.find("CAPA COLOR ") == 0 || upperInput.find("LAYER COLOR ") == 0) {
-                // 1. Extraer el nombre de la capa (quitando el prefijo)
-                size_t prefixLen = (upperInput.find("CAPA COLOR ") == 0) ? 11 : 12;
-                std::string layerName = upperInput.substr(prefixLen);
-                
-                // 2. Limpiar espacios en blanco sobrantes
-                layerName.erase(0, layerName.find_first_not_of(' '));
-                layerName.erase(layerName.find_last_not_of(' ') + 1);
-
-                // 3. Validar y ejecutar
-                if (!layerName.empty() && engine_.doc.layers.find(layerName) != engine_.doc.layers.end()) {
-                    const Layer* currentLayer = engine_.doc.getLayer(layerName);
-                    sf::Color startColor = currentLayer ? currentLayer->color : sf::Color::White;
-                    
-                    // Abrir el diálogo de color de Windows
-                    sf::Color newColor = showColorDialog(startColor);
-                    
-                    // Actualizar el documento (¡Asegúrate de haber añadido setLayerColor en Document!)
-                    engine_.doc.setLayerColor(layerName, newColor);
-                    engine_.statusMessage = "Color de la capa '" + layerName + "' actualizado.";
-                } else {
-                    engine_.statusMessage = "Error: Capa no encontrada. Uso: CAPA COLOR <nombre>";
-                }
-            }
-            // >>> COMANDO NORMAL <<<
-            else {
-                engine_.processInput(inputBuffer_);
+            if (!layerName.empty() && engine_.doc.layers.find(layerName) != engine_.doc.layers.end()) {
+                const Layer* currentLayer = engine_.doc.getLayer(layerName);
+                sf::Color startColor = currentLayer ? currentLayer->color : sf::Color::White;
+                sf::Color newColor = showColorDialog(startColor);
+                engine_.doc.setLayerColor(layerName, newColor);
+                engine_.statusMessage = "Color de la capa '" + layerName + "' actualizado.";
+            } else {
+                engine_.statusMessage = "Error: Capa no encontrada. Uso: CAPA COLOR <nombre>";
             }
         }
+        // ✅ 3. Todo lo demás, va al Engine (Línea, Círculo, Move, Copy, etc.)
         else {
-            // Enter vacío: terminar comando activo
-            if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
-                engine_.processInput("");
-            }
+            engine_.processInput(inputBuffer_);
         }
+
         inputBuffer_.clear();
         commandScrollOffset_ = 0;
     }
@@ -837,6 +767,65 @@ namespace cad {
         // (Puedes añadir un método setLayerColor en Engine o llamar directamente al doc)
         engine_.doc.setLayerColor(layerName, newColor);
         engine_.statusMessage = "Color de la capa '" + layerName + "' actualizado.";
+    }
+
+    // --- Lógica de Gestión de Archivos en la App ---
+    bool App::confirmUnsavedChanges() {
+        if (!engine_.doc.isModified) return true;
+
+        int result = MessageBoxA(NULL, 
+            "El documento tiene cambios sin guardar.\n¿Desea guardar los cambios antes de continuar?", 
+            "Confirmar", MB_YESNOCANCEL | MB_ICONWARNING);
+
+        if (result == IDYES) {
+            if (engine_.doc.isUntitled()) {
+                std::string path = showSaveFileDialog();
+                if (path.empty()) return false; // Usuario canceló el guardado
+                return engine_.doc.saveAs(path);
+            } else {
+                return engine_.doc.save();
+            }
+        } else if (result == IDNO) {
+            return true; // No guardar, pero permitir continuar
+        }
+        return false; // IDCANCEL: Abortar la operación
+    }
+
+    void App::handleFileCommand(const std::string& upperCmd) {
+        if (upperCmd == "SAVE" || upperCmd == "GUARDAR" || upperCmd == "G") {
+            if (engine_.doc.isUntitled()) {
+                std::string path = showSaveFileDialog();
+                if (!path.empty()) engine_.doc.saveAs(path);
+            } else {
+                engine_.doc.save();
+            }
+        }
+        else if (upperCmd == "SAVEAS" || upperCmd == "GUARDARCOMO") {
+            std::string path = showSaveFileDialog();
+            if (!path.empty()) engine_.doc.saveAs(path);
+        }
+        else if (upperCmd == "OPEN" || upperCmd == "CARGAR" || upperCmd == "O") {
+            if (confirmUnsavedChanges()) {
+                std::string path = showOpenFileDialog();
+                if (!path.empty()) {
+                    engine_.doc.load(path);
+                    // Limpiar estado de sesión del Engine
+                    engine_.selectedEntities.clear();
+                    engine_.undoStack.clear(); 
+                    engine_.redoStack.clear();
+                    engine_.statusMessage = "Dibujo cargado desde: " + engine_.doc.filePath;
+                }
+            }
+        }
+        else if (upperCmd == "NEW" || upperCmd == "NUEVO") {
+            if (confirmUnsavedChanges()) {
+                engine_.doc.clear();
+                engine_.selectedEntities.clear();
+                engine_.undoStack.clear();
+                engine_.redoStack.clear();
+                engine_.statusMessage = "Nuevo dibujo creado.";
+            }
+        }
     }
 
 } // namespace cad
