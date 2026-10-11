@@ -8,6 +8,27 @@ namespace cad {
 
 namespace {
     constexpr double PI = 3.14159265358979323846;
+
+    // ✅ Helper: Normaliza cualquier ángulo al rango [0, 2*PI)
+    double normalizeAngle(double angle) {
+        while (angle < 0.0) angle += 2.0 * PI;
+        while (angle >= 2.0 * PI) angle -= 2.0 * PI;
+        return angle;
+    }
+
+    // ✅ Helper: Verifica si un ángulo está dentro del rango antihorario [start, end]
+    bool isAngleBetween(double angle, double start, double end) {
+        angle = normalizeAngle(angle);
+        start = normalizeAngle(start);
+        end = normalizeAngle(end);
+        
+        if (start <= end) {
+            return angle >= start && angle <= end;
+        } else {
+            // Caso donde el arco cruza el ángulo 0 (ej: de 300° a 60°)
+            return angle >= start || angle <= end;
+        }
+    }
 }
 
 void Arc::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
@@ -16,7 +37,16 @@ void Arc::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
     sf::VertexArray va(sf::LineStrip, numPoints);
     double startRad = startAngle * PI / 180.0;
     double endRad = endAngle * PI / 180.0;
-    double step = (endRad - startRad) / (numPoints - 1);
+    
+    // ✅ Calcular la diferencia en sentido antihorario (siempre positiva)
+    double diff = endRad - startRad;
+    while (diff < 0.0) diff += 2.0 * PI;
+    while (diff >= 2.0 * PI) diff -= 2.0 * PI;
+    
+    // Si es prácticamente un círculo completo, lo dibujamos como tal
+    if (diff < 1e-5) diff = 2.0 * PI;
+
+    double step = diff / (numPoints - 1);
     for (int i = 0; i < numPoints; ++i) {
         double angle = startRad + i * step;
         double px = center.x + radius * std::cos(angle);
@@ -28,8 +58,16 @@ void Arc::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
 }
 
 bool Arc::isNear(const Point2D& point, double tolerance) const {
+    // 1. Comprobar distancia al radio
     double dist = std::hypot(point.x - center.x, point.y - center.y);
-    return std::abs(dist - radius) <= tolerance;
+    if (std::abs(dist - radius) > tolerance) return false;
+    
+    // 2. ✅ Comprobar que el punto está dentro del segmento del arco, no en el círculo completo
+    double angle = std::atan2(point.y - center.y, point.x - center.x);
+    double startRad = startAngle * PI / 180.0;
+    double endRad = endAngle * PI / 180.0;
+    
+    return isAngleBetween(angle, startRad, endRad);
 }
 
 void Arc::move(double dx, double dy) {
@@ -44,7 +82,7 @@ std::unique_ptr<Entity> Arc::clone() const {
     c->startAngle = startAngle;
     c->endAngle = endAngle;
     c->layerName = layerName;
-    c->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
+    c->id = id;
     return c;
 }
 
@@ -55,14 +93,15 @@ void Arc::rotate(const Point2D& rotCenter, double angleDeg) {
     double dy = this->center.y - rotCenter.y;
     this->center.x = rotCenter.x + dx * cosA - dy * sinA;
     this->center.y = rotCenter.y + dx * sinA + dy * cosA;
+    
     this->startAngle += angleDeg;
     this->endAngle += angleDeg;
-    auto normalize = [](double& ang) {
-        while (ang < 0.0) ang += 360.0;
-        while (ang >= 360.0) ang -= 360.0;
-    };
-    normalize(this->startAngle);
-    normalize(this->endAngle);
+    
+    // Normalizar a [0, 360)
+    while (this->startAngle < 0.0) this->startAngle += 360.0;
+    while (this->startAngle >= 360.0) this->startAngle -= 360.0;
+    while (this->endAngle < 0.0) this->endAngle += 360.0;
+    while (this->endAngle >= 360.0) this->endAngle -= 360.0;
 }
 
 void Arc::scale(const Point2D& basePoint, double factor) {
@@ -76,14 +115,19 @@ void Arc::mirror(const Point2D& axisP1, const Point2D& axisP2) {
     double dx = axisP2.x - axisP1.x;
     double dy = axisP2.y - axisP1.y;
     double axisAngle = std::atan2(dy, dx) * 180.0 / PI;
+    
     auto reflectAngle = [&](double ang) {
         double newAng = 2.0 * axisAngle - ang;
         while (newAng < 0.0) newAng += 360.0;
         while (newAng >= 360.0) newAng -= 360.0;
         return newAng;
     };
-    startAngle = reflectAngle(startAngle);
-    endAngle = reflectAngle(endAngle);
+    
+    // Al reflejar, el sentido antihorario se invierte, así que intercambiamos start y end
+    double newStart = reflectAngle(endAngle);
+    double newEnd = reflectAngle(startAngle);
+    startAngle = newStart;
+    endAngle = newEnd;
 }
 
 std::vector<Point2D> Arc::getGripPoints() const {
@@ -99,8 +143,13 @@ std::vector<Point2D> Arc::getGripPoints() const {
 std::vector<Point2D> Arc::getSnapPoints() const {
     double sRad = startAngle * PI / 180.0;
     double eRad = endAngle * PI / 180.0;
-    double midRad = (sRad + eRad) / 2.0;
-    if (std::abs(eRad - sRad) > PI) midRad += PI;
+    
+    // ✅ Calcular el punto medio angular correctamente, incluso si cruza el 0
+    double diff = eRad - sRad;
+    while (diff < 0.0) diff += 2.0 * PI;
+    while (diff >= 2.0 * PI) diff -= 2.0 * PI;
+    double midRad = sRad + diff / 2.0;
+    
     return {
         center,
         {center.x + radius * std::cos(sRad), center.y + radius * std::sin(sRad)},
@@ -114,8 +163,10 @@ void Arc::moveGrip(int index, const Point2D& newPos) {
         center = newPos;
     } else if (index == 1) {
         startAngle = std::atan2(newPos.y - center.y, newPos.x - center.x) * 180.0 / PI;
+        if (startAngle < 0) startAngle += 360.0;
     } else if (index == 2) {
         endAngle = std::atan2(newPos.y - center.y, newPos.x - center.x) * 180.0 / PI;
+        if (endAngle < 0) endAngle += 360.0;
     }
 }
 
@@ -126,7 +177,7 @@ void Arc::copyFrom(const Entity& src) {
     startAngle = a.startAngle;
     endAngle = a.endAngle;
     layerName = a.layerName;
-    id = a.id; // Copiar el mismo ID, o generar uno nuevo si es necesario
+    id = a.id;
 }
 
 nlohmann::json Arc::toJson() const {
