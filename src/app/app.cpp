@@ -832,27 +832,49 @@ namespace cad {
 
     void App::handleFileCommand(const std::string& upperCmd) {
         if (upperCmd == "SAVE" || upperCmd == "GUARDAR" || upperCmd == "G") {
+            bool success = false;
             if (engine_.doc.isUntitled()) {
                 std::string path = showSaveFileDialog();
                 if (!path.empty()) engine_.doc.saveAs(path);
             } else {
                 engine_.doc.save();
             }
+            // Feedback claro al usuario
+            if (success) {
+                engine_.statusMessage = "Dibujo guardado correctamente en: " + engine_.doc.filePath;
+            } else {
+                engine_.statusMessage = "Error: No se pudo guardar el dibujo.";
+            }
         }
         else if (upperCmd == "SAVEAS" || upperCmd == "GUARDARCOMO") {
             std::string path = showSaveFileDialog();
-            if (!path.empty()) engine_.doc.saveAs(path);
+            if (!path.empty()) {
+                bool success = engine_.doc.saveAs(path);
+                if (success) {
+                    engine_.statusMessage = "Dibujo guardado correctamente en: " + engine_.doc.filePath;
+                } else {
+                    engine_.statusMessage = "Error: No se pudo guardar el dibujo.";
+                }
+            }else {
+                engine_.statusMessage = "Guardado cancelado por el usuario.";
+            }
         }
         else if (upperCmd == "OPEN" || upperCmd == "CARGAR" || upperCmd == "O") {
             if (confirmUnsavedChanges()) {
                 std::string path = showOpenFileDialog();
                 if (!path.empty()) {
-                    engine_.doc.load(path);
-                    // Limpiar estado de sesión del Engine
-                    engine_.selectedEntities.clear();
-                    engine_.undoStack.clear(); 
-                    engine_.redoStack.clear();
-                    engine_.statusMessage = "Dibujo cargado desde: " + engine_.doc.filePath;
+                    bool success = engine_.doc.load(path);
+                    if (success) {
+                        // Limpiar estado de sesión del Engine
+                        engine_.selectedEntities.clear();
+                        engine_.undoStack.clear(); 
+                        engine_.redoStack.clear();
+                        engine_.statusMessage = "Dibujo cargado desde: " + engine_.doc.filePath;
+                    } else {
+                        engine_.statusMessage = "Error: No se pudo cargar el archivo.";
+                    }
+                } else {
+                    engine_.statusMessage = "Carga cancelada por el usuario.";
                 }
             }
         }

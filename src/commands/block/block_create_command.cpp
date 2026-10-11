@@ -36,6 +36,17 @@ namespace cad {
             step_ = Step::WaitingBasePoint;
             statusMessage_ = "BLOQUE | Punto base del bloque (clic o coordenada):";
         }
+        else if (step_ == Step::WaitingBasePoint) {
+            std::istringstream iss(input);
+            double x, y;
+            char comma;
+            // Si el input es "x,y", lo parseamos y lo delegamos a onPoint
+            if (iss >> x >> comma >> y && comma == ',') {
+                onPoint({x, y}, engine);
+                return;
+            }
+            statusMessage_ = "BLOQUE | Formato no válido. Usa clic en canvas o coordenada x,y:";
+        }
         else if (step_ == Step::SelectingEntities) {
             // Enter vacío termina la selección
             if (input.empty()) {

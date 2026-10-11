@@ -1,9 +1,10 @@
 #include "cad/commands/block/block_insert_command.hpp"
 #include "cad/commands/engine.hpp"
 #include "cad/core/geometry/entities/block_insert.hpp"
-#include "cad/render/view.hpp"             // OBLIGATORIO
-#include <SFML/Graphics.hpp>               // OBLIGATORIO
-#include "cad/core/constants.hpp"          // Para CANVAS_HEIGHT
+#include "cad/render/view.hpp"
+#include <SFML/Graphics.hpp>
+#include "cad/core/constants.hpp"
+#include <sstream>
 
 namespace cad {
 
@@ -14,17 +15,28 @@ namespace cad {
     void BlockInsertCommand::execute(const std::string& input, Engine& engine) {
         if (step_ == Step::WaitingName) {
             if (input.empty()) {
-                statusMessage_ = "INSERTAR | Comando cancelado.";
+                statusMessage_ = "INSERTAR | Comando terminado.";
                 finished_ = true;
                 return;
             }
             definition_ = engine.doc.findBlockDefinition(input);
             if (!definition_) {
-                statusMessage_ = "INSERTAR | Bloque no encontrado. Nombre:";
+                statusMessage_ = "INSERTAR | Bloque no encontrado. Introduce otro nombre:";
                 return; // Se queda en WaitingName
             }
             step_ = Step::WaitingInsertPoint;
-            statusMessage_ = "INSERTAR | Punto de inserción:";
+            statusMessage_ = "INSERTAR | Punto de inserción (clic en canvas o coordenada x,y):";
+        }
+        // ✅ CORRECCIÓN 1: Manejar la entrada de coordenadas para el punto de inserción
+        else if (step_ == Step::WaitingInsertPoint) {
+            std::istringstream iss(input);
+            double x, y;
+            char comma;
+            if (iss >> x >> comma >> y && comma == ',') {
+                onPoint({x, y}, engine);
+                return;
+            }
+            statusMessage_ = "INSERTAR | Formato no válido. Usa clic en canvas o coordenada x,y:";
         }
     }
 
@@ -33,14 +45,17 @@ namespace cad {
             engine.saveState();
             
             auto newInsert = std::make_unique<BlockInsert>();
-            newInsert->id = Entity::generateId(); // Generar un nuevo ID único
+            newInsert->id = Entity::generateId();
             newInsert->definition = definition_;
             newInsert->insertPoint = point;
             newInsert->layerName = engine.doc.currentLayerName;
             engine.doc.addEntity(std::move(newInsert));
             
-            statusMessage_ = "INSERTAR | Bloque insertado. Nombre o Enter para terminar:";
-            finished_ = true; 
+            statusMessage_ = "INSERTAR | Bloque insertado. Escribe otro nombre o Enter para terminar:";
+            
+            // ✅ CORRECCIÓN 3: Permitir múltiples inserciones (como AutoCAD)
+            step_ = Step::WaitingName; 
+            definition_ = nullptr; 
         }
     }
 
@@ -55,39 +70,30 @@ namespace cad {
     void BlockInsertCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                           const Point2D& mouseWorldPos, sf::Font& font) const {
         if (step_ == Step::WaitingInsertPoint && definition_ != nullptr) {
-            sf::Color ghostColor(0, 200, 255, 150); // Cian translúcido
+            sf::Color ghostColor(0, 200, 255, 150); 
             
             auto w2s = [&](double x, double y) {
                 return view.worldToScreen(x, y);
             };
 
-            // 1. Intentar dibujar una vista previa de las entidades del bloque
-            // (Asumiendo que BlockDefinition tiene un vector 'entities' de unique_ptr<Entity>)
+            // ✅ CORRECCIÓN 2: Las entidades ya están normalizadas al (0,0) local 
+            // porque en BlockCreateCommand se les restó el basePoint.
+            // Por tanto, solo necesitamos moverlas a la posición del ratón.
             for (const auto& entityPtr : definition_->entities) {
                 auto ghost = entityPtr->clone();
-                
-                // NOTA: Si tu BlockDefinition tiene un 'basePoint' explícito, 
-                // el desplazamiento debería ser: (mouseWorldPos - definition_->basePoint)
-                // Por ahora, asumimos que las entidades del bloque están relativas a (0,0) 
-                // y las movemos directamente a la posición del ratón.
-                // Si tus entidades ya tienen coordenadas absolutas del dibujo original, 
-                // necesitarás ajustar este offset restando el punto base original del bloque.
-                double offsetX = mouseWorldPos.x - definition_->basePoint.x;
-                double offsetY = mouseWorldPos.y - definition_->basePoint.y;
-                
-                ghost->move(offsetX, offsetY);
+                ghost->move(mouseWorldPos.x, mouseWorldPos.y); // ¡Solo esto!
                 ghost->draw(window, w2s, ghostColor, view.getScale());
             }
 
-            // 2. Marcador de punto de inserción (siempre visible y útil)
+            // Marcador de punto de inserción (coincidirá perfectamente con el bloque fantasma)
             sf::CircleShape insertMark(6.0f);
             insertMark.setFillColor(ghostColor);
             insertMark.setOrigin(6.0f, 6.0f);
             insertMark.setPosition(w2s(mouseWorldPos.x, mouseWorldPos.y));
             window.draw(insertMark);
 
-            // 3. Texto con el nombre del bloque que se está insertando
-            std::string blockName = definition_->name; // Asumiendo que BlockDefinition tiene un campo 'name'
+            // Texto con el nombre del bloque
+            std::string blockName = definition_->name;
             sf::Text nameText;
             nameText.setFont(font);
             nameText.setString(sf::String::fromUtf8(blockName.begin(), blockName.end()));
