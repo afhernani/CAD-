@@ -1,8 +1,7 @@
 #pragma once
 #include "../command.hpp"
-#include "../../core/geometry/entities/line.hpp"
+#include "../../core/geometry/entity.hpp" // Cambiado de line.hpp a entity.hpp
 
-// Forward declarations
 namespace sf { class RenderWindow; class Font; }
 namespace cad { class View; class Engine; }
 
@@ -19,35 +18,28 @@ public:
     bool isComplete() const override;
     std::string getName() const override { return "EMPALME"; }
 
-    // >>> NUEVO: Para feedback visual
     void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                       const Point2D& mouseWorldPos, sf::Font& font) const override;
 
-    // >>> NUEVOS: Para feedback visual
     double getRadius() const { return radius_; }
     bool hasRadius() const { return hasRadius_; }
-    Line* getLine1() const { return line1_; }
-    Line* getLine2() const { return line2_; }
-    bool hasLine1() const { return hasLine1_; }
+    Entity* getEntity1() const { return entity1_; }
+    Entity* getEntity2() const { return entity2_; }
 
 private:
-    enum class Step { 
-        WaitingRadius, 
-        WaitingLine1, 
-        WaitingLine2 
-    };
+    enum class Step { WaitingRadius, WaitingEntity1, WaitingEntity2 };
     Step step_ = Step::WaitingRadius;
+    
     double radius_ = 0.0;
-    Line* line1_ = nullptr;
-    Line* line2_ = nullptr;
+    Entity* entity1_ = nullptr;
+    Entity* entity2_ = nullptr;
     
     bool hasRadius_ = false;
-    bool hasLine1_ = false;
     bool finished_ = false;
     std::string statusMessage_;
+    Point2D lastClickPoint_; // Para recordar dónde hizo clic el usuario y decidir el lado del empalme
 
-    // Método auxiliar para crear el empalme
-    void createFillet(Engine& engine);
+    void createFillet(Engine& engine, const Point2D& clickPoint);
 };
 
 } // namespace cad
