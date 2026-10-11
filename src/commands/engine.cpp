@@ -326,8 +326,8 @@ namespace cad {
                 "COTA", "ACOTAR", "DIM", "DIST", "MEDIR", "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", 
                 "RECORTAR", "ALARGAR", "EXTEND", "OFFSET", "FILLET", "EMPALME", "CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", 
                 "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT", "BORRAR", "CAPA", "CAPA COLOR [NOMBRE]", "AYUDA", 
-                "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA", "Q", "QUIT", 
-                "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW", 
+                "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA", "Q", "QUIT", "IMAGEN", "IMAGE",
+                "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW", "OPEN", "ABRIR",
 				"EXPLODE", "DESCOMPONER", "X", "HATCH", "H", "SOMBREADO", "WAITING_SAVE_AS_NAME", "WAITING_OPEN_FILE"};
 	}
 
@@ -442,6 +442,11 @@ namespace cad {
 		registerCommand("H", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
 		registerCommand("HATCH", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
 		registerCommand("SOMBREADO", [](Engine& eng) -> std::unique_ptr<ICommand> { eng.currentMode = Mode::DRAW_HATCH; return std::make_unique<HatchCommand>(); });
+
+		registerCommand("IMAGEN", [](Engine& eng) -> std::unique_ptr<ICommand> {
+			eng.statusMessage = "Usa el botón de la barra de herramientas o escribe la ruta.";
+			return nullptr; // Forzamos a usarlo desde la App con el diálogo
+		});
 
 		// --- COMANDOS DE MODIFICACION ---
 

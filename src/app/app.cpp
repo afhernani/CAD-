@@ -16,6 +16,7 @@
 #include "cad/commands/block/block_create_command.hpp"
 #include "cad/commands/block/block_insert_command.hpp"
 #include "cad/commands/draw/dimension_command.hpp" // Por si también lo usas aquí
+#include "cad/commands/draw/image_command.hpp" // >>> AÑADIDO PARA QUE app.cpp PUEDA RECONOCER ImageEntity EN fromJson() <<<
 
 #include <filesystem>
 #include <iostream>
@@ -55,6 +56,24 @@ namespace cad {
         ofn.nMaxFile = MAX_PATH;
         ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
         if (GetOpenFileNameA(&ofn)) return std::string(fileName);
+        return "";
+    }
+    // --- Diálogo específico para insertar imágenes ---
+    std::string showOpenImageFileDialog() {
+        OPENFILENAMEA ofn;
+        char fileName[MAX_PATH] = "";
+        ZeroMemory(&ofn, sizeof(ofn));
+        ofn.lStructSize = sizeof(ofn);
+        ofn.hwndOwner = NULL; // O el HWND de tu ventana si lo tienes
+        // FILTRO ESPECÍFICO PARA IMÁGENES
+        ofn.lpstrFilter = "Imagenes\0*.jpg;*.jpeg;*.png;*.bmp;*.gif\0Todos los archivos\0*.*\0";
+        ofn.lpstrFile = fileName;
+        ofn.nMaxFile = MAX_PATH;
+        ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+        
+        if (GetOpenFileNameA(&ofn)) {
+            return std::string(fileName);
+        }
         return "";
     }
 
@@ -615,6 +634,7 @@ namespace cad {
         std::ostringstream ossCoord;
         ossCoord << std::fixed << std::setprecision(6);
         ossCoord << targetPoint.x << "," << targetPoint.y;
+        // Esto envia la coordenada al comando activo (ImageCommand)
         engine_.processInput(ossCoord.str());
         inputBuffer_.clear();
     }
@@ -646,8 +666,27 @@ namespace cad {
             commandScrollOffset_ = 0;
             return; // Salimos, no se lo pasamos al Engine
         }
-
-        // ✅ 2. La App gestiona comandos de UI específicos (Ayuda, Color de capa)
+        // En App::processTextInput o donde gestiones comandos especiales:
+        if (upperInput == "IMAGEN" || upperInput == "IMAGE" || upperInput == "INSERTAR_IMAGEN") {
+            std::string path = showOpenImageFileDialog(); // Tu función existente
+            // Asegúrate de filtrar por imágenes en tu showOpenFileDialog:
+            // ofn.lpstrFilter = "Imágenes\0*.jpg;*.jpeg;*.png;*.bmp\0Todos\0*.*\0";
+            
+            if (!path.empty()) {
+                // Creamos el comando y se lo pasamos al engine
+                // Ojo: como ImageCommand necesita la ruta, podemos hacer un pequeño hack 
+                // o añadir un setter. La forma más limpia es instanciarlo y ejecutarlo:
+                auto cmd = std::make_unique<ImageCommand>(path);
+                engine_.activeCommand_ = std::move(cmd);
+                engine_.currentMode = Mode::DRAW_IMAGE;
+                engine_.statusMessage = engine_.activeCommand_->getStatusMessage();
+            }else {
+                engine_.statusMessage = "Inserción de imagen cancelada.";
+            }
+            //inputBuffer_.clear();
+            return;
+        }
+        // 2. La App gestiona comandos de UI específicos (Ayuda, Color de capa)
         if (upperInput == "HELP" || upperInput == "AYUDA" || upperInput == "?" ||
             upperInput.substr(0, 5) == "HELP " || upperInput.substr(0, 6) == "AYUDA ") {
             

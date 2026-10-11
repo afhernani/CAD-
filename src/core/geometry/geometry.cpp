@@ -1,4 +1,5 @@
 #include "cad/core/geometry/geometry.hpp"
+#include "cad/core/geometry/entities/image.hpp"
 #include "cad/core/math/math.hpp" 
 #include <cmath>
 #include <numbers>
@@ -98,6 +99,18 @@ namespace cad {
             return e;
         }
         else if (type == "Hatch") return Hatch::fromJson(j);
+                // >>> SOPORTE PARA IMÁGENES (RASTER) <<<
+        else if (type == "Image") {
+            auto e = std::make_unique<ImageEntity>();
+            e->insertPoint = {j["insertPoint"]["x"].get<double>(), j["insertPoint"]["y"].get<double>()};
+            e->width = j.value("width", 10.0);
+            e->height = j.value("height", 10.0);
+            e->rotation = j.value("rotation", 0.0);
+            e->imagePath = j.value("imagePath", "");
+            e->layerName = layer;
+            e->id = j.value("id", Entity::generateId());
+            return e;
+        }
         return nullptr; // Tipo desconocido
     }
  
