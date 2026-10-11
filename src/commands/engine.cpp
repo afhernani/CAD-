@@ -27,6 +27,7 @@
 #include "cad/commands/modify/measure_command.hpp"
 #include "cad/commands/modify/array_command.hpp"
 #include "cad/commands/modify/stretch_command.hpp"
+#include "cad/commands/modify/explode_command.hpp"
 
 // Comandos de bloque
 #include "cad/commands/block/block_create_command.hpp"
@@ -324,9 +325,10 @@ namespace cad {
 		return {"LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "TRIANGULO", "TRIANGLE", "TRI", "ELIPSE", 
                 "COTA", "ACOTAR", "DIM", "DIST", "MEDIR", "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", 
                 "RECORTAR", "ALARGAR", "OFFSET", "FILLET", "EMPALME", "CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", 
-                "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT", "BORRAR", "CAPA", "AYUDA", 
+                "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT", "BORRAR", "CAPA", "CAPA COLOR [NOMBRE]", "AYUDA", 
                 "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA", "Q", "QUIT", 
-                "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW"};
+                "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW", 
+				"EXPLODE", "DESCOMPONER", "X", "HATCH", "H", "SOMBREADO", "WAITING_SAVE_AS_NAME", "WAITING_OPEN_FILE"};
 	}
 
 	void Engine::saveState() {
@@ -515,26 +517,47 @@ namespace cad {
             eng.statusMessage = "GRIP EDIT | Selecciona un grip para mover:"; return nullptr;
         });
 		
-		// --- COMANDOS DE SISTEMA ---
-        registerCommand("NEW", [](Engine& eng) -> std::unique_ptr<ICommand> {
-            if (eng.doc.isModified) {
-                eng.currentMode = Mode::CONFIRM_NEW;
-                eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
-            } else {
-                eng.clearDocument();
-            }
-            return nullptr; // Es una acción de sistema, no un comando activo
-        });
+		// // --- COMANDOS DE SISTEMA ---
+        // registerCommand("NEW", [](Engine& eng) -> std::unique_ptr<ICommand> {
+        //     if (eng.doc.isModified) {
+        //         eng.currentMode = Mode::CONFIRM_NEW;
+        //         eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
+        //     } else {
+        //         eng.clearDocument();
+        //     }
+        //     return nullptr; // Es una acción de sistema, no un comando activo
+        // });
 
-        registerCommand("NUEVO", [](Engine& eng) -> std::unique_ptr<ICommand> {
-            if (eng.doc.isModified) {
-                eng.currentMode = Mode::CONFIRM_NEW;
-                eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
-            } else {
-                eng.clearDocument();
-            }
-            return nullptr;
-        });
+        // registerCommand("NUEVO", [](Engine& eng) -> std::unique_ptr<ICommand> {
+        //     if (eng.doc.isModified) {
+        //         eng.currentMode = Mode::CONFIRM_NEW;
+        //         eng.statusMessage = "¿Guardar cambios no guardados antes de crear nuevo? (S/N):";
+        //     } else {
+        //         eng.clearDocument();
+        //     }
+        //     return nullptr;
+        // });
+		// LOS COMANDOS DE SISTEMA, como NEW, NUEVO, GUARDAR, GUARDAR COMO, OPEN, CARGAR, están sustraido en el app.cpp 
+		// porque dependen de la interfaz gráfica para abrir diálogos de archivo, y no se pueden implementar
+		// solo en la lógica del motor.
+		     registerCommand("X", [](Engine& eng) -> std::unique_ptr<ICommand> { 
+				if (!Engine::checkSelection(eng)) return nullptr; 
+				auto cmd = std::make_unique<ExplodeCommand>();
+				cmd->execute("", eng); // Ejecutar inmediatamente
+				return cmd; 
+			});
+			registerCommand("EXPLODE", [](Engine& eng) -> std::unique_ptr<ICommand> { 
+				if (!Engine::checkSelection(eng)) return nullptr; 
+				auto cmd = std::make_unique<ExplodeCommand>();
+				cmd->execute("", eng); // Ejecutar inmediatamente
+				return cmd; 
+			});
+			registerCommand("DESCOMPONER", [](Engine& eng) -> std::unique_ptr<ICommand> { 
+				if (!Engine::checkSelection(eng)) return nullptr; 
+				auto cmd = std::make_unique<ExplodeCommand>();
+				cmd->execute("", eng); // Ejecutar inmediatamente
+				return cmd; 
+			});
     }
 
 } // namespace cad
