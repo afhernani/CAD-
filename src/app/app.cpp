@@ -430,7 +430,7 @@ namespace cad {
         window_.clear(sf::Color(30, 30, 30));
 
         renderer_.render(window_, view_, engine_, currentMouseScreenPos_, currentMouseWorldPos_,
-                        font_, lastSnapResult_.active, lastSnapResult_.point, showAxes_);
+                        font_, lastSnapResult_.active, lastSnapResult_.point, showAxes_, lastSnapResult_.type);
 
         // >>> NUEVO: Dibujar rectángulo de selección por ventana <<<
         if (isSelectingByWindow_) {

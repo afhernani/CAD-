@@ -3,6 +3,7 @@
 #include "cad/commands/engine.hpp"
 #include "cad/render/view.hpp"
 #include "cad/core/constants.hpp"
+#include "cad/core/snap/snap_engine.hpp"
 
 namespace cad {
 
@@ -13,7 +14,8 @@ public:
     // Método principal de renderizado del canvas
     void render(sf::RenderWindow& window, const View& view, Engine& engine, 
                 const sf::Vector2i& mouseScreenPos, const Point2D& mouseWorldPos,
-                sf::Font& font, bool isSnapped, const Point2D& snappedPoint, bool showAxes) const;
+                sf::Font& font, bool isSnapped, const Point2D& snappedPoint, bool showAxes,
+                SnapType SnapType = SnapType::NONE) const;
 
     void drawSelectionRect(sf::RenderWindow& window, const View& view,
                           const Point2D& startPoint, const Point2D& endPoint) const;
@@ -34,7 +36,7 @@ private:
     void drawGrips(sf::RenderWindow& window, const View& view, const Engine& engine) const;
     void drawDimensionTexts(sf::RenderWindow& window, const View& view, const Engine& engine, sf::Font& font) const;
     void drawCrosshair(sf::RenderWindow& window, const View& view, const sf::Vector2i& mouseScreenPos, 
-                       const Point2D& mouseWorldPos, bool isSnapped, const Point2D& snappedPoint) const;
+                       const Point2D& mouseWorldPos, bool isSnapped, const Point2D& snappedPoint, cad::SnapType snapType) const;
     void drawDrawingFeedback(sf::RenderWindow& window, const View& view, Engine& engine, 
                              const Point2D& mouseWorldPos, sf::Font& font) const;
     void drawTexts(sf::RenderWindow& window, const View& view, const Engine& engine, sf::Font& font) const;

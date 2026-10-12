@@ -24,14 +24,14 @@ namespace cad {
 
     void Renderer::render(sf::RenderWindow& window, const View& view, Engine& engine, 
                         const sf::Vector2i& mouseScreenPos, const Point2D& mouseWorldPos,
-                        sf::Font& font, bool isSnapped, const Point2D& snappedPoint, bool showAxes) const {
+                        sf::Font& font, bool isSnapped, const Point2D& snappedPoint, bool showAxes, SnapType SnapType) const {
         drawGrid(window, view, engine);
         if (showAxes) drawAxes(window, view);
         drawEntities(window, view, engine);
         drawTexts(window, view, engine, font);
         drawGrips(window, view, engine);
         drawDimensionTexts(window, view, engine, font);
-        drawCrosshair(window, view, mouseScreenPos, mouseWorldPos, isSnapped, snappedPoint);
+        drawCrosshair(window, view, mouseScreenPos, mouseWorldPos, isSnapped, snappedPoint, SnapType);
         drawDrawingFeedback(window, view, engine, mouseWorldPos, font);
         
     }
@@ -220,23 +220,29 @@ namespace cad {
     }
 
     void Renderer::drawCrosshair(sf::RenderWindow& window, const View& view, const sf::Vector2i& mouseScreenPos, 
-                                const Point2D& mouseWorldPos, bool isSnapped, const Point2D& snappedPoint) const {
+                            const Point2D& mouseWorldPos, bool isSnapped, const Point2D& snappedPoint, 
+                            cad::SnapType snapType) const {
+    
         bool isInCanvas = (mouseScreenPos.x >= 0 && mouseScreenPos.x < static_cast<int>(WINDOW_WIDTH) &&
                         mouseScreenPos.y >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) &&
                         mouseScreenPos.y < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT));
         if (!isInCanvas) return;
 
-        sf::Vector2f screenPos = { static_cast<float>(mouseScreenPos.x), static_cast<float>(mouseScreenPos.y) };
-        sf::Color crosshairColor = isSnapped ? sf::Color(255, 255, 0) : sf::Color(255, 255, 255);
-        
-        if (isSnapped) screenPos = view.worldToScreen(snappedPoint.x, snappedPoint.y);
+        sf::Vector2f screenPos = isSnapped ? view.worldToScreen(snappedPoint.x, snappedPoint.y) 
+                                        : sf::Vector2f(static_cast<float>(mouseScreenPos.x), static_cast<float>(mouseScreenPos.y));
 
-        float crosshairSize = 25.0f;
-        float thickness = 2.0f;
+        // ============================================================
+        // 1. DIBUJAR LA CRUCETA (siempre visible, estilo AutoCAD)
+        // ============================================================
+        float crosshairSize = 15.0f;
+        float gap = 8.0f; // Espacio entre el centro y el inicio de las líneas
+        sf::Color crossColor(220, 220, 220); // Gris muy claro, casi blanco
+        float thickness = 1.0f;
 
         auto drawThickLine = [&](sf::Vector2f start, sf::Vector2f end, sf::Color color) {
             sf::Vector2f dir = end - start;
             float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+            if (len < 0.001f) return;
             sf::Vector2f normal = {-dir.y / len, dir.x / len};
             sf::Vertex quad[] = {
                 sf::Vertex(start + normal * thickness / 2.f, color),
@@ -247,25 +253,92 @@ namespace cad {
             window.draw(quad, 4, sf::Quads);
         };
 
-        drawThickLine({screenPos.x - crosshairSize, screenPos.y}, {screenPos.x - 8.f, screenPos.y}, crosshairColor);
-        drawThickLine({screenPos.x + 8.f, screenPos.y}, {screenPos.x + crosshairSize, screenPos.y}, crosshairColor);
-        drawThickLine({screenPos.x, screenPos.y - crosshairSize}, {screenPos.x, screenPos.y - 8.f}, crosshairColor);
-        drawThickLine({screenPos.x, screenPos.y + 8.f}, {screenPos.x, screenPos.y + crosshairSize}, crosshairColor);
+        // Líneas de la cruceta (con hueco en el centro)
+        drawThickLine({screenPos.x - crosshairSize, screenPos.y}, {screenPos.x - gap, screenPos.y}, crossColor);
+        drawThickLine({screenPos.x + gap, screenPos.y}, {screenPos.x + crosshairSize, screenPos.y}, crossColor);
+        drawThickLine({screenPos.x, screenPos.y - crosshairSize}, {screenPos.x, screenPos.y - gap}, crossColor);
+        drawThickLine({screenPos.x, screenPos.y + gap}, {screenPos.x, screenPos.y + crosshairSize}, crossColor);
 
-        sf::CircleShape centerPoint(3.f);
-        centerPoint.setFillColor(crosshairColor);
-        centerPoint.setOrigin(3.f, 3.f);
-        centerPoint.setPosition(screenPos);
-        window.draw(centerPoint);
-
+        // ============================================================
+        // 2. DIBUJAR EL CENTRO (cuadrado pequeño o icono de snap brillante)
+        // ============================================================
         if (isSnapped) {
-            sf::CircleShape snapCircle(8.f);
-            snapCircle.setFillColor(sf::Color::Transparent);
-            snapCircle.setOutlineColor(sf::Color::Yellow);
-            snapCircle.setOutlineThickness(2.f);
-            snapCircle.setOrigin(8.f, 8.f);
-            snapCircle.setPosition(screenPos);
-            window.draw(snapCircle);
+            // Icono de SNAP: más grande, brillante y con relleno semi-transparente
+            sf::Color snapColor(255, 255, 0); // Amarillo puro y brillante
+            float size = 7.0f; // Tamaño del icono
+
+            if (snapType == cad::SnapType::CENTER) {
+                // Círculo para Centro - con relleno amarillo tenue y borde brillante
+                sf::CircleShape circle(size);
+                circle.setOrigin(size, size);
+                circle.setPosition(screenPos);
+                circle.setFillColor(sf::Color(255, 255, 0, 60)); // Relleno tenue
+                circle.setOutlineColor(snapColor);
+                circle.setOutlineThickness(2.0f);
+                window.draw(circle);
+            } 
+            else if (snapType == cad::SnapType::MIDPOINT) {
+                // Triángulo para Punto Medio
+                sf::ConvexShape triangle(3);
+                triangle.setPoint(0, sf::Vector2f(0, -size));
+                triangle.setPoint(1, sf::Vector2f(size * 0.866f, size * 0.5f));
+                triangle.setPoint(2, sf::Vector2f(-size * 0.866f, size * 0.5f));
+                triangle.setOrigin(0, 0);
+                triangle.setPosition(screenPos);
+                triangle.setFillColor(sf::Color(255, 255, 0, 60));
+                triangle.setOutlineColor(snapColor);
+                triangle.setOutlineThickness(2.0f);
+                window.draw(triangle);
+            } 
+            else if (snapType == cad::SnapType::INTERSECTION) {
+                // X para Intersección - más gruesa y brillante
+                float s = size * 0.85f;
+                sf::Vertex line1[] = {
+                    sf::Vertex(sf::Vector2f(screenPos.x - s, screenPos.y - s), snapColor),
+                    sf::Vertex(sf::Vector2f(screenPos.x + s, screenPos.y + s), snapColor)
+                };
+                sf::Vertex line2[] = {
+                    sf::Vertex(sf::Vector2f(screenPos.x - s, screenPos.y + s), snapColor),
+                    sf::Vertex(sf::Vector2f(screenPos.x + s, screenPos.y - s), snapColor)
+                };
+                // Dibujar la X con líneas gruesas usando quads
+                auto drawThickX = [&](sf::Vector2f start, sf::Vector2f end, sf::Color color) {
+                    sf::Vector2f dir = end - start;
+                    float len = std::sqrt(dir.x * dir.x + dir.y * dir.y);
+                    sf::Vector2f normal = {-dir.y / len, dir.x / len};
+                    float t = 2.0f; // Grosor de la X
+                    sf::Vertex quad[] = {
+                        sf::Vertex(start + normal * t / 2.f, color),
+                        sf::Vertex(start - normal * t / 2.f, color),
+                        sf::Vertex(end - normal * t / 2.f, color),
+                        sf::Vertex(end + normal * t / 2.f, color)
+                    };
+                    window.draw(quad, 4, sf::Quads);
+                };
+                drawThickX({screenPos.x - s, screenPos.y - s}, {screenPos.x + s, screenPos.y + s}, snapColor);
+                drawThickX({screenPos.x - s, screenPos.y + s}, {screenPos.x + s, screenPos.y - s}, snapColor);
+            } 
+            else {
+                // Cuadrado para Extremo (Default) - con relleno y borde brillante
+                sf::RectangleShape square(sf::Vector2f(size * 2, size * 2));
+                square.setOrigin(size, size);
+                square.setPosition(screenPos);
+                square.setFillColor(sf::Color(255, 255, 0, 60)); // Relleno tenue
+                square.setOutlineColor(snapColor);
+                square.setOutlineThickness(2.0f);
+                window.draw(square);
+            }
+        } 
+        else {
+            // Sin snap: pequeño cuadrado en el centro de la cruceta (estilo AutoCAD)
+            float boxSize = 3.0f;
+            sf::RectangleShape centerBox(sf::Vector2f(boxSize * 2, boxSize * 2));
+            centerBox.setOrigin(boxSize, boxSize);
+            centerBox.setPosition(screenPos);
+            centerBox.setFillColor(sf::Color::Transparent);
+            centerBox.setOutlineColor(crossColor);
+            centerBox.setOutlineThickness(1.0f);
+            window.draw(centerBox);
         }
     }
 
