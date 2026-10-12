@@ -16,7 +16,9 @@ public:
               int commandScrollOffset, bool isTyping, bool showEntityListPanel,
               const std::string& entityListText, int entityListScrollOffset,
               bool showAxes, float viewScale, const Point2D& mouseWorldPos) const;
-
+              
+    void drawLayerManagerPanel(sf::RenderWindow& window, const Engine& engine, int scrollOffset) const;
+    
 private:
     // Constantes de layout
     static constexpr unsigned int WINDOW_WIDTH = 1280;
@@ -34,6 +36,7 @@ private:
     void drawStatusBar(sf::RenderWindow& window, const Engine& engine, float viewScale, 
                        const Point2D& mouseWorldPos, bool showEntityListPanel) const;
     void drawEntityListPanel(sf::RenderWindow& window, const std::string& text, int scrollOffset) const;
+
 
     // Helper para convertir UTF-8 a sf::String
     sf::String toSfString(const std::string& utf8Str) const {

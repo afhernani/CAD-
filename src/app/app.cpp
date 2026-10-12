@@ -210,8 +210,23 @@ namespace cad {
                     commandScrollOffset_ = std::max(0, std::min(maxOffset, dragStartOffset_ + linesMoved));
                 }
 
+                // 1. Comprobar si el ratón está sobre el Panel de Capas
+                bool isOverLayerPanel = false;
+                if (showLayerPanel_) {
+                    const int panelWidth = 280;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+                    const int panelX = 0;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
+                        isOverLayerPanel = true;
+                    }
+                }
+
+                // 2. Definir isInCanvas excluyendo el Panel de Capas
                 bool isInCanvas = (my >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) &&
-                                my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT));
+                                my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) &&
+                                !isOverLayerPanel); // <-- ¡ESTA ES LA CLAVE!
+
 
                 if (isInCanvas) {
                     window_.setMouseCursorVisible(false);
@@ -236,6 +251,29 @@ namespace cad {
                 int mx = event.mouseWheelScroll.x;
                 int my = event.mouseWheelScroll.y;
 
+                // ✅ 1. Scroll del Panel de Capas (Prioridad si el ratón está encima)
+                if (showLayerPanel_) {
+                    const int panelWidth = 280;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+                    const int panelX = 0;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                    
+                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
+                        int totalLayers = engine_.doc.layers.size();
+                        int lineHeight = 24;
+                        int maxHeight = panelHeight - 75;
+                        int maxLines = maxHeight / lineHeight;
+                        int maxOffset = std::max(0, totalLayers - maxLines);
+                        
+                        if (event.mouseWheelScroll.delta > 0)
+                            layerPanelScrollOffset_ = std::max(0, layerPanelScrollOffset_ - 1);
+                        else
+                            layerPanelScrollOffset_ = std::min(maxOffset, layerPanelScrollOffset_ + 1);
+                        
+                        return; // Importante: salir para no hacer zoom en el canvas
+                    }
+                }
+                // 2. Scroll del Panel de Entidades (tu código original)
                 if (showEntityListPanel_) {
                     const int panelWidth = 350;
                     const int panelX = WINDOW_WIDTH - panelWidth;
@@ -249,7 +287,7 @@ namespace cad {
                         return;
                     }
                 }
-
+                // 3. Scroll de la consola de comandos
                 if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
                     my < WINDOW_HEIGHT - STATUS_HEIGHT) {
                     int lineHeight = 20;
@@ -261,7 +299,7 @@ namespace cad {
                     else
                         commandScrollOffset_ = std::min(maxOffset, commandScrollOffset_ + 1);
                 }
-
+                // 4. Zoom en el Canvas (solo si no estamos en ningún panel)
                 if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT &&
                     my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
                     float zoomFactor = (event.mouseWheelScroll.delta > 0) ? 1.1f : (1.0f / 1.1f);
@@ -349,6 +387,65 @@ namespace cad {
                 int my = event.mouseButton.y;
                 isDraggingCommandScroll_ = false;
 
+                // 1. DETECTAR CLIC EN EL PANEL DE CAPAS
+                if (showLayerPanel_) {
+                    const int panelWidth = 280;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+                    const int panelX = 0;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+
+                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
+                        // Ignorar cabeceras (primeros 55 píxeles)
+                        if (my >= panelY + 65) {
+                            int lineHeight = 24;
+                            int clickedRow = (my - (panelY + 65)) / lineHeight + layerPanelScrollOffset_;
+                            
+                            // Encontrar la capa correspondiente a esa fila
+                            int currentRow = 0;
+                            std::string clickedLayerName = "";
+                            for (auto const& [name, layer] : engine_.doc.layers) {
+                                if (currentRow == clickedRow) {
+                                    clickedLayerName = name;
+                                    break;
+                                }
+                                currentRow++;
+                            }
+
+                            if (!clickedLayerName.empty()) {
+                                // Determinar qué columna se clicó
+                                if (mx >= 160 && mx < 180) {
+                                    // Columna COLOR: Abrir diálogo de color
+                                    sf::Color currentColor = engine_.doc.getLayer(clickedLayerName)->color;
+                                    sf::Color newColor = showColorDialog(currentColor);
+                                    engine_.doc.setLayerColor(clickedLayerName, newColor);
+                                    engine_.statusMessage = "Color de capa '" + clickedLayerName + "' actualizado.";
+                                } 
+                                else if (mx >= 185 && mx < 205) {
+                                    // Columna V (Visible)
+                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->visible;
+                                    engine_.doc.setLayerVisibility(clickedLayerName, newState);
+                                } 
+                                else if (mx >= 210 && mx < 230) {
+                                    // Columna F (Frozen)
+                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->frozen;
+                                    engine_.doc.setLayerFrozen(clickedLayerName, newState);
+                                } 
+                                else if (mx >= 235 && mx < 255) {
+                                    // Columna L (Locked)
+                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->locked;
+                                    engine_.doc.setLayerLocked(clickedLayerName, newState);
+                                }
+                                else {
+                                    // Clic en el nombre: establecer como capa actual
+                                    engine_.doc.setCurrentLayer(clickedLayerName);
+                                    engine_.statusMessage = "Capa actual: " + clickedLayerName;
+                                }
+                            }
+                        }
+                        continue; // ¡Importante! No procesar este clic como clic en el canvas
+                    }
+                }
+
                 // Scroll de consola
                 if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
                     my < WINDOW_HEIGHT - STATUS_HEIGHT) {
@@ -428,19 +525,24 @@ namespace cad {
     // --- Render ---
     void App::render() {
         window_.clear(sf::Color(30, 30, 30));
-
+        // 1. Dibujar el mundo (entidades, rejilla, ejes, snaps, etc.)
         renderer_.render(window_, view_, engine_, currentMouseScreenPos_, currentMouseWorldPos_,
                         font_, lastSnapResult_.active, lastSnapResult_.point, showAxes_, lastSnapResult_.type);
 
-        // >>> NUEVO: Dibujar rectángulo de selección por ventana <<<
+        // 2. Dibujar rectángulo de selección por ventana (si está activo)
         if (isSelectingByWindow_) {
             renderer_.drawSelectionRect(window_, view_, selectionStartPoint_, selectionEndPoint_);
         }
-    
+
+        // 3. Dibujar el Panel de Gestor de Capas (si está activado)
+        if (showLayerPanel_) {
+            ui_.drawLayerManagerPanel(window_, engine_, layerPanelScrollOffset_);
+        }
+        // 4. Dibujar la UI general (Barra de comandos, barra de estado, panel de propiedades derecho)
         ui_.draw(window_, engine_, inputBuffer_, commandHistory_, commandScrollOffset_,
                 isTyping_, showEntityListPanel_, entityListText_, entityListScrollOffset_,
                 showAxes_, view_.getScale(), currentMouseWorldPos_);
-
+        // 5. Mostrar todo en pantalla
         window_.display();
     }
 
@@ -484,6 +586,10 @@ namespace cad {
             }
             if (!line.empty()) commandHistory_.push_back(line);
             engine_.statusMessage = "Ayuda mostrada";
+        }
+        else if (mx >= 330 && mx <= 370) {
+            showLayerPanel_ = !showLayerPanel_;
+            engine_.statusMessage = showLayerPanel_ ? "Gestor de capas activado" : "Gestor de capas desactivado";
         }
     }
 

@@ -63,6 +63,9 @@ namespace cad {
         bool showEntityListPanel_ = false;
         std::string entityListText_;
         int entityListScrollOffset_ = 0;
+        // panel de capas
+        bool showLayerPanel_ = false;
+        int layerPanelScrollOffset_ = 0;
 
         // --- Estado del ratón ---
         sf::Vector2i currentMouseScreenPos_;

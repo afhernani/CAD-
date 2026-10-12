@@ -186,6 +186,39 @@ void UIManager::drawToolbar(sf::RenderWindow& window, bool showAxes) const {
     helpIcon.setFillColor(sf::Color::White);
     helpIcon.setPosition(288, MENU_HEIGHT + 14);
     window.draw(helpIcon);
+
+        // --- Separador vertical antes del botón Capas ---
+    sf::RectangleShape sep3(sf::Vector2f(1, 40));
+    sep3.setFillColor(sf::Color(80, 80, 80));
+    sep3.setPosition(320, MENU_HEIGHT + 10);
+    window.draw(sep3);
+
+    // --- Botón Gestor de Capas ---
+    sf::RectangleShape btnLayers(sf::Vector2f(40, 40));
+    btnLayers.setFillColor(sf::Color(70, 70, 75));
+    btnLayers.setOutlineColor(sf::Color(100, 100, 100));
+    btnLayers.setOutlineThickness(1.f);
+    btnLayers.setPosition(330, MENU_HEIGHT + 10);
+    window.draw(btnLayers);
+
+    // Icono de Capas (3 líneas horizontales apiladas de diferentes colores)
+    // Capa 1 (Blanco)
+    sf::RectangleShape layer1(sf::Vector2f(24, 4));
+    layer1.setFillColor(sf::Color::White);
+    layer1.setPosition(338, MENU_HEIGHT + 20);
+    window.draw(layer1);
+
+    // Capa 2 (Cian)
+    sf::RectangleShape layer2(sf::Vector2f(24, 4));
+    layer2.setFillColor(sf::Color::Cyan);
+    layer2.setPosition(338, MENU_HEIGHT + 28);
+    window.draw(layer2);
+
+    // Capa 3 (Amarillo)
+    sf::RectangleShape layer3(sf::Vector2f(24, 4));
+    layer3.setFillColor(sf::Color::Yellow);
+    layer3.setPosition(338, MENU_HEIGHT + 36);
+    window.draw(layer3);
 }
 
 void UIManager::drawCommandWindow(sf::RenderWindow& window, const std::string& inputBuffer, 
@@ -376,6 +409,129 @@ void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string&
         sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
         scrollIndicator.setFillColor(sf::Color(100, 100, 100));
         scrollIndicator.setPosition(panelX + panelWidth - 10, indicatorY);
+        window.draw(scrollIndicator);
+    }
+}
+
+void UIManager::drawLayerManagerPanel(sf::RenderWindow& window, const Engine& engine, int scrollOffset) const {
+    const int panelWidth = 280;
+    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+    const int panelX = 0; // Panel a la izquierda
+    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+
+    // 1. Fondo del panel
+    sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
+    panelBg.setFillColor(sf::Color(40, 40, 45));
+    panelBg.setPosition(panelX, panelY);
+    window.draw(panelBg);
+
+    // 2. Borde derecho (separador del canvas)
+    sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
+    panelBorder.setFillColor(sf::Color(80, 80, 80));
+    panelBorder.setPosition(panelX + panelWidth - 2, panelY);
+    window.draw(panelBorder);
+
+    // 3. Título
+    sf::Text title;
+    title.setFont(font_);
+    title.setString("GESTOR DE CAPAS");
+    title.setCharacterSize(14);
+    title.setFillColor(sf::Color(220, 220, 220));
+    title.setPosition(panelX + 10, panelY + 10);
+    window.draw(title);
+
+    // 4. Cabeceras de columnas
+    sf::Text headers;
+    headers.setFont(font_);
+    headers.setString("Nombre          Color  V  F  L");
+    headers.setCharacterSize(12);
+    headers.setFillColor(sf::Color(150, 150, 150));
+    headers.setPosition(panelX + 10, panelY + 35);
+    window.draw(headers);
+
+    sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
+    separator.setFillColor(sf::Color(100, 100, 100));
+    separator.setPosition(panelX + 10, panelY + 55);
+    window.draw(separator);
+
+    // 5. Lista de capas
+    const int lineHeight = 24;
+    const int startY = panelY + 65;
+    const int maxHeight = panelHeight - 75;
+    const int maxLines = maxHeight / lineHeight;
+
+    int totalLayers = engine.doc.layers.size();
+    int maxOffset = std::max(0, totalLayers - maxLines);
+    scrollOffset = std::min(scrollOffset, maxOffset);
+
+    int currentRow = 0;
+    for (auto const& [name, layer] : engine.doc.layers) {
+        if (currentRow < scrollOffset) {
+            currentRow++;
+            continue;
+        }
+        if (currentRow >= scrollOffset + maxLines) break;
+
+        int yPos = startY + (currentRow - scrollOffset) * lineHeight;
+        bool isCurrent = (name == engine.doc.currentLayerName);
+
+        // Resaltar capa actual
+        if (isCurrent) {
+            sf::RectangleShape highlight(sf::Vector2f(panelWidth - 10, lineHeight));
+            highlight.setFillColor(sf::Color(60, 60, 70));
+            highlight.setPosition(panelX + 5, yPos - 2);
+            window.draw(highlight);
+        }
+
+        // Nombre de la capa
+        sf::Text nameText;
+        nameText.setFont(font_);
+        nameText.setString(name + (isCurrent ? " (Actual)" : ""));
+        nameText.setCharacterSize(12);
+        nameText.setFillColor(isCurrent ? sf::Color(100, 200, 255) : sf::Color(200, 200, 200));
+        nameText.setPosition(panelX + 10, yPos);
+        window.draw(nameText);
+
+        // Muestra de Color (cuadrado)
+        sf::RectangleShape colorBox(sf::Vector2f(16, 16));
+        colorBox.setFillColor(layer.color);
+        colorBox.setOutlineColor(sf::Color(150, 150, 150));
+        colorBox.setOutlineThickness(1.f);
+        colorBox.setPosition(panelX + 160, yPos + 4);
+        window.draw(colorBox);
+
+        // Función helper para dibujar texto de estado
+        auto drawStatusChar = [&](int x, char c, bool isActive, sf::Color activeColor) {
+            sf::Text txt;
+            txt.setFont(font_);
+            txt.setString(std::string(1, c));
+            txt.setCharacterSize(12);
+            txt.setFillColor(isActive ? activeColor : sf::Color(100, 100, 100));
+            txt.setStyle(isActive ? sf::Text::Bold : sf::Text::Regular);
+            txt.setPosition(x, yPos);
+            window.draw(txt);
+        };
+
+        // V (Visible)
+        drawStatusChar(panelX + 190, 'V', layer.visible, sf::Color(100, 255, 100));
+        // F (Frozen)
+        drawStatusChar(panelX + 215, 'F', layer.frozen, sf::Color(100, 200, 255));
+        // L (Locked)
+        drawStatusChar(panelX + 240, 'L', layer.locked, sf::Color(255, 100, 100));
+
+        currentRow++;
+    }
+
+    // 6. Indicador de scroll
+    if (totalLayers > maxLines) {
+        float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
+        float indicatorHeight = 30.f;
+        float maxIndicatorY = startY + maxHeight - indicatorHeight;
+        float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
+
+        sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
+        scrollIndicator.setFillColor(sf::Color(100, 100, 100));
+        scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
         window.draw(scrollIndicator);
     }
 }
