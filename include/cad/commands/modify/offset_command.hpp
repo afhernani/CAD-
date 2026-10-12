@@ -1,6 +1,6 @@
 #pragma once
 #include "../command.hpp"
-#include "../../core/geometry/entity.hpp" 
+#include "../../core/geometry/entity.hpp"
 
 namespace sf { class RenderWindow; class Font; }
 namespace cad { class View; class Engine; }
