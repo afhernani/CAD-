@@ -316,45 +316,44 @@ void UIManager::drawStatusBar(sf::RenderWindow& window, const Engine& engine, fl
 }
 
 void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string& text, int scrollOffset) const {
-    const int panelWidth = 350;
+    const int panelWidth = 320;
     const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
     const int panelX = WINDOW_WIDTH - panelWidth;
     const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
 
-    // Fondo del panel
+    // 1. Fondo del panel
     sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
     panelBg.setFillColor(sf::Color(40, 40, 45));
     panelBg.setPosition(panelX, panelY);
     window.draw(panelBg);
 
-    // Borde superior
-    sf::RectangleShape panelBorder(sf::Vector2f(panelWidth, 2));
+    // 2. Borde izquierdo
+    sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
     panelBorder.setFillColor(sf::Color(80, 80, 80));
     panelBorder.setPosition(panelX, panelY);
     window.draw(panelBorder);
 
-    // Título
+    // 3. Título
     sf::Text title;
     title.setFont(font_);
-    title.setString("PROPIEDADES DE ENTIDADES");
+    title.setString("PROPIEDADES");
     title.setCharacterSize(14);
     title.setFillColor(sf::Color(220, 220, 220));
     title.setPosition(panelX + 10, panelY + 10);
     window.draw(title);
 
-    // Separador
     sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
     separator.setFillColor(sf::Color(100, 100, 100));
     separator.setPosition(panelX + 10, panelY + 35);
     window.draw(separator);
 
-    // Contenido scrolleable
+    // 4. Contenido de texto (Propiedades)
     const int lineHeight = 16;
     const int startY = panelY + 45;
-    const int maxHeight = panelHeight - 55;
+    const int btnHeight = 35;
+    const int maxHeight = panelHeight - 55 - btnHeight - 10; // Dejar espacio para el botón
     const int maxLines = maxHeight / lineHeight;
 
-    // Dividir el texto en líneas
     std::vector<std::string> lines;
     std::string line;
     for (char c : text) {
@@ -365,31 +364,24 @@ void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string&
             line += c;
         }
     }
-    if (!line.empty()) {
-        lines.push_back(line);
-    }
+    if (!line.empty()) lines.push_back(line);
 
-    // Limitar scroll
     int totalLines = lines.size();
     int maxOffset = std::max(0, totalLines - maxLines);
     scrollOffset = std::min(scrollOffset, maxOffset);
 
-    // Dibujar líneas visibles
     int startIdx = scrollOffset;
     int lineCount = 0;
     for (int i = startIdx; i < totalLines && lineCount < maxLines; ++i) {
         sf::Text lineText;
         lineText.setFont(font_);
         lineText.setString(lines[i]);
-        lineText.setCharacterSize(11);
+        lineText.setCharacterSize(12);
 
-        // Color diferente para títulos y contenido
-        if (lines[i].find("---") != std::string::npos ||
-            lines[i].find("===") != std::string::npos ||
-            lines[i].find("LISTA") != std::string::npos) {
+        if (lines[i].find("===") != std::string::npos || lines[i].find("---") != std::string::npos) {
             lineText.setFillColor(sf::Color(100, 200, 255));
-        } else if (lines[i].find("Tipo:") != std::string::npos) {
-            lineText.setFillColor(sf::Color(255, 220, 100));
+        } else if (lines[i].find("Tipo:") != std::string::npos || lines[i].find("Capa:") != std::string::npos) {
+            lineText.setFillColor(sf::Color(255, 255, 100)); // Resaltar Tipo y Capa
         } else {
             lineText.setFillColor(sf::Color(200, 200, 200));
         }
@@ -399,7 +391,27 @@ void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string&
         lineCount++;
     }
 
-    // Indicador de scroll si hay más contenido
+    // 5. BOTÓN INTERACTIVO: "Cambiar Capa"
+    const int btnY = panelY + panelHeight - btnHeight - 10;
+    sf::RectangleShape btnChangeLayer(sf::Vector2f(panelWidth - 20, btnHeight));
+    btnChangeLayer.setFillColor(sf::Color(60, 100, 160));
+    btnChangeLayer.setOutlineColor(sf::Color(100, 150, 220));
+    btnChangeLayer.setOutlineThickness(1.f);
+    btnChangeLayer.setPosition(panelX + 10, btnY);
+    window.draw(btnChangeLayer);
+
+    sf::Text btnText;
+    btnText.setFont(font_);
+    btnText.setString("Cambiar Capa...");
+    btnText.setCharacterSize(13);
+    btnText.setFillColor(sf::Color::White);
+    
+    // Centrar texto en el botón
+    float textWidth = btnText.getLocalBounds().width;
+    btnText.setPosition(panelX + 10 + (panelWidth - 20 - textWidth) / 2.0f, btnY + 9.0f);
+    window.draw(btnText);
+
+    // 6. Indicador de scroll (si hay mucho texto)
     if (totalLines > maxLines) {
         float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
         float indicatorHeight = 30.f;
@@ -408,7 +420,7 @@ void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string&
 
         sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
         scrollIndicator.setFillColor(sf::Color(100, 100, 100));
-        scrollIndicator.setPosition(panelX + panelWidth - 10, indicatorY);
+        scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
         window.draw(scrollIndicator);
     }
 }

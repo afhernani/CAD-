@@ -43,6 +43,10 @@ namespace cad {
 		
 		std::string getHelpForTopic(std::string_view topic, int maxCharsPerLine = 80) { return getHelpText(topic, maxCharsPerLine); }
 		std::string getEntityList() const;
+
+		// para el panel de propiedades:
+		std::string getSelectedEntityProperties() const;
+		void changeLayerOfSelected(const std::string& newLayerName);
 		
 		std::vector<Entity*> selectedEntities;
 		void clearSelection();

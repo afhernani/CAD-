@@ -1,6 +1,8 @@
 #include "cad/commands/engine.hpp"
 #include "cad/persistence/file_manager.hpp"
-// >>> AQUÍ VAN LOS INCLUDES ESPECÍFICOS (El .cpp sí puede conocer los detalles)
+
+#include "cad/core/geometry/entities/image.hpp"
+
 // Comandos de dibujo
 #include "cad/commands/draw/line_command.hpp"
 #include "cad/commands/draw/circle_command.hpp"
@@ -12,6 +14,7 @@
 #include "cad/commands/draw/text_command.hpp"
 #include "cad/commands/draw/hatch_command.hpp"
 #include "cad/commands/draw/triangle_command.hpp"
+#include "cad/commands/draw/image_command.hpp"
 
 // Comandos de modificación
 #include "cad/commands/modify/move_command.hpp"
@@ -564,5 +567,84 @@ namespace cad {
 				return cmd; 
 			});
     }
+
+	std::string Engine::getSelectedEntityProperties() const {
+		if (selectedEntities.empty()) {
+			return "No hay entidades seleccionadas.\nHaz clic en una entidad para ver sus propiedades.";
+		}
+
+		std::ostringstream oss;
+		oss << std::fixed << std::setprecision(2);
+		
+		// Mostramos las propiedades de la PRIMERA entidad seleccionada
+		Entity* e = selectedEntities[0];
+		const Layer* layer = doc.getLayer(e->layerName);
+		sf::Color layerColor = layer ? layer->color : sf::Color::White;
+
+		oss << "=== PROPIEDADES ===\n";
+		oss << "Entidades sel.: " << selectedEntities.size() << "\n";
+		oss << "------------------\n";
+		
+		// Determinar tipo y propiedades específicas
+		if (auto* line = dynamic_cast<Line*>(e)) {
+			oss << "Tipo: Línea\n";
+			double len = std::hypot(line->p2.x - line->p1.x, line->p2.y - line->p1.y);
+			oss << "Longitud: " << len << "\n";
+			oss << "Inicio: (" << line->p1.x << ", " << line->p1.y << ")\n";
+			oss << "Fin: (" << line->p2.x << ", " << line->p2.y << ")\n";
+		} 
+		else if (auto* circle = dynamic_cast<Circle*>(e)) {
+			oss << "Tipo: Círculo\n";
+			oss << "Radio: " << circle->radius << "\n";
+			oss << "Centro: (" << circle->center.x << ", " << circle->center.y << ")\n";
+			oss << "Perímetro: " << 2 * 3.14159 * circle->radius << "\n";
+		}
+		else if (auto* arc = dynamic_cast<Arc*>(e)) {
+			oss << "Tipo: Arco\n";
+			oss << "Radio: " << arc->radius << "\n";
+			oss << "Centro: (" << arc->center.x << ", " << arc->center.y << ")\n";
+		}
+		else if (auto* block = dynamic_cast<BlockInsert*>(e)) {
+			oss << "Tipo: Bloque\n";
+			oss << "Nombre: " << (block->definition ? block->definition->name : "Desconocido") << "\n";
+			oss << "Escala: " << block->blockScale << "\n";
+			oss << "Rotación: " << block->blockRotation << "°\n";
+		}
+		else if (auto* img = dynamic_cast<ImageEntity*>(e)) {
+			oss << "Tipo: Imagen\n";
+			oss << "Ruta: " << img->imagePath << "\n";
+			oss << "Dimensiones: " << img->width << " x " << img->height << "\n";
+		}
+		else {
+			oss << "Tipo: Entidad genérica\n";
+		}
+
+		oss << "------------------\n";
+		oss << "Capa: " << e->layerName << "\n";
+		oss << "Color capa: RGB(" << (int)layerColor.r << "," << (int)layerColor.g << "," << (int)layerColor.b << ")\n";
+		
+		if (selectedEntities.size() > 1) {
+			oss << "\n(Nota: Se muestran los detalles de la primera entidad seleccionada)";
+		}
+
+		return oss.str();
+	}
+
+	void Engine::changeLayerOfSelected(const std::string& newLayerName) {
+		// Verificar si la capa existe
+		if (doc.layers.find(newLayerName) == doc.layers.end()) {
+			statusMessage = "Error: La capa '" + newLayerName + "' no existe.";
+			return;
+		}
+
+		int count = 0;
+		for (Entity* e : selectedEntities) {
+			e->layerName = newLayerName;
+			count++;
+		}
+		
+		saveState(); // Guardar en el historial de deshacer
+		statusMessage = "Capa de " + std::to_string(count) + " entidad(es) cambiada a '" + newLayerName + "'.";
+	}
 
 } // namespace cad

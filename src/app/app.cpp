@@ -222,10 +222,22 @@ namespace cad {
                     }
                 }
 
-                // 2. Definir isInCanvas excluyendo el Panel de Capas
+                // 2. Comprobar si el ratón está sobre el Panel de Propiedades (derecha)
+                bool isOverPropertiesPanel = false;
+                if (showEntityListPanel_) {
+                    const int panelWidth = 320;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+                    const int panelX = WINDOW_WIDTH - panelWidth;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
+                        isOverPropertiesPanel = true;
+                    }
+                }
+
+                // 3. Definir isInCanvas excluyendo AMBOS paneles
                 bool isInCanvas = (my >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) &&
                                 my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) &&
-                                !isOverLayerPanel); // <-- ¡ESTA ES LA CLAVE!
+                                !isOverLayerPanel && !isOverPropertiesPanel);
 
 
                 if (isInCanvas) {
@@ -251,7 +263,7 @@ namespace cad {
                 int mx = event.mouseWheelScroll.x;
                 int my = event.mouseWheelScroll.y;
 
-                // ✅ 1. Scroll del Panel de Capas (Prioridad si el ratón está encima)
+                // 1. Scroll del Panel de Capas (Prioridad si el ratón está encima)
                 if (showLayerPanel_) {
                     const int panelWidth = 280;
                     const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
@@ -273,17 +285,32 @@ namespace cad {
                         return; // Importante: salir para no hacer zoom en el canvas
                     }
                 }
-                // 2. Scroll del Panel de Entidades (tu código original)
+                // 2. Scroll del Panel de Entidades (si el ratón esta encima)
                 if (showEntityListPanel_) {
                     const int panelWidth = 350;
                     const int panelX = WINDOW_WIDTH - panelWidth;
                     const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
                     const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT;
+                    
                     if (mx >= panelX && mx < WINDOW_WIDTH && my >= panelY && my < panelY + panelHeight) {
+                        // Calcular el máximo offset basado en el texto de propiedades
+                        int lineHeight = 16;
+                        int btnHeight = 35;
+                        int maxHeight = panelHeight - 55 - btnHeight - 10;
+                        int maxLines = maxHeight / lineHeight;
+                        
+                        // Contar líneas del texto de propiedades
+                        int totalLines = 1;
+                        for (char c : entityListText_) {
+                            if (c == '\n') totalLines++;
+                        }
+                        int maxOffset = std::max(0, totalLines - maxLines);
+                        
                         if (event.mouseWheelScroll.delta > 0)
                             entityListScrollOffset_ = std::max(0, entityListScrollOffset_ - 1);
                         else
-                            entityListScrollOffset_++;
+                            entityListScrollOffset_ = std::min(maxOffset, entityListScrollOffset_ + 1);
+                        
                         return;
                     }
                 }
@@ -360,8 +387,18 @@ namespace cad {
                             } else {
                                 engine_.selectedEntities.push_back(clickedEntity);
                             }
+                            // Actualizar el panel de propiedades
+                            if (showEntityListPanel_) {
+                                entityListText_ = engine_.getSelectedEntityProperties();
+                                entityListScrollOffset_ = 0;
+                            }
                         } else {
                             engine_.selectedEntities.clear();
+                            // Limpiar el panel si no hay selección
+                            if (showEntityListPanel_) {
+                                entityListText_ = engine_.getSelectedEntityProperties();
+                                entityListScrollOffset_ = 0;
+                            }
                         }
                     }
                     isSelectingByWindow_ = false;
@@ -443,6 +480,30 @@ namespace cad {
                             }
                         }
                         continue; // ¡Importante! No procesar este clic como clic en el canvas
+                    }
+                }
+
+                // 2. DETECTAR CLIC EN EL BOTÓN "CAMBIAR CAPA" DEL PANEL DE PROPIEDADES
+                if (showEntityListPanel_ && !engine_.selectedEntities.empty()) {
+                    const int panelWidth = 320;
+                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+                    const int panelX = WINDOW_WIDTH - panelWidth;
+                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                    const int btnHeight = 35;
+                    const int btnY = panelY + panelHeight - btnHeight - 10;
+
+                    // Comprobar si el clic está dentro del botón
+                    if (mx >= panelX + 10 && mx < panelX + panelWidth - 10 &&
+                        my >= btnY && my < btnY + btnHeight) {
+                        
+                        // Activar la línea de comandos y pre-llenar con "CAPA "
+                        isTyping_ = true;
+                        inputBuffer_ = "CAPA ";
+                        engine_.statusMessage = "Escribe el nombre de la nueva capa y pulsa Enter:";
+                        
+                        // Mover el cursor al final (SFML lo maneja, pero esto asegura el estado)
+                        commandScrollOffset_ = 0;
+                        continue; // No procesar este clic como clic en el canvas
                     }
                 }
 
