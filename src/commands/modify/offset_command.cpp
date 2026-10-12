@@ -203,71 +203,99 @@ namespace cad {
             std::vector<Point2D> newPoints;
             std::vector<std::pair<Point2D, Point2D>> shiftedSegments;
 
-            // 1. Determinar el lado global del desplazamiento
-            double globalSign = 1.0;
-            for (size_t i = 0; i < pts.size(); ++i) {
-                size_t nextIdx = (i + 1) % pts.size(); // Para polilíneas cerradas, el último conecta con el primero
-                if (!polyline->closed && nextIdx >= pts.size()) break;
-                
-                double dx = pts[nextIdx].x - pts[i].x;
-                double dy = pts[nextIdx].y - pts[i].y;
+            // 1. Determinar el lado del offset usando el PRIMER segmento válido
+            double offsetSign = 1.0;
+            for (size_t i = 0; i < pts.size() - 1; ++i) {
+                double dx = pts[i+1].x - pts[i].x;
+                double dy = pts[i+1].y - pts[i].y;
                 double len = std::hypot(dx, dy);
                 if (len < 0.001) continue;
 
+                // Normal del segmento
                 double nx = -dy / len;
                 double ny = dx / len;
-                double midX = (pts[i].x + pts[nextIdx].x) / 2.0;
-                double midY = (pts[i].y + pts[nextIdx].y) / 2.0;
                 
-                double dot = (sidePoint.x - midX) * nx + (sidePoint.y - midY) * ny;
-                globalSign = (dot >= 0) ? 1.0 : -1.0;
-                break;
+                // Punto medio del segmento
+                double midX = (pts[i].x + pts[i+1].x) / 2.0;
+                double midY = (pts[i].y + pts[i+1].y) / 2.0;
+                
+                // Vector del punto medio al punto de clic
+                double toClickX = sidePoint.x - midX;
+                double toClickY = sidePoint.y - midY;
+                
+                // Producto punto: si es positivo, el clic está en la dirección de la normal
+                double dot = toClickX * nx + toClickY * ny;
+                offsetSign = (dot >= 0) ? 1.0 : -1.0;
+                break; // Solo necesitamos el primer segmento
             }
 
-            // 2. Desplazar TODOS los segmentos (incluyendo el de cierre si es cerrada)
-            for (size_t i = 0; i < pts.size(); ++i) {
-                size_t nextIdx = (i + 1) % pts.size();
-                if (!polyline->closed && nextIdx >= pts.size()) break;
-                
-                double dx = pts[nextIdx].x - pts[i].x;
-                double dy = pts[nextIdx].y - pts[i].y;
+            // 2. Desplazar todos los segmentos
+            for (size_t i = 0; i < pts.size() - 1; ++i) {
+                double dx = pts[i+1].x - pts[i].x;
+                double dy = pts[i+1].y - pts[i].y;
                 double len = std::hypot(dx, dy);
                 if (len < 0.001) continue;
 
                 double nx = -dy / len;
                 double ny = dx / len;
 
-                Point2D A_shift = {pts[i].x + nx * distance_ * globalSign, pts[i].y + ny * distance_ * globalSign};
-                Point2D B_shift = {pts[nextIdx].x + nx * distance_ * globalSign, pts[nextIdx].y + ny * distance_ * globalSign};
+                Point2D A_shift = {pts[i].x + nx * distance_ * offsetSign, pts[i].y + ny * distance_ * offsetSign};
+                Point2D B_shift = {pts[i+1].x + nx * distance_ * offsetSign, pts[i+1].y + ny * distance_ * offsetSign};
                 shiftedSegments.push_back({A_shift, B_shift});
             }
 
-            // 3. Calcular nuevas esquinas (intersecciones de segmentos adyacentes)
-            // Para polilíneas cerradas: cada vértice es la intersección del segmento i-1 con el segmento i
-            for (size_t i = 0; i < shiftedSegments.size(); ++i) {
-                size_t prevIdx = (i == 0) ? shiftedSegments.size() - 1 : i - 1;
-                
-                auto inter = lineLineIntersection(
-                    shiftedSegments[prevIdx].first, shiftedSegments[prevIdx].second,
-                    shiftedSegments[i].first, shiftedSegments[i].second
-                );
-                
-                if (inter.intersects) {
-                    newPoints.push_back(inter.point);
-                } else {
-                    // Fallback: si son paralelos, usar el punto inicial del segmento
-                    newPoints.push_back(shiftedSegments[i].first);
+            // 3. Calcular nuevas esquinas
+            if (polyline->closed && shiftedSegments.size() > 1) {
+                // Polilínea cerrada: añadir segmento de cierre
+                double dx = pts[0].x - pts.back().x;
+                double dy = pts[0].y - pts.back().y;
+                double len = std::hypot(dx, dy);
+                if (len > 0.001) {
+                    double nx = -dy / len;
+                    double ny = dx / len;
+                    Point2D A_shift = {pts.back().x + nx * distance_ * offsetSign, pts.back().y + ny * distance_ * offsetSign};
+                    Point2D B_shift = {pts[0].x + nx * distance_ * offsetSign, pts[0].y + ny * distance_ * offsetSign};
+                    shiftedSegments.push_back({A_shift, B_shift});
+                }
+
+                // Todos los vértices son intersecciones
+                for (size_t i = 0; i < shiftedSegments.size(); ++i) {
+                    size_t prevIdx = (i == 0) ? shiftedSegments.size() - 1 : i - 1;
+                    
+                    auto inter = lineLineIntersection(
+                        shiftedSegments[prevIdx].first, shiftedSegments[prevIdx].second,
+                        shiftedSegments[i].first, shiftedSegments[i].second
+                    );
+                    
+                    if (inter.intersects) {
+                        newPoints.push_back(inter.point);
+                    } else {
+                        newPoints.push_back(shiftedSegments[i].first);
+                    }
+                }
+            } else {
+                // Polilínea abierta
+                if (!shiftedSegments.empty()) {
+                    newPoints.push_back(shiftedSegments.front().first);
+                    
+                    for (size_t i = 1; i < shiftedSegments.size(); ++i) {
+                        auto inter = lineLineIntersection(
+                            shiftedSegments[i-1].first, shiftedSegments[i-1].second,
+                            shiftedSegments[i].first, shiftedSegments[i].second
+                        );
+                        
+                        if (inter.intersects) {
+                            newPoints.push_back(inter.point);
+                        } else {
+                            newPoints.push_back(shiftedSegments[i].first);
+                        }
+                    }
+                    
+                    newPoints.push_back(shiftedSegments.back().second);
                 }
             }
 
-            // 4. Para polilíneas ABIERTAS: añadir el último punto sin intersección
-            if (!polyline->closed && !shiftedSegments.empty()) {
-                // El primer punto ya está (es el inicio del primer segmento)
-                // Añadimos el último punto (fin del último segmento)
-                newPoints.insert(newPoints.begin(), shiftedSegments.front().first);
-            }
-
-            // 5. Crear y añadir la nueva entidad
+            // 4. Crear y añadir la nueva entidad
             if (newPoints.size() >= 2) {
                 auto newPoly = std::make_unique<Polyline>();
                 newPoly->id = Entity::generateId();
@@ -377,40 +405,100 @@ namespace cad {
             }
             else if (auto* polyline = dynamic_cast<Polyline*>(entity)) {
                 const auto& pts = polyline->points;
-                if (pts.size() >= 2) {
-                    // Reutilizamos la lógica de cálculo de lado para el preview
-                    double globalSign = 1.0;
-                    double dx0 = pts[1].x - pts[0].x;
-                    double dy0 = pts[1].y - pts[0].y;
-                    double len0 = std::hypot(dx0, dy0);
-                    if (len0 > 0.001) {
-                        double nx0 = -dy0 / len0;
-                        double ny0 = dx0 / len0;
-                        double midX = (pts[0].x + pts[1].x) / 2.0;
-                        double midY = (pts[0].y + pts[1].y) / 2.0;
-                        double dot = (mouseWorldPos.x - midX) * nx0 + (mouseWorldPos.y - midY) * ny0;
-                        globalSign = (dot >= 0) ? 1.0 : -1.0;
+                if (pts.size() < 2) return;
+
+                // 1. Calcular el signo del offset (misma lógica que en createOffsetEntity)
+                double offsetSign = 1.0;
+                for (size_t i = 0; i < pts.size() - 1; ++i) {
+                    double dx = pts[i+1].x - pts[i].x;
+                    double dy = pts[i+1].y - pts[i].y;
+                    double len = std::hypot(dx, dy);
+                    if (len < 0.001) continue;
+
+                    double nx = -dy / len;
+                    double ny = dx / len;
+                    double midX = (pts[i].x + pts[i+1].x) / 2.0;
+                    double midY = (pts[i].y + pts[i+1].y) / 2.0;
+                    
+                    double dot = (mouseWorldPos.x - midX) * nx + (mouseWorldPos.y - midY) * ny;
+                    offsetSign = (dot >= 0) ? 1.0 : -1.0;
+                    break;
+                }
+
+                // 2. Desplazar todos los segmentos
+                std::vector<std::pair<Point2D, Point2D>> shiftedSegments;
+                for (size_t i = 0; i < pts.size() - 1; ++i) {
+                    double dx = pts[i+1].x - pts[i].x;
+                    double dy = pts[i+1].y - pts[i].y;
+                    double len = std::hypot(dx, dy);
+                    if (len < 0.001) continue;
+
+                    double nx = -dy / len;
+                    double ny = dx / len;
+
+                    Point2D A_shift = {pts[i].x + nx * distance * offsetSign, pts[i].y + ny * distance * offsetSign};
+                    Point2D B_shift = {pts[i+1].x + nx * distance * offsetSign, pts[i+1].y + ny * distance * offsetSign};
+                    shiftedSegments.push_back({A_shift, B_shift});
+                }
+
+                // 3. Calcular los puntos del preview (con intersecciones en las esquinas)
+                std::vector<Point2D> previewPoints;
+                
+                if (polyline->closed && shiftedSegments.size() > 1) {
+                    // Añadir segmento de cierre
+                    double dx = pts[0].x - pts.back().x;
+                    double dy = pts[0].y - pts.back().y;
+                    double len = std::hypot(dx, dy);
+                    if (len > 0.001) {
+                        double nx = -dy / len;
+                        double ny = dx / len;
+                        Point2D A_shift = {pts.back().x + nx * distance * offsetSign, pts.back().y + ny * distance * offsetSign};
+                        Point2D B_shift = {pts[0].x + nx * distance * offsetSign, pts[0].y + ny * distance * offsetSign};
+                        shiftedSegments.push_back({A_shift, B_shift});
                     }
 
-                    sf::VertexArray previewVA(sf::LineStrip, pts.size());
-                    for (size_t i = 0; i < pts.size(); ++i) {
-                        // Nota: Para un preview perfecto en esquinas, idealmente calcularíamos las intersecciones como en createOffsetEntity.
-                        // Para mantener el código simple y rápido en el renderizado, desplazamos los puntos originales directamente.
-                        // En polilíneas simples se ve muy bien.
-                        double px = pts[i].x;
-                        double py = pts[i].y;
+                    // Calcular intersecciones para todos los vértices
+                    for (size_t i = 0; i < shiftedSegments.size(); ++i) {
+                        size_t prevIdx = (i == 0) ? shiftedSegments.size() - 1 : i - 1;
                         
-                        // Aplicar desplazamiento aproximado al punto (suficiente para feedback visual)
-                        if (i > 0) {
-                            double dx = pts[i].x - pts[i-1].x;
-                            double dy = pts[i].y - pts[i-1].y;
-                            double len = std::hypot(dx, dy);
-                            if (len > 0.001) {
-                                px += (-dy / len) * distance * globalSign;
-                                py += (dx / len) * distance * globalSign;
+                        auto inter = lineLineIntersection(
+                            shiftedSegments[prevIdx].first, shiftedSegments[prevIdx].second,
+                            shiftedSegments[i].first, shiftedSegments[i].second
+                        );
+                        
+                        if (inter.intersects) {
+                            previewPoints.push_back(inter.point);
+                        } else {
+                            previewPoints.push_back(shiftedSegments[i].first);
+                        }
+                    }
+                } else {
+                    // Polilínea abierta
+                    if (!shiftedSegments.empty()) {
+                        previewPoints.push_back(shiftedSegments.front().first);
+                        
+                        for (size_t i = 1; i < shiftedSegments.size(); ++i) {
+                            auto inter = lineLineIntersection(
+                                shiftedSegments[i-1].first, shiftedSegments[i-1].second,
+                                shiftedSegments[i].first, shiftedSegments[i].second
+                            );
+                            
+                            if (inter.intersects) {
+                                previewPoints.push_back(inter.point);
+                            } else {
+                                previewPoints.push_back(shiftedSegments[i].first);
                             }
                         }
-                        previewVA[i].position = w2s(px, py);
+                        
+                        previewPoints.push_back(shiftedSegments.back().second);
+                    }
+                }
+
+                // 4. Dibujar el preview
+                if (previewPoints.size() >= 2) {
+                    sf::VertexArray previewVA(sf::LineStrip, previewPoints.size());
+                    for (size_t i = 0; i < previewPoints.size(); ++i) {
+                        previewVA[i].position = w2s(previewPoints[i].x, previewPoints[i].y);
                         previewVA[i].color = previewColor;
                     }
                     window.draw(previewVA);
