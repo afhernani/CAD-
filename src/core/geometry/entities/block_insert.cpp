@@ -18,40 +18,42 @@ namespace cad {
 
         for (const auto& e : definition->entities) {
             auto tempCopy = e->clone();
-            // Las entidades están en -basePoint, solo sumamos insertPoint
+            
+            // 1. Escalar desde el origen local del bloque (0,0)
+            tempCopy->scale(Point2D{0.0, 0.0}, blockScale);
+            
+            // 2. Rotar desde el origen local del bloque (0,0)
+            tempCopy->rotate(Point2D{0.0, 0.0}, blockRotation);
+            
+            // 3. Trasladar al punto de inserción en el mundo
             tempCopy->move(insertPoint.x, insertPoint.y);
+            
             tempCopy->draw(window, w2s, color, viewScale);
         }
     }
 
     bool BlockInsert::isNear(const Point2D& point, double tolerance) const {
         if (!definition || definition->entities.empty()) {
-            // Si no hay definición, usar el insertPoint como fallback
-            double dx = point.x - insertPoint.x;
-            double dy = point.y - insertPoint.y;
-            return std::sqrt(dx * dx + dy * dy) <= tolerance;
+            // Fallback: si no hay entidades, el punto de inserción actúa como punto de anclaje
+            return std::hypot(point.x - insertPoint.x, point.y - insertPoint.y) <= tolerance;
         }
-        // >>> CORRECCIÓN: Calcular bounding box de las entidades desplazadas <<<
-        double minX = std::numeric_limits<double>::max();
-        double minY = std::numeric_limits<double>::max();
-        double maxX = std::numeric_limits<double>::lowest();
-        double maxY = std::numeric_limits<double>::lowest();
 
+        // ✅ CORRECCIÓN: Aplicar las mismas transformaciones que en draw() 
+        // y delegar la comprobación a la entidad interna.
         for (const auto& e : definition->entities) {
-            auto snaps = e->getSnapPoints();
-            for (const auto& pt : snaps) {
-                // Desplazar los puntos por insertPoint
-                double px = pt.x + insertPoint.x;
-                double py = pt.y + insertPoint.y;
-                minX = std::min(minX, px);
-                minY = std::min(minY, py);
-                maxX = std::max(maxX, px);
-                maxY = std::max(maxY, py);
+            auto tempCopy = e->clone();
+            
+            tempCopy->scale(Point2D{0.0, 0.0}, blockScale);
+            tempCopy->rotate(Point2D{0.0, 0.0}, blockRotation);
+            tempCopy->move(insertPoint.x, insertPoint.y);
+            
+            // Si el punto está cerca de CUALQUIER entidad transformada del bloque, el bloque está seleccionado
+            if (tempCopy->isNear(point, tolerance)) {
+                return true;
             }
         }
-        // Verificar si el punto está dentro del bounding box (con tolerancia)
-        return point.x >= minX - tolerance && point.x <= maxX + tolerance &&
-            point.y >= minY - tolerance && point.y <= maxY + tolerance;
+        
+        return false;
     }
 
     void BlockInsert::move(double dx, double dy) {
@@ -66,7 +68,7 @@ namespace cad {
         copy->blockScale = blockScale;
         copy->blockRotation = blockRotation;
         copy->layerName = layerName;
-        copy->id = id; // Copiar el mismo ID, o generar uno nuevo si es necesario
+        copy->id = id;
         return copy;
     }
 
@@ -77,6 +79,10 @@ namespace cad {
         insertPoint.x = rotCenter.x + dx * std::cos(rad) - dy * std::sin(rad);
         insertPoint.y = rotCenter.y + dx * std::sin(rad) + dy * std::cos(rad);
         blockRotation += angleDeg;
+        
+        // Normalizar rotación
+        while (blockRotation < 0.0) blockRotation += 360.0;
+        while (blockRotation >= 360.0) blockRotation -= 360.0;
     }
 
     void BlockInsert::scale(const Point2D& basePoint, double factor) {
@@ -86,18 +92,27 @@ namespace cad {
     }
 
     void BlockInsert::mirror(const Point2D& axisP1, const Point2D& axisP2) {
+        // Reflejar el punto de inserción
+        insertPoint = reflectPoint(insertPoint, axisP1, axisP2);
+        
+        // Al reflejar, la rotación se invierte respecto al eje de simetría
         double dx = axisP2.x - axisP1.x;
         double dy = axisP2.y - axisP1.y;
-        double len2 = dx * dx + dy * dy;
-        if (len2 > 0) {
-            double t = ((insertPoint.x - axisP1.x) * dx + (insertPoint.y - axisP1.y) * dy) / len2;
-            insertPoint.x = 2 * (axisP1.x + t * dx) - insertPoint.x;
-            insertPoint.y = 2 * (axisP1.y + t * dy) - insertPoint.y;
-        }
+        double axisAngle = std::atan2(dy, dx) * 180.0 / PI;
+        
+        blockRotation = 2.0 * axisAngle - blockRotation;
+        while (blockRotation < 0.0) blockRotation += 360.0;
+        while (blockRotation >= 360.0) blockRotation -= 360.0;
     }
 
     std::vector<Point2D> BlockInsert::getGripPoints() const {
-        return {insertPoint};
+        // Por ahora, el grip principal es el punto de inserción para mover el bloque completo
+        std::vector<Point2D> grips = {insertPoint};
+        
+        // Opcional: Si quieres que se puedan seleccionar grips internos, 
+        // aquí podrías iterar y transformar los getGripPoints() de las entidades.
+        // Para mantenerlo limpio y rápido, el punto de inserción es el estándar.
+        return grips;
     }
 
     std::vector<Point2D> BlockInsert::getSnapPoints() const {
@@ -117,7 +132,7 @@ namespace cad {
             blockScale = other->blockScale;
             blockRotation = other->blockRotation;
             layerName = other->layerName;
-            id = other->id; // Copiar el mismo ID, o generar uno nuevo si es necesario
+            id = other->id;
         }
     }
 
