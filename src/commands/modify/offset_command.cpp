@@ -14,13 +14,55 @@ namespace cad {
     namespace {
         constexpr double PI = 3.14159265358979323846;
     }
+    
+    //1. INICIALIZACIÓN DE LA VARIABLE ESTÁTICA (Valor por defecto real)
+    double OffsetCommand::distance_ = 10.0;
+
+    // Helper para formatear números bonito (ej: "10.00")
+    std::string formatDouble(double val) {
+        std::ostringstream oss;
+        oss << std::fixed << std::setprecision(2) << val;
+        return oss.str();
+    }
 
     OffsetCommand::OffsetCommand() {
-        statusMessage_ = "DESPLAZAR | Distancia (número) o dos puntos:";
+        // Asumimos que distance_ se inicializa a 10.0 en el .hpp
+        statusMessage_ = "DESPLAZAR | Especificar distancia <" + formatDouble(distance_) + "> o [Puntos]:";
     }
 
     void OffsetCommand::execute(const std::string& input, Engine& engine) {
-        // 1. Intentar parsear como coordenada "x,y"
+        
+        // ============================================================
+        // PASO 1: MANEJAR "ENTER" (VALOR POR DEFECTO)
+        // ============================================================
+        if (input.empty()) {
+            if (step_ == Step::WaitingDistance) {
+                // El usuario pulsó Enter sin escribir nada. 
+                // Usamos la distancia que ya tiene la variable (default o último valor usado).
+                hasDistance_ = true;
+                step_ = Step::WaitingEntity;
+                statusMessage_ = "DESPLAZAR | Usando distancia <" + formatDouble(distance_) + ">. Seleccionar entidad:";
+                return;
+            }
+            else if (step_ == Step::WaitingDistancePoint2) {
+                // El usuario empezó a medir por puntos pero se arrepintió y pulsó Enter.
+                // Volvemos a pedir distancia numérica.
+                step_ = Step::WaitingDistance;
+                statusMessage_ = "DESPLAZAR | Especificar distancia <" + formatDouble(distance_) + "> o [Puntos]:";
+                return;
+            }
+            else if (step_ == Step::WaitingEntity || step_ == Step::WaitingSide) {
+                // Si ya tenemos la entidad y el usuario pulsa Enter, termina el comando (estándar CAD).
+                finished_ = true;
+                statusMessage_ = "DESPLAZAR | Comando terminado.";
+                return;
+            }
+        }
+
+        // ============================================================
+        // PASO 2: Intentar parsear como coordenada "x,y" 
+        // (Útil si el usuario quiere definir el punto de distancia por teclado)
+        // ============================================================
         std::istringstream iss(input);
         double x, y;
         char comma;
@@ -30,38 +72,43 @@ namespace cad {
             return;
         }
 
-        // 2. Intentar parsear como número (distancia)
-        // Permitimos introducir la distancia por teclado en cualquiera de las dos fases de distancia
-        if (step_ == Step::WaitingDistance || step_ == Step::WaitingDistancePoint2) {
+        // ============================================================
+        // PASO 3: Intentar parsear como número (distancia por teclado)
+        // ============================================================
+        if (step_ == Step::WaitingDistance) {
             try {
                 double value = std::stod(input);
                 if (value >= 0) {
-                    distance_ = value;
+                    distance_ = value; // Actualizamos el valor por defecto para la próxima vez
                     hasDistance_ = true;
                     step_ = Step::WaitingEntity;
                     statusMessage_ = "DESPLAZAR | Seleccionar entidad a desplazar:";
-                    return; // Salimos temprano porque ya se resolvió
+                    return; 
+                } else {
+                    statusMessage_ = "DESPLAZAR | La distancia debe ser >= 0. Nueva distancia <" + formatDouble(distance_) + ">:";
+                    return;
                 }
             } catch (...) {
-                // Si no es un número válido, ignoramos y dejamos que el mensaje de error final lo maneje
+                // Si no es un número, caemos al mensaje de error final
             }
         }
         
-        statusMessage_ = "DESPLAZAR | Formato no válido. Usa un número o coordenadas x,y.";
+        // Si llegamos aquí, el formato no fue reconocido
+        statusMessage_ = "DESPLAZAR | Formato no válido. Usa un número, coordenadas x,y, o pulsa Enter para usar <" + formatDouble(distance_) + ">.";
     }
 
     void OffsetCommand::onPoint(const Point2D& point, Engine& engine) {
         if (step_ == Step::WaitingDistance) {
-            // Primer punto para calcular distancia
+            // Primer punto para calcular distancia por ratón
             firstPoint_ = point;
-            step_ = Step::WaitingDistancePoint2; // <<< CORRECCIÓN CLAVE: Cambiamos el estado
+            step_ = Step::WaitingDistancePoint2;
             statusMessage_ = "DESPLAZAR | Segundo punto para definir distancia:";
         }
         else if (step_ == Step::WaitingDistancePoint2) {
-            // Segundo punto: calcular distancia
+            // Segundo punto: calcular distancia geométrica
             double dx = point.x - firstPoint_.x;
             double dy = point.y - firstPoint_.y;
-            distance_ = std::sqrt(dx * dx + dy * dy);
+            distance_ = std::hypot(dx, dy); // Más limpio que sqrt(dx*dx + dy*dy)
             hasDistance_ = true;
             step_ = Step::WaitingEntity;
             statusMessage_ = "DESPLAZAR | Seleccionar entidad a desplazar:";
@@ -94,10 +141,10 @@ namespace cad {
             // Crear entidad desplazada
             createOffsetEntity(selectedEntity_, point, engine);
             
-            // Resetear para permitir múltiples desplazamientos
+            // Resetear para permitir múltiples desplazamientos con la misma distancia
             selectedEntity_ = nullptr;
             step_ = Step::WaitingEntity;
-            statusMessage_ = "DESPLAZAR | Seleccionar otra entidad o ESC para terminar:";
+            statusMessage_ = "DESPLAZAR | Seleccionar otra entidad o Enter para terminar:";
         }
     }
 

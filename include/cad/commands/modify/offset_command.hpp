@@ -33,7 +33,7 @@ namespace cad {
             WaitingSide 
         };
         Step step_ = Step::WaitingDistance;
-        double distance_ = 0.0;
+        static double distance_;
         Entity* selectedEntity_ = nullptr;
         Point2D firstPoint_;
         

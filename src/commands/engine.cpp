@@ -327,7 +327,7 @@ namespace cad {
 	std::vector<std::string> Engine::getAllCommands() const {
 		return {"LINEA", "CIRCULO", "ARCO", "POLILINEA", "POLIGONO", "TRIANGULO", "TRIANGLE", "TRI", "ELIPSE", 
                 "COTA", "ACOTAR", "DIM", "DIST", "MEDIR", "MOVER", "COPIAR", "ROTAR", "ESCALAR", "SIMETRIA", 
-                "RECORTAR", "ALARGAR", "EXTEND", "OFFSET", "FILLET", "EMPALME", "CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", 
+                "RECORTAR", "ALARGAR", "EXTEND", "OFFSET","DESPLAZAR", "FILLET", "EMPALME", "CHAFLAN", "CHAMFER", "ARRAY", "MATRIZ", 
                 "STRETCH", "ESTIRAR", "BLOQUE", "BLOCK", "INSERTAR", "INSERT", "BORRAR", "CAPA", "CAPA COLOR [NOMBRE]", "AYUDA", 
                 "GUARDAR", "CARGAR", "DESHACER", "REHACER", "GRID", "REJILLA", "AREA", "LISTA", "Q", "QUIT", "IMAGEN", "IMAGE",
                 "SALIR", "UNDO", "REDO", "AXIS", "EJES", "TEXT", "TEXTO", "NEW", "NUEVO", "CONFIRM_NEW", "OPEN", "ABRIR",
