@@ -2,6 +2,8 @@
 #pragma once
 #include "../entity.hpp"
 #include "../../document/block.hpp"
+#include "cad/core/geometry/rect.hpp"
+#include <SFML/Graphics.hpp>
 
 namespace cad {
 
@@ -25,6 +27,7 @@ namespace cad {
             const sf::Color& color, float viewScale) const override;
     
         bool isNear(const Point2D& p, double tolerance) const override;
+        Rect getBoundingBox() const override;
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         

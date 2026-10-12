@@ -1,5 +1,6 @@
 #pragma once
 #include "point.hpp"
+#include "rect.hpp"
 #include <string>
 #include <vector>
 #include <memory>
@@ -42,6 +43,8 @@ public:
     virtual void copyFrom(const Entity& src) = 0;
 
     virtual void update(const class Document& doc) {} 
+
+    virtual Rect getBoundingBox() const = 0;
 
     virtual nlohmann::json toJson() const = 0;
     static std::unique_ptr<Entity> fromJson(const nlohmann::json& j);

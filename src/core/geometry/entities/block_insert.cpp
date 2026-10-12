@@ -56,6 +56,32 @@ namespace cad {
         return false;
     }
 
+    Rect BlockInsert::getBoundingBox() const {
+        if (!definition || definition->entities.empty()) {
+            return Rect(insertPoint.x, insertPoint.y, insertPoint.x, insertPoint.y);
+        }
+        
+        double minX = std::numeric_limits<double>::max();
+        double minY = std::numeric_limits<double>::max();
+        double maxX = std::numeric_limits<double>::lowest();
+        double maxY = std::numeric_limits<double>::lowest();
+
+        // Nota: Para una implementación 100% precisa con rotación, habría que rotar los puntos.
+        // Para mantener el rendimiento alto en el culling, usamos una aproximación conservadora 
+        // basada en la escala y el punto de inserción.
+        double maxDim = 0;
+        for(const auto& e : definition->entities) {
+            Rect childBox = e->getBoundingBox();
+            double w = (childBox.maxX - childBox.minX) * blockScale;
+            double h = (childBox.maxY - childBox.minY) * blockScale;
+            maxDim = std::max(maxDim, std::max(w, h));
+        }
+        
+        // Caja conservadora alrededor del insertPoint
+        return Rect(insertPoint.x - maxDim, insertPoint.y - maxDim, 
+                    insertPoint.x + maxDim, insertPoint.y + maxDim);
+    }
+
     void BlockInsert::move(double dx, double dy) {
         insertPoint.x += dx;
         insertPoint.y += dy;

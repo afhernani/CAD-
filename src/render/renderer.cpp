@@ -93,26 +93,29 @@ namespace cad {
     }
 
     void Renderer::drawEntities(sf::RenderWindow& window, const View& view, Engine& engine) const {
+        // 1. Obtener los límites visibles del mundo (Viewport Culling)
+        Rect viewportBounds = view.getVisibleWorldBounds();
 
-        // 1. Actualizar entidades asociativas ANTES de dibujar
-        for (auto& entity : engine.doc.entities) {
-            entity->update(engine.doc); 
-        }
+        // 2. Crear la lambda de conversión localmente (como en el resto del código)
+        auto w2s = [&](double x, double y) {
+            return view.worldToScreen(x, y);
+        };
 
         for (const auto& entity : engine.doc.entities) {
+            // >>> FILTRO DE CAPA <<<
             const Layer* layer = engine.doc.getLayer(entity->layerName);
             if (!layer || !layer->visible || layer->frozen) continue;
-            
-            sf::Color drawColor = layer->color;
-            
-            // >>> AÑADIR ESTO: Feedback visual de capa bloqueada <<<
-            if (layer->locked) {
-                drawColor.a = 100; // Atenuar al ~40% de opacidad
+
+            // >>> VIEWPORT CULLING: La magia ocurre aquí <<<
+            if (!entity->getBoundingBox().intersects(viewportBounds)) {
+                continue; // ¡Saltamos el draw() completamente!
             }
 
-            // Lambda para transformar coordenadas usando View
-            auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
-            entity->draw(window, w2s, drawColor, view.getScale());
+            // Si llegamos aquí, la entidad es visible. La dibujamos.
+            sf::Color color = layer ? layer->color : sf::Color::White;
+            
+            // Usamos la lambda w2s que acabamos de crear
+            entity->draw(window, w2s, color, view.getScale());
         }
     }
 

@@ -183,6 +183,22 @@ namespace cad {
         return (d1 <= tolerance || d2 <= tolerance || d3 <= tolerance);
     }
 
+    Rect Dimension::getBoundingBox() const {
+        double minX = std::min({p1.x, p2.x, location.x});
+        double minY = std::min({p1.y, p2.y, location.y});
+        double maxX = std::max({p1.x, p2.x, location.x});
+        double maxY = std::max({p1.y, p2.y, location.y});
+        
+        // Si tiene p3 (cotas angulares o alineadas), incluirlo también
+        // (Ajusta esto si tu clase Dimension tiene un flag o usa p3 siempre)
+        // minX = std::min(minX, p3.x); minY = std::min(minY, p3.y);
+        // maxX = std::max(maxX, p3.x); maxY = std::max(maxY, p3.y);
+        
+        // Añadir un pequeño margen para el texto y las flechas
+        double margin = 5.0 * 2.0; 
+        return Rect(minX - margin, minY - margin, maxX + margin, maxY + margin);
+    }
+
     void Dimension::move(double dx, double dy) {
         p1.x += dx; p1.y += dy;
         p2.x += dx; p2.y += dy;

@@ -75,6 +75,10 @@ namespace cad {
                 point.y >= minY - tolerance && point.y <= maxY + tolerance);
     }
 
+    Rect ImageEntity::getBoundingBox() const {
+        return Rect(insertPoint.x, insertPoint.y, insertPoint.x + width, insertPoint.y + height);
+    }
+
     void ImageEntity::move(double dx, double dy) {
         insertPoint.x += dx;
         insertPoint.y += dy;

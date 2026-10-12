@@ -1,6 +1,7 @@
 // include/cad/core/geometry/entities/dimension.hpp
 #pragma once
 #include "../entity.hpp"
+#include "cad/core/geometry/rect.hpp"
 
 namespace cad {
 
@@ -21,6 +22,7 @@ public:
     void draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
              const sf::Color& color, float viewScale) const override;
     bool isNear(const Point2D& point, double tolerance) const override;
+    Rect getBoundingBox() const override;
     void move(double dx, double dy) override;
     std::unique_ptr<Entity> clone() const override;
 

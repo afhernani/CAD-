@@ -43,6 +43,26 @@ namespace cad {
         return false;
     }
 
+    Rect Polygon::getBoundingBox() const {
+        if (points.empty()) {
+            return Rect(0, 0, 0, 0);
+        }
+
+        double minX = points[0].x;
+        double minY = points[0].y;
+        double maxX = points[0].x;
+        double maxY = points[0].y;
+
+        for (const auto& pt : points) {
+            minX = std::min(minX, pt.x);
+            minY = std::min(minY, pt.y);
+            maxX = std::max(maxX, pt.x);
+            maxY = std::max(maxY, pt.y);
+        }
+
+        return Rect(minX, minY, maxX, maxY);
+    }
+
     void Polygon::move(double dx, double dy) {
         for (auto& p : points) { p.x += dx; p.y += dy; }
         center.x += dx; center.y += dy;

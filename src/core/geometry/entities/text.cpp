@@ -35,6 +35,19 @@ namespace cad {
                 point.y >= minY && point.y <= maxY);
     }
 
+    Rect Text::getBoundingBox() const {
+        // Estimación del ancho: cada carácter ocupa aprox. 0.6 * altura
+        double estimatedWidth = content.length() * (height * 0.6);
+        double estimatedHeight = height;
+
+        // Asumimos que 'position' es la esquina inferior izquierda del texto
+        // (Ajusta esto si tu texto está centrado o arriba)
+        return Rect(
+            position.x, position.y,
+            position.x + estimatedWidth, position.y + estimatedHeight
+        );
+    }
+
     void Text::move(double dx, double dy) {
         position.x += dx;
         position.y += dy;

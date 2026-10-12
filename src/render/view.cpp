@@ -1,4 +1,7 @@
 #include "cad/render/view.hpp"
+#include "cad/core/geometry/rect.hpp"
+#include "cad/core/constants.hpp" // Para WINDOW_WIDTH, MENU_HEIGHT, etc.
+#include <algorithm>
 
 namespace cad {
 
@@ -31,8 +34,23 @@ namespace cad {
     }
 
     void View::pan(const sf::Vector2f& deltaScreen) {
-        panX_ += (deltaScreen.x / scale_);
-        panY_ -= (deltaScreen.y / scale_); // Y invertida en SFML
+            panX_ += (deltaScreen.x / scale_);
+            panY_ -= (deltaScreen.y / scale_); // Y invertida en SFML
+        }
+
+        Rect View::getVisibleWorldBounds() const {
+        // Calculamos las esquinas de la zona de dibujo (Canvas) en píxeles
+        float screenLeft = 0.0f;
+        float screenTop = static_cast<float>(MENU_HEIGHT + TOOLBAR_HEIGHT);
+        float screenRight = static_cast<float>(WINDOW_WIDTH);
+        float screenBottom = static_cast<float>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT);
+
+        // Convertimos las esquinas a coordenadas del mundo
+        Point2D worldTopLeft = screenToWorld(screenLeft, screenTop);
+        Point2D worldBottomRight = screenToWorld(screenRight, screenBottom);
+
+        // Devolvemos el Rect (asegurando min/max correctos por si el zoom invierte ejes)
+        return Rect(worldTopLeft.x, worldTopLeft.y, worldBottomRight.x, worldBottomRight.y);
     }
 
 } // namespace cad

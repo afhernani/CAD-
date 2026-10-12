@@ -169,6 +169,45 @@ namespace cad {
         return false;
     }
 
+    Rect Hatch::getBoundingBox() const {
+        // Valores iniciales extremos
+        double minX = std::numeric_limits<double>::max();
+        double minY = std::numeric_limits<double>::max();
+        double maxX = std::numeric_limits<double>::lowest();
+        double maxY = std::numeric_limits<double>::lowest();
+
+        bool hasPoints = false;
+
+        // 1. Evaluar el contorno exterior (points)
+        for (const auto& pt : points) {
+            minX = std::min(minX, pt.x);
+            minY = std::min(minY, pt.y);
+            maxX = std::max(maxX, pt.x);
+            maxY = std::max(maxY, pt.y);
+            hasPoints = true;
+        }
+
+        // 2. Evaluar todas las islas interiores (islands)
+        for (const auto& island : islands) {
+            for (const auto& pt : island) {
+                minX = std::min(minX, pt.x);
+                minY = std::min(minY, pt.y);
+                maxX = std::max(maxX, pt.x);
+                maxY = std::max(maxY, pt.y);
+                hasPoints = true;
+            }
+        }
+
+        // Si el hatch está vacío (no debería pasar, pero por seguridad), devolvemos una caja nula
+        if (!hasPoints) {
+            return Rect(0.0, 0.0, 0.0, 0.0);
+        }
+
+        // Opcional: Añadir un pequeño margen para asegurar que el grosor de las líneas del patrón no se corte
+        double margin = 1.0; 
+        return Rect(minX - margin, minY - margin, maxX + margin, maxY + margin);
+    }
+
     void Hatch::move(double dx, double dy) {
         for (auto& p : points) { p.x += dx; p.y += dy; }
         for (auto& island : islands) {

@@ -1,6 +1,8 @@
 // include/cad/core/geometry/entities/line.hpp
 #pragma once
 #include "../entity.hpp"
+#include "cad/core/geometry/rect.hpp"
+#include <SFML/Graphics.hpp>
 
 namespace cad {
 
@@ -13,6 +15,7 @@ namespace cad {
                  const sf::Color& color, float viewScale) const override;
         // Metodos virtuales:
         bool isNear(const Point2D& point, double tolerance) const override;
+        Rect getBoundingBox() const override; 
         void move(double dx, double dy) override;
         std::unique_ptr<Entity> clone() const override;
         void rotate(const Point2D& center, double angleDeg) override;

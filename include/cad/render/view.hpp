@@ -1,6 +1,7 @@
 #pragma once
 #include <SFML/Graphics.hpp>
 #include "cad/core/geometry/point.hpp"
+#include "cad/core/geometry/rect.hpp"
 
 namespace cad {
 
@@ -25,6 +26,8 @@ public:
     // >>> NUEVO: Gestión del canvasHeight <<<
     void setCanvasHeight(float height) { canvasHeight_ = height; }
     float getCanvasHeight() const { return canvasHeight_; }
+
+    Rect getVisibleWorldBounds() const;
 
 private:
     float scale_ = 1.0f;

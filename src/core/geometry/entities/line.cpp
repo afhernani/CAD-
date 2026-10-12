@@ -125,5 +125,8 @@ namespace cad {
         return {{"type", "Line"}, {"p1", {{"x", p1.x}, {"y", p1.y}}}, {"p2", {{"x", p2.x}, {"y", p2.y}}}, {"layer", layerName},{"id", id}};
     }
 
+    Rect Line::getBoundingBox() const {
+        return Rect(p1.x, p1.y, p2.x, p2.y);
+    }
 
 }
