@@ -158,8 +158,11 @@ namespace cad {
                             std::to_string(rows_) + "x" + std::to_string(cols_) + ").";
         }
         else if (arrayType_ == Type::Polar && hasPolarCenter_) {
-            double angleStep = polarAngle_ / polarCount_;
-            if (polarAngle_ == 360.0) angleStep = 360.0 / polarCount_;
+            // Manejo robusto del ángulo (positivo = antihorario, negativo = horario)
+            double angleStep = (polarCount_ > 1) ? (polarAngle_ / (polarCount_ - 1)) : 0.0;
+            if (std::abs(polarAngle_) == 360.0) {
+                angleStep = polarAngle_ / polarCount_;
+            }
             
             for (int i = 1; i < polarCount_; ++i) {
                 double angle = i * angleStep;
@@ -235,8 +238,15 @@ namespace cad {
                 double angle = polarAngle_;
                 
                 if (count > 1 && angle != 0.0) {
-                    double angleStep = angle / count;
-                    for (int i = 1; i < count; ++i) {
+                    double angleStep = (count > 1) ? (angle / (count - 1)) : 0.0;
+                    if (std::abs(angle) == 360.0) angleStep = angle / count;
+
+                    // >>> TRUCO PRO DE RENDIMIENTO <<<
+                    // Limitamos el preview visual a 100 copias máximo para evitar congelamientos
+                    // si el usuario escribe "1000" antes de dar Enter. La creación real sí hará 1000.
+                    int previewCount = std::min(count, 100); 
+
+                    for (int i = 1; i < previewCount; ++i) {
                         double ang = i * angleStep;
                         for (Entity* e : selectedEntities_) {
                             auto ghost = e->clone();
