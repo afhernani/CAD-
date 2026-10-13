@@ -81,10 +81,31 @@ namespace cad {
         // static constexpr float CANVAS_HEIGHT = static_cast<float>(
         //     WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT);
 
-        // --- Métodos ---
+        // --- Métodos Principales ---
         void handleEvents();
         void render();
         void updateEntityList();
+
+        // --- Refactorización de Eventos (Dispatchers) ---
+        void handleWindowEvent(const sf::Event& event);
+        void handleMouseMovement(const sf::Event& event);
+        void handleMouseScroll(const sf::Event& event);
+        void handleMouseButton(const sf::Event& event);
+        void handleKeyboardInput(const sf::Event& event);
+
+        // --- Helpers de Detección de UI (Hit Testing) ---
+        bool isOverLayerPanel(int mx, int my) const;
+        bool isOverPropertiesPanel(int mx, int my) const;
+        bool isOverCommandConsole(int mx, int my) const;
+        bool isOverToolbar(int mx, int my) const;
+        bool isOverCanvas(int mx, int my) const;
+
+        // --- Helpers de Lógica de Negocio. Métodos auxiliares para refactorizar handleEvents ---
+        void handleToolbarClick(int mx, int my);
+        void handleCanvasClick(const Point2D& worldPoint);
+        void processTextInput();
+        void handleKeyboardNavigation(const sf::Event& event);
+        void changeLayerColor(const std::string& layerName);
 
         // Helper UTF-8
         sf::String toSfString(const std::string& utf8Str) {
@@ -94,12 +115,6 @@ namespace cad {
         bool isSelectingByWindow_ = false;
         Point2D selectionStartPoint_;
         Point2D selectionEndPoint_;
-        // >>> NUEVOS: Métodos auxiliares para refactorizar handleEvents <<<
-        void handleToolbarClick(int mx, int my);
-        void handleCanvasClick(const Point2D& worldPoint);
-        void processTextInput();
-        void handleKeyboardNavigation(const sf::Event& event);
-        void changeLayerColor(const std::string& layerName);
         
         // Constante compartida
         static constexpr int CHARS_PER_PIXEL_FACTOR = 9;

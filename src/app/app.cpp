@@ -185,370 +185,295 @@ namespace cad {
         std::cout << "Programa terminado." << std::endl;
     }
 
-    // --- Handle Events ---
+    
+    // =========================================================================
+    // 1. DISPATCHER PRINCIPAL (Limpio y legible)
+    // =========================================================================
     void App::handleEvents() {
         sf::Event event;
         while (window_.pollEvent(event)) {
-            if (event.type == sf::Event::Closed) {
-                window_.setMouseCursorVisible(true);
-                window_.close();
+            handleWindowEvent(event);
+            handleMouseMovement(event);
+            handleMouseScroll(event);
+            handleMouseButton(event);
+            handleKeyboardInput(event);
+        }
+    }
+
+    // =========================================================================
+    // 2. HELPERS DE DETECCIÓN DE UI (Eliminan magia de números en el código)
+    // =========================================================================
+    bool App::isOverLayerPanel(int mx, int my) const {
+        if (!showLayerPanel_) return false;
+        return (mx >= 0 && mx < 280 && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
+    }
+
+    bool App::isOverPropertiesPanel(int mx, int my) const {
+        if (!showEntityListPanel_) return false;
+        return (mx >= WINDOW_WIDTH - 320 && mx < WINDOW_WIDTH && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
+    }
+
+    bool App::isOverCommandConsole(int mx, int my) const {
+        return (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
+    }
+
+    bool App::isOverToolbar(int mx, int my) const {
+        return (my >= MENU_HEIGHT && my < MENU_HEIGHT + TOOLBAR_HEIGHT);
+    }
+
+    bool App::isOverCanvas(int mx, int my) const {
+        return (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT &&
+                !isOverLayerPanel(mx, my) && !isOverPropertiesPanel(mx, my));
+    }
+
+    // =========================================================================
+    // 3. PROCESADORES DE EVENTOS ESPECÍFICOS
+    // =========================================================================
+
+    void App::handleWindowEvent(const sf::Event& event) {
+        if (event.type == sf::Event::Closed) {
+            window_.setMouseCursorVisible(true);
+            window_.close();
+        }
+    }
+
+    void App::handleMouseMovement(const sf::Event& event) {
+        if (event.type != sf::Event::MouseMoved) return;
+
+        int mx = event.mouseMove.x;
+        int my = event.mouseMove.y;
+        currentMouseScreenPos_ = {mx, my};
+
+        // Scroll de consola arrastrando
+        if (isDraggingCommandScroll_) {
+            int deltaY = dragStartY_ - my;
+            int lineHeight = 20;
+            int linesMoved = deltaY / lineHeight;
+            int totalLines = commandHistory_.size() + 1;
+            int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
+            int maxOffset = std::max(0, totalLines - maxLines);
+            commandScrollOffset_ = std::max(0, std::min(maxOffset, dragStartOffset_ + linesMoved));
+            return;
+        }
+
+        // Pan arrastrando
+        if (isPanning_) {
+            float dx = static_cast<float>(mx) - panStartMouse_.x;
+            float dy = static_cast<float>(my) - panStartMouse_.y;
+            view_.pan({dx, dy});
+            panStartMouse_ = {static_cast<float>(mx), static_cast<float>(my)};
+            return;
+        }
+
+        // Actualizar punto final de selección por ventana
+        if (isSelectingByWindow_) {
+            selectionEndPoint_ = currentMouseWorldPos_;
+            return;
+        }
+
+        // Lógica del Canvas (Snaps y Grips)
+        if (isOverCanvas(mx, my)) {
+            window_.setMouseCursorVisible(false);
+            currentMouseWorldPos_ = view_.screenToWorld(static_cast<float>(mx), static_cast<float>(my));
+            lastSnapResult_ = snapEngine_.findSnap(engine_.doc.entities, currentMouseWorldPos_, view_.getScale());
+
+            if (engine_.currentMode == Mode::GRIP_EDIT && engine_.activeGripEntity) {
+                Point2D targetPos = lastSnapResult_.active ? lastSnapResult_.point : currentMouseWorldPos_;
+                engine_.activeGripEntity->moveGrip(engine_.activeGripIndex, targetPos);
             }
+        } else {
+            window_.setMouseCursorVisible(true);
+            if (cursorsLoaded_) window_.setMouseCursor(arrowCursor_);
+        }
+    }
 
-            // --- MOVIMIENTO DEL RATÓN ---
-            if (event.type == sf::Event::MouseMoved) {
-                int mx = event.mouseMove.x;
-                int my = event.mouseMove.y;
-                currentMouseScreenPos_ = {mx, my};
+    void App::handleMouseScroll(const sf::Event& event) {
+        if (event.type != sf::Event::MouseWheelScrolled) return;
 
-                if (isDraggingCommandScroll_) {
-                    int deltaY = dragStartY_ - my;
-                    int lineHeight = 20;
-                    int linesMoved = deltaY / lineHeight;
-                    int totalLines = commandHistory_.size() + 1;
-                    int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
-                    int maxOffset = std::max(0, totalLines - maxLines);
-                    commandScrollOffset_ = std::max(0, std::min(maxOffset, dragStartOffset_ + linesMoved));
-                }
+        int mx = event.mouseWheelScroll.x;
+        int my = event.mouseWheelScroll.y;
+        float delta = event.mouseWheelScroll.delta;
 
-                // 1. Comprobar si el ratón está sobre el Panel de Capas
-                bool isOverLayerPanel = false;
-                if (showLayerPanel_) {
-                    const int panelWidth = 280;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-                    const int panelX = 0;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
-                        isOverLayerPanel = true;
-                    }
-                }
+        // 1. Panel de Capas
+        if (isOverLayerPanel(mx, my)) {
+            int totalLayers = engine_.doc.layers.size();
+            int maxLines = (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT - 75) / 24;
+            int maxOffset = std::max(0, totalLayers - maxLines);
+            layerPanelScrollOffset_ = (delta > 0) ? std::max(0, layerPanelScrollOffset_ - 1) : std::min(maxOffset, layerPanelScrollOffset_ + 1);
+            return;
+        }
 
-                // 2. Comprobar si el ratón está sobre el Panel de Propiedades (derecha)
-                bool isOverPropertiesPanel = false;
-                if (showEntityListPanel_) {
-                    const int panelWidth = 320;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-                    const int panelX = WINDOW_WIDTH - panelWidth;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
-                        isOverPropertiesPanel = true;
-                    }
-                }
+        // 2. Panel de Propiedades
+        if (isOverPropertiesPanel(mx, my)) {
+            int totalLines = 1;
+            for (char c : entityListText_) if (c == '\n') totalLines++;
+            int maxLines = (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT - 100) / 16;
+            int maxOffset = std::max(0, totalLines - maxLines);
+            entityListScrollOffset_ = (delta > 0) ? std::max(0, entityListScrollOffset_ - 1) : std::min(maxOffset, entityListScrollOffset_ + 1);
+            return;
+        }
 
-                // 3. Definir isInCanvas excluyendo AMBOS paneles
-                bool isInCanvas = (my >= static_cast<int>(MENU_HEIGHT + TOOLBAR_HEIGHT) &&
-                                my < static_cast<int>(WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) &&
-                                !isOverLayerPanel && !isOverPropertiesPanel);
+        // 3. Consola de Comandos
+        if (isOverCommandConsole(mx, my)) {
+            int totalLines = commandHistory_.size() + 1;
+            int maxLines = (COMMAND_HEIGHT - 10) / 20;
+            int maxOffset = std::max(0, totalLines - maxLines);
+            commandScrollOffset_ = (delta > 0) ? std::max(0, commandScrollOffset_ - 1) : std::min(maxOffset, commandScrollOffset_ + 1);
+            return;
+        }
 
+        // 4. Canvas (Zoom)
+        if (isOverCanvas(mx, my)) {
+            float zoomFactor = (delta > 0) ? 1.1f : (1.0f / 1.1f);
+            view_.zoom(zoomFactor, {static_cast<float>(mx), static_cast<float>(my)});
+            engine_.viewScale = view_.getScale();
+        }
+    }
 
-                if (isInCanvas) {
-                    window_.setMouseCursorVisible(false);
-                    currentMouseWorldPos_ = view_.screenToWorld(
-                        static_cast<float>(mx), static_cast<float>(my));
-                    lastSnapResult_ = snapEngine_.findSnap(
-                        engine_.doc.entities, currentMouseWorldPos_, view_.getScale());
+    void App::handleMouseButton(const sf::Event& event) {
+        if (event.type != sf::Event::MouseButtonPressed && event.type != sf::Event::MouseButtonReleased) return;
 
-                    if (engine_.currentMode == Mode::GRIP_EDIT && engine_.activeGripEntity) {
-                        Point2D targetPos = lastSnapResult_.active ?
-                            lastSnapResult_.point : currentMouseWorldPos_;
-                        engine_.activeGripEntity->moveGrip(engine_.activeGripIndex, targetPos);
-                    }
-                } else {
-                    window_.setMouseCursorVisible(true);
-                    if (cursorsLoaded_) window_.setMouseCursor(arrowCursor_);
-                }
-            }
+        int mx = event.mouseButton.x;
+        int my = event.mouseButton.y;
+        bool isLeft = (event.mouseButton.button == sf::Mouse::Left);
+        bool isRight = (event.mouseButton.button == sf::Mouse::Right);
 
-            // --- SCROLL ---
-            if (event.type == sf::Event::MouseWheelScrolled) {
-                int mx = event.mouseWheelScroll.x;
-                int my = event.mouseWheelScroll.y;
-
-                // 1. Scroll del Panel de Capas (Prioridad si el ratón está encima)
-                if (showLayerPanel_) {
-                    const int panelWidth = 280;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-                    const int panelX = 0;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                    
-                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
-                        int totalLayers = engine_.doc.layers.size();
-                        int lineHeight = 24;
-                        int maxHeight = panelHeight - 75;
-                        int maxLines = maxHeight / lineHeight;
-                        int maxOffset = std::max(0, totalLayers - maxLines);
-                        
-                        if (event.mouseWheelScroll.delta > 0)
-                            layerPanelScrollOffset_ = std::max(0, layerPanelScrollOffset_ - 1);
-                        else
-                            layerPanelScrollOffset_ = std::min(maxOffset, layerPanelScrollOffset_ + 1);
-                        
-                        return; // Importante: salir para no hacer zoom en el canvas
-                    }
-                }
-                // 2. Scroll del Panel de Entidades (si el ratón esta encima)
-                if (showEntityListPanel_) {
-                    const int panelWidth = 350;
-                    const int panelX = WINDOW_WIDTH - panelWidth;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT;
-                    
-                    if (mx >= panelX && mx < WINDOW_WIDTH && my >= panelY && my < panelY + panelHeight) {
-                        // Calcular el máximo offset basado en el texto de propiedades
-                        int lineHeight = 16;
-                        int btnHeight = 35;
-                        int maxHeight = panelHeight - 55 - btnHeight - 10;
-                        int maxLines = maxHeight / lineHeight;
-                        
-                        // Contar líneas del texto de propiedades
-                        int totalLines = 1;
-                        for (char c : entityListText_) {
-                            if (c == '\n') totalLines++;
-                        }
-                        int maxOffset = std::max(0, totalLines - maxLines);
-                        
-                        if (event.mouseWheelScroll.delta > 0)
-                            entityListScrollOffset_ = std::max(0, entityListScrollOffset_ - 1);
-                        else
-                            entityListScrollOffset_ = std::min(maxOffset, entityListScrollOffset_ + 1);
-                        
-                        return;
-                    }
-                }
-                // 3. Scroll de la consola de comandos
-                if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
-                    my < WINDOW_HEIGHT - STATUS_HEIGHT) {
-                    int lineHeight = 20;
-                    int maxLines = (COMMAND_HEIGHT - 10) / lineHeight;
-                    int totalLines = commandHistory_.size() + 1;
-                    int maxOffset = std::max(0, totalLines - maxLines);
-                    if (event.mouseWheelScroll.delta > 0)
-                        commandScrollOffset_ = std::max(0, commandScrollOffset_ - 1);
-                    else
-                        commandScrollOffset_ = std::min(maxOffset, commandScrollOffset_ + 1);
-                }
-                // 4. Zoom en el Canvas (solo si no estamos en ningún panel)
-                if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT &&
-                    my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    float zoomFactor = (event.mouseWheelScroll.delta > 0) ? 1.1f : (1.0f / 1.1f);
-                    view_.zoom(zoomFactor, {static_cast<float>(mx), static_cast<float>(my)});
-                    engine_.viewScale = view_.getScale();
-                }
-            }
-
-            // --- PAN (Clic Derecho) ---
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Right) {
-                int my = event.mouseButton.y;
-                if (my > MENU_HEIGHT + TOOLBAR_HEIGHT &&
-                    my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    isPanning_ = true;
-                    panStartMouse_ = {static_cast<float>(event.mouseButton.x), static_cast<float>(event.mouseButton.y)};
-                }
-            }
-            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Right) {
+        // --- CLIC DERECHO (Pan) ---
+        if (isRight) {
+            if (event.type == sf::Event::MouseButtonPressed && isOverCanvas(mx, my)) {
+                isPanning_ = true;
+                panStartMouse_ = {static_cast<float>(mx), static_cast<float>(my)};
+            } else if (event.type == sf::Event::MouseButtonReleased) {
                 isPanning_ = false;
             }
+            return;
+        }
 
-            // --- SELECCIÓN POR VENTANA (Clic Izquierdo liberado) ---
-            if (event.type == sf::Event::MouseButtonReleased && event.mouseButton.button == sf::Mouse::Left) {
-                if (isSelectingByWindow_) {
-                    selectionEndPoint_ = currentMouseWorldPos_;
-                    
-                    auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y);
-                    auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y);
-                    double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
+        // --- CLIC IZQUIERDO PRESIONADO ---
+        if (isLeft && event.type == sf::Event::MouseButtonPressed) {
+            isDraggingCommandScroll_ = false;
 
-                    if (dragDistance > 5.0) {
-                        bool shiftPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || 
-                                            sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
-                        if (!shiftPressed) {
-                            engine_.selectedEntities.clear();
-                        }
-                        engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, true);
-                    } else {
-                        double tolerance = 5.0 / view_.getScale();
-                        Entity* clickedEntity = nullptr;
-                        for (auto& entity : engine_.doc.entities) {
-                            // >>> FILTRO DE SEGURIDAD: No seleccionar entidades de capas bloqueadas/congeladas <<<
-                            const Layer* layer = engine_.doc.getLayer(entity->layerName);
-                            if (!layer || !layer->visible || layer->frozen || layer->locked) continue;
-                            
-                            if (entity->isNear(selectionStartPoint_, tolerance)) {
-                                clickedEntity = entity.get();
-                                break;
-                            }
-                        }
+            // 1. Panel de Capas
+            if (isOverLayerPanel(mx, my) && my >= MENU_HEIGHT + TOOLBAR_HEIGHT + 65) {
+                int clickedRow = (my - (MENU_HEIGHT + TOOLBAR_HEIGHT + 65)) / 24 + layerPanelScrollOffset_;
+                int currentRow = 0;
+                std::string clickedLayerName = "";
+                for (auto const& [name, layer] : engine_.doc.layers) {
+                    if (currentRow == clickedRow) { clickedLayerName = name; break; }
+                    currentRow++;
+                }
 
-                        if (clickedEntity) {
-                            auto it = std::find(engine_.selectedEntities.begin(), 
-                                                engine_.selectedEntities.end(), 
-                                                clickedEntity);
-                            if (it != engine_.selectedEntities.end()) {
-                                engine_.selectedEntities.erase(it);
-                            } else {
-                                engine_.selectedEntities.push_back(clickedEntity);
-                            }
-                            // Actualizar el panel de propiedades
-                            if (showEntityListPanel_) {
-                                entityListText_ = engine_.getSelectedEntityProperties();
-                                entityListScrollOffset_ = 0;
-                            }
-                        } else {
-                            engine_.selectedEntities.clear();
-                            // Limpiar el panel si no hay selección
-                            if (showEntityListPanel_) {
-                                entityListText_ = engine_.getSelectedEntityProperties();
-                                entityListScrollOffset_ = 0;
-                            }
-                        }
+                if (!clickedLayerName.empty()) {
+                    if (mx >= 160 && mx < 180) { // Color
+                        sf::Color newColor = showColorDialog(engine_.doc.getLayer(clickedLayerName)->color);
+                        engine_.doc.setLayerColor(clickedLayerName, newColor);
+                        engine_.statusMessage = "Color de capa '" + clickedLayerName + "' actualizado.";
+                    } else if (mx >= 185 && mx < 205) { // Visible
+                        engine_.doc.setLayerVisibility(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->visible);
+                    } else if (mx >= 210 && mx < 230) { // Frozen
+                        engine_.doc.setLayerFrozen(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->frozen);
+                    } else if (mx >= 235 && mx < 255) { // Locked
+                        engine_.doc.setLayerLocked(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->locked);
+                    } else { // Nombre
+                        engine_.doc.setCurrentLayer(clickedLayerName);
+                        engine_.statusMessage = "Capa actual: " + clickedLayerName;
                     }
-                    isSelectingByWindow_ = false;
+                }
+                return; // Consumido por el panel
+            }
+
+            // 2. Panel de Propiedades (Botón Cambiar Capa)
+            if (showEntityListPanel_ && !engine_.selectedEntities.empty()) {
+                const int panelX = WINDOW_WIDTH - 320;
+                const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+                const int btnY = panelY + (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT) - 45;
+                
+                if (mx >= panelX + 10 && mx < panelX + 310 && my >= btnY && my < btnY + 35) {
+                    isTyping_ = true;
+                    inputBuffer_ = "CAPA ";
+                    engine_.statusMessage = "Escribe el nombre de la nueva capa y pulsa Enter:";
+                    commandScrollOffset_ = 0;
+                    return; // Consumido por el panel
                 }
             }
 
-            // --- PAN en movimiento ---
-            if (event.type == sf::Event::MouseMoved && isPanning_) {
-                float dx = static_cast<float>(event.mouseMove.x) - panStartMouse_.x;
-                float dy = static_cast<float>(event.mouseMove.y) - panStartMouse_.y;
-                view_.pan({dx, dy});
-                panStartMouse_ = {static_cast<float>(event.mouseMove.x), static_cast<float>(event.mouseMove.y)};
+            // 3. Consola, Toolbar o Canvas
+            if (isOverCommandConsole(mx, my)) {
+                isDraggingCommandScroll_ = true;
+                dragStartY_ = my;
+                dragStartOffset_ = commandScrollOffset_;
+            } else if (isOverToolbar(mx, my)) {
+                handleToolbarClick(mx, my);
+            } else if (isOverCanvas(mx, my)) {
+                handleCanvasClick(currentMouseWorldPos_);
             }
+            return;
+        }
 
-            // --- Actualizar punto final de selección por ventana ---
-            if (event.type == sf::Event::MouseMoved && isSelectingByWindow_) {
-                selectionEndPoint_ = currentMouseWorldPos_;
-            }
+        // --- CLIC IZQUIERDO LIBERADO (Selección por ventana) ---
+        if (isLeft && event.type == sf::Event::MouseButtonReleased && isSelectingByWindow_) {
+            selectionEndPoint_ = currentMouseWorldPos_;
+            auto startScreen = view_.worldToScreen(selectionStartPoint_.x, selectionStartPoint_.y);
+            auto endScreen = view_.worldToScreen(selectionEndPoint_.x, selectionEndPoint_.y);
+            double dragDistance = std::hypot(endScreen.x - startScreen.x, endScreen.y - startScreen.y);
 
-            // --- CLIC IZQUIERDO ---
-            if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
-                int mx = event.mouseButton.x;
-                int my = event.mouseButton.y;
-                isDraggingCommandScroll_ = false;
-
-                // 1. DETECTAR CLIC EN EL PANEL DE CAPAS
-                if (showLayerPanel_) {
-                    const int panelWidth = 280;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-                    const int panelX = 0;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-
-                    if (mx >= panelX && mx < panelX + panelWidth && my >= panelY && my < panelY + panelHeight) {
-                        // Ignorar cabeceras (primeros 55 píxeles)
-                        if (my >= panelY + 65) {
-                            int lineHeight = 24;
-                            int clickedRow = (my - (panelY + 65)) / lineHeight + layerPanelScrollOffset_;
-                            
-                            // Encontrar la capa correspondiente a esa fila
-                            int currentRow = 0;
-                            std::string clickedLayerName = "";
-                            for (auto const& [name, layer] : engine_.doc.layers) {
-                                if (currentRow == clickedRow) {
-                                    clickedLayerName = name;
-                                    break;
-                                }
-                                currentRow++;
-                            }
-
-                            if (!clickedLayerName.empty()) {
-                                // Determinar qué columna se clicó
-                                if (mx >= 160 && mx < 180) {
-                                    // Columna COLOR: Abrir diálogo de color
-                                    sf::Color currentColor = engine_.doc.getLayer(clickedLayerName)->color;
-                                    sf::Color newColor = showColorDialog(currentColor);
-                                    engine_.doc.setLayerColor(clickedLayerName, newColor);
-                                    engine_.statusMessage = "Color de capa '" + clickedLayerName + "' actualizado.";
-                                } 
-                                else if (mx >= 185 && mx < 205) {
-                                    // Columna V (Visible)
-                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->visible;
-                                    engine_.doc.setLayerVisibility(clickedLayerName, newState);
-                                } 
-                                else if (mx >= 210 && mx < 230) {
-                                    // Columna F (Frozen)
-                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->frozen;
-                                    engine_.doc.setLayerFrozen(clickedLayerName, newState);
-                                } 
-                                else if (mx >= 235 && mx < 255) {
-                                    // Columna L (Locked)
-                                    bool newState = !engine_.doc.getLayer(clickedLayerName)->locked;
-                                    engine_.doc.setLayerLocked(clickedLayerName, newState);
-                                }
-                                else {
-                                    // Clic en el nombre: establecer como capa actual
-                                    engine_.doc.setCurrentLayer(clickedLayerName);
-                                    engine_.statusMessage = "Capa actual: " + clickedLayerName;
-                                }
-                            }
-                        }
-                        continue; // ¡Importante! No procesar este clic como clic en el canvas
+            if (dragDistance > 5.0) {
+                bool shiftPressed = sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) || sf::Keyboard::isKeyPressed(sf::Keyboard::RShift);
+                if (!shiftPressed) engine_.selectedEntities.clear();
+                engine_.performWindowSelection(selectionStartPoint_, selectionEndPoint_, true);
+            } else {
+                double tolerance = 5.0 / view_.getScale();
+                Entity* clickedEntity = nullptr;
+                for (auto& entity : engine_.doc.entities) {
+                    const Layer* layer = engine_.doc.getLayer(entity->layerName);
+                    if (!layer || !layer->visible || layer->frozen || layer->locked) continue;
+                    if (entity->isNear(selectionStartPoint_, tolerance)) {
+                        clickedEntity = entity.get();
+                        break;
                     }
                 }
 
-                // 2. DETECTAR CLIC EN EL BOTÓN "CAMBIAR CAPA" DEL PANEL DE PROPIEDADES
-                if (showEntityListPanel_ && !engine_.selectedEntities.empty()) {
-                    const int panelWidth = 320;
-                    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-                    const int panelX = WINDOW_WIDTH - panelWidth;
-                    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                    const int btnHeight = 35;
-                    const int btnY = panelY + panelHeight - btnHeight - 10;
-
-                    // Comprobar si el clic está dentro del botón
-                    if (mx >= panelX + 10 && mx < panelX + panelWidth - 10 &&
-                        my >= btnY && my < btnY + btnHeight) {
-                        
-                        // Activar la línea de comandos y pre-llenar con "CAPA "
-                        isTyping_ = true;
-                        inputBuffer_ = "CAPA ";
-                        engine_.statusMessage = "Escribe el nombre de la nueva capa y pulsa Enter:";
-                        
-                        // Mover el cursor al final (SFML lo maneja, pero esto asegura el estado)
-                        commandScrollOffset_ = 0;
-                        continue; // No procesar este clic como clic en el canvas
-                    }
-                }
-
-                // Scroll de consola
-                if (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT &&
-                    my < WINDOW_HEIGHT - STATUS_HEIGHT) {
-                    isDraggingCommandScroll_ = true;
-                    dragStartY_ = my;
-                    dragStartOffset_ = commandScrollOffset_;
-                }
-                // Barra de herramientas
-                else if (my >= MENU_HEIGHT && my < MENU_HEIGHT + TOOLBAR_HEIGHT) {
-                    handleToolbarClick(mx, my);
-                }
-                // Canvas
-                else if (my >= MENU_HEIGHT + TOOLBAR_HEIGHT &&
-                        my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT) {
-                    handleCanvasClick(currentMouseWorldPos_);
+                if (clickedEntity) {
+                    auto it = std::find(engine_.selectedEntities.begin(), engine_.selectedEntities.end(), clickedEntity);
+                    if (it != engine_.selectedEntities.end()) engine_.selectedEntities.erase(it);
+                    else engine_.selectedEntities.push_back(clickedEntity);
+                } else {
+                    engine_.selectedEntities.clear();
                 }
             }
+            
+            if (showEntityListPanel_) {
+                entityListText_ = engine_.getSelectedEntityProperties();
+                entityListScrollOffset_ = 0;
+            }
+            isSelectingByWindow_ = false;
+        }
+    }
 
-            // --- ESCRITURA EN LÍNEA DE COMANDOS ---
-            if (event.type == sf::Event::TextEntered && isTyping_) {
-                if (event.text.unicode == 13) {
-                    processTextInput();
-                }
-                else if (event.text.unicode == 8) {
-                    if (!inputBuffer_.empty()) {
-                        inputBuffer_.pop_back();
-                        autocompleteIndex_ = -1;
-                        autocompleteBase_.clear();
-                    }
-                }
-                else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
-                    inputBuffer_ += static_cast<char>(event.text.unicode);
+    void App::handleKeyboardInput(const sf::Event& event) {
+        // 1. Entrada de texto en consola
+        if (event.type == sf::Event::TextEntered && isTyping_) {
+            if (event.text.unicode == 13) {
+                processTextInput();
+            } else if (event.text.unicode == 8) { // Backspace
+                if (!inputBuffer_.empty()) {
+                    inputBuffer_.pop_back();
                     autocompleteIndex_ = -1;
                     autocompleteBase_.clear();
                 }
+            } else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
+                inputBuffer_ += static_cast<char>(event.text.unicode);
+                autocompleteIndex_ = -1;
+                autocompleteBase_.clear();
             }
+            return;
+        }
 
-            // --- TECLA ESCAPE ---
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Escape) {
-                if (isSelectingByWindow_) {
-                    isSelectingByWindow_ = false;
-                }
+        // 2. Teclas especiales (KeyPressed)
+        if (event.type == sf::Event::KeyPressed) {
+            // Escape
+            if (event.key.code == sf::Keyboard::Escape) {
+                if (isSelectingByWindow_) isSelectingByWindow_ = false;
                 if (engine_.currentMode == Mode::GRIP_EDIT && engine_.gripBackup) {
                     engine_.activeGripEntity->copyFrom(*engine_.gripBackup);
                     engine_.gripBackup.reset();
@@ -557,26 +482,22 @@ namespace cad {
                 engine_.cancelCommand();
                 inputBuffer_.clear();
             }
-
-            // --- TECLA SUPRIMIR ---
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Delete) {
+            // Suprimir
+            else if (event.key.code == sf::Keyboard::Delete) {
                 engine_.deleteSelected();
             }
-
-            // --- TECLA ENTER EN EL CANVAS ---
-            if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Return && !isTyping_) {
+            // Enter en canvas
+            else if (event.key.code == sf::Keyboard::Return && !isTyping_) {
                 if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
                     engine_.processInput("");
                 }
             }
-
-            // --- TECLAS DE NAVEGACIÓN ---
-            if (event.type == sf::Event::KeyPressed && isTyping_) {
+            // Atajos de teclado (Navegación)
+            else if (isTyping_) {
                 handleKeyboardNavigation(event);
             }
-
-            // --- DESHACER / REHACER ---
-            if (event.type == sf::Event::KeyPressed) {
+            // Undo / Redo
+            else {
                 if (event.key.code == sf::Keyboard::Z && event.key.control) engine_.undo();
                 else if (event.key.code == sf::Keyboard::Y && event.key.control) engine_.redo();
             }
