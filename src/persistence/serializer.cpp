@@ -34,7 +34,23 @@ namespace cad {
         }
         j["layers"] = layersArray;
 
-        // 2. Guardar entidades (usando polimorfismo)
+        // 2. Guardar definiciones de bloque
+        json defsArray = json::array();
+        for (const auto& def : doc.blockDefinitions) {
+            json jd;
+            jd["name"] = def->name;
+            jd["basePoint"] = {{"x", def->basePoint.x}, {"y", def->basePoint.y}};
+            
+            json entsArray = json::array();
+            for (const auto& e : def->entities) {
+                entsArray.push_back(e->toJson());
+            }
+            jd["entities"] = entsArray;
+            defsArray.push_back(jd);
+        }
+        j["blockDefinitions"] = defsArray;
+
+        // 3. Guardar entidades (usando polimorfismo)
         j["entities"] = json::array();
         for (const auto& e : doc.entities) {
             if (e) {
@@ -82,11 +98,35 @@ namespace cad {
                 doc.layers["0"] = defaultLayer;
             }
 
-            // 2. Cargar entidades
+            // 2. Cargar definiciones de bloque
+            if (j.contains("blockDefinitions") && j["blockDefinitions"].is_array()) {
+                for (auto& jd : j["blockDefinitions"]) {
+                    auto def = std::make_unique<BlockDefinition>();
+                    def->name = jd.value("name", "");
+                    if (jd.contains("basePoint")) {
+                        def->basePoint = {jd["basePoint"]["x"].get<double>(), 
+                                        jd["basePoint"]["y"].get<double>()};
+                    }
+                    if (jd.contains("entities")) {
+                        for (auto& je : jd["entities"]) {
+                            auto e = Entity::fromJson(je);
+                            if (e) def->entities.push_back(std::move(e));
+                        }
+                    }
+                    doc.blockDefinitions.push_back(std::move(def));
+                }
+            }
+
+            // 3. Cargar entidades
             if (j.contains("entities") && j["entities"].is_array()) {
                 for (const auto& ent : j["entities"]) {
                     auto e = Entity::fromJson(ent);
                     if (e) {
+                        // Resolver puntero de BlockInsert a su definición
+                        if (auto* bi = dynamic_cast<BlockInsert*>(e.get())) {
+                            std::string name = ent.value("blockName", "");
+                            bi->definition = doc.findBlockDefinition(name);
+                        }
                         doc.entities.push_back(std::move(e));
                     }
                 }
