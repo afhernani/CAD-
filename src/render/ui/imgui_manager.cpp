@@ -3,6 +3,31 @@
 #include "cad/core/geometry/entities/circle.hpp"
 #include "cad/core/geometry/entities/arc.hpp"
 #include "cad/core/geometry/entities/polyline.hpp"
+#include <windows.h>    // AÑADIR para el diálogo de color
+#include <commdlg.h>
+#include <iostream>
+
+// Función auxiliar local para abrir el diálogo de color de Windows
+namespace {
+    sf::Color showColorDialog(sf::Color initialColor, void* windowHandle) {
+        CHOOSECOLORA cc;
+        static COLORREF customColors[16];
+        
+        ZeroMemory(&cc, sizeof(cc));
+        cc.lStructSize = sizeof(cc);
+        cc.hwndOwner = static_cast<HWND>(windowHandle); // Usamos el handle de la ventana
+        cc.lpCustColors = customColors;
+        cc.rgbResult = RGB(initialColor.r, initialColor.g, initialColor.b);
+        cc.Flags = CC_FULLOPEN | CC_RGBINIT;
+
+        if (ChooseColorA(&cc)) {
+            COLORREF chosenColor = cc.rgbResult;
+            return sf::Color(GetRValue(chosenColor), GetGValue(chosenColor), GetBValue(chosenColor));
+        }
+        
+        return initialColor; // Si el usuario cancela, devuelve el color original
+    }
+}
 
 namespace cad {
 
@@ -14,6 +39,7 @@ ImGuiManager::~ImGuiManager() {
 
 void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     if (initialized_) return;
+    windowPtr_ = &window; //guardar el puntero a la ventana.
     
     ImGui::SFML::Init(window);
     
@@ -69,17 +95,15 @@ void ImGuiManager::drawLayerPanel(Engine& engine) {
     if (!layerPanelVisible_) return;
     
     ImGui::Begin("Gestor de Capas", &layerPanelVisible_);
-    // El segundo parámetro (&layerPanelVisible_) permite cerrar la ventana con la X
-    // y actualiza automáticamente la variable
 
-    // Botón para crear nueva capa
+    // Botón para crear nueva capa (TU CÓDIGO ORIGINAL)
     if (ImGui::Button("+ Nueva Capa")) {
         createNewLayer(engine);
     }
 
     ImGui::Separator();
 
-    // Cabecera de columnas
+    // Cabecera de columnas (TU CÓDIGO ORIGINAL)
     ImGui::Columns(5, "layerColumns", false);
     ImGui::Text("Nombre");
     ImGui::NextColumn();
@@ -94,11 +118,11 @@ void ImGuiManager::drawLayerPanel(Engine& engine) {
     ImGui::Separator();
 
     // Iterar sobre todas las capas
-    int layerIndex = 0; // Para generar IDs únicos en ImGui
+    int layerIndex = 0; 
     for (auto& [name, layer] : engine.doc.layers) {
         bool isCurrentLayer = (name == engine.doc.currentLayerName);
 
-        // 1. Nombre
+        // 1. Nombre (TU CÓDIGO ORIGINAL)
         if (isCurrentLayer) ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.8f, 0.2f, 1.0f));
         
         if (ImGui::Selectable(name.c_str(), isCurrentLayer, ImGuiSelectableFlags_SpanAllColumns)) {
@@ -109,28 +133,50 @@ void ImGuiManager::drawLayerPanel(Engine& engine) {
         if (isCurrentLayer) ImGui::PopStyleColor();
         ImGui::NextColumn();
 
-        // 2. Color (Blindado)
-        float color[3] = {
+        // =====================================================================
+        // 2. Color (MODIFICADO: InvisibleButton para garantizar clic en toda el área)
+        // =====================================================================
+        std::string colorBtnId = "##colorBtn_" + std::to_string(layerIndex);
+        ImVec2 btnSize(26, 20); // Tamaño del área clicable
+
+        // El InvisibleButton captura el clic en el 100% del rectángulo, sin fallos de alineación
+        if (ImGui::InvisibleButton(colorBtnId.c_str(), btnSize)) {
+            std::cout << "[DEBUG] ¡Clic registrado en el color de la capa: " << name << "!" << std::endl;
+        
+            if (windowPtr_) {
+                // Pasamos el handle nativo de la ventana de SFML
+                sf::Color newColor = showColorDialog(layer.color, windowPtr_->getSystemHandle());
+                layer.color = newColor;
+                engine.statusMessage = "Color de capa '" + name + "' actualizado.";
+            } else {
+                std::cerr << "[ERROR] windowPtr_ es nulo." << std::endl;
+            }
+        }
+        
+        // Dibujar el color manualmente sobre el área exacta del botón invisible
+        ImVec2 p_min = ImGui::GetItemRectMin();
+        ImVec2 p_max = ImGui::GetItemRectMax();
+        
+        ImU32 col = ImGui::ColorConvertFloat4ToU32(ImVec4(
             layer.color.r / 255.0f,
             layer.color.g / 255.0f,
-            layer.color.b / 255.0f
-        };
+            layer.color.b / 255.0f,
+            1.0f
+        ));
         
-        // Usamos el índice para el ID, evitando problemas con nombres de capa
-        std::string colorId = "##color_" + std::to_string(layerIndex);
-        if (ImGui::ColorEdit3(colorId.c_str(), color, 
-                            ImGuiColorEditFlags_NoInputs | ImGuiColorEditFlags_NoLabel | ImGuiColorEditFlags_NoAlpha)) {
-            
-            // Actualizamos el color en el documento
-            layer.color.r = static_cast<sf::Uint8>(std::round(color[0] * 255.0f));
-            layer.color.g = static_cast<sf::Uint8>(std::round(color[1] * 255.0f));
-            layer.color.b = static_cast<sf::Uint8>(std::round(color[2] * 255.0f));
-            
-            engine.statusMessage = "Color de capa '" + name + "' actualizado.";
-        }
-        ImGui::NextColumn();
+        // Rellenar el color y añadir un borde sutil para que se vea bien
+        ImGui::GetWindowDrawList()->AddRectFilled(p_min, p_max, col);
+        ImGui::GetWindowDrawList()->AddRect(p_min, p_max, ImGui::GetColorU32(ImGuiCol_Border));
 
-        // 3, 4, 5. Checkboxes (V, F, L)
+        // Tooltip al pasar el ratón
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Cambiar color de la capa '%s'", name.c_str());
+        }
+        
+        ImGui::NextColumn();
+        // =====================================================================
+
+        // 3, 4, 5. Checkboxes (V, F, L) (TU CÓDIGO ORIGINAL)
         std::string visId = "##vis_" + std::to_string(layerIndex);
         if (ImGui::Checkbox(visId.c_str(), &layer.visible)) {
             engine.statusMessage = std::string("Capa '") + name + "' " + (layer.visible ? "visible" : "oculta") + ".";

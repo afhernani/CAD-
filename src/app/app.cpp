@@ -349,6 +349,10 @@ namespace cad {
         bool isLeft = (event.mouseButton.button == sf::Mouse::Left);
         bool isRight = (event.mouseButton.button == sf::Mouse::Right);
 
+        // Si ImGui está capturando el ratón (arrastrando ventana, escribiendo, etc.),
+        // NO procesamos clics de SFML para evitar interferencias
+        bool imguiWantsMouse = imguiManager_.wantCaptureMouse();
+
         // --- CLIC DERECHO (Pan) ---
         if (isRight) {
             if (event.type == sf::Event::MouseButtonPressed && isOverCanvas(mx, my)) {
@@ -362,6 +366,12 @@ namespace cad {
 
         // --- CLIC IZQUIERDO PRESIONADO ---
         if (isLeft && event.type == sf::Event::MouseButtonPressed) {
+
+            // Si ImGui quiere el ratón, NO hacemos nada en SFML
+            if (imguiWantsMouse) {
+                return;
+            }
+
             isDraggingCommandScroll_ = false;
 
             // 2. Panel de Propiedades (Botón Cambiar Capa)

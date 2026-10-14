@@ -41,6 +41,8 @@ private:
     bool initialized_ = false;
     bool layerPanelVisible_ = false;
     bool propertiesPanelVisible_ = false;
+
+    sf::RenderWindow* windowPtr_ = nullptr;
     
     // Helper para crear capas
     void createNewLayer(Engine& engine);
