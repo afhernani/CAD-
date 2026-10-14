@@ -483,20 +483,19 @@ void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
         // --- ARCHIVO ---
         if (ImGui::BeginMenu("Archivo")) {
             if (ImGui::MenuItem("Nuevo", "Ctrl+N")) {
-                // Aquí llamaremos a App::handleFileCommand("NEW") en el siguiente paso
-                engine.statusMessage = "Comando: Nuevo (Pendiente de conectar con App)";
+                if (onNew) onNew();
             }
             if (ImGui::MenuItem("Abrir...", "Ctrl+O")) {
-                engine.statusMessage = "Comando: Abrir (Pendiente de conectar con App)";
+                if (onOpen) onOpen();
             }
             
             ImGui::Separator();
             
             if (ImGui::MenuItem("Guardar", "Ctrl+S")) {
-                engine.statusMessage = "Comando: Guardar (Pendiente de conectar con App)";
+                if (onOpen) onOpen();
             }
             if (ImGui::MenuItem("Guardar como...", "Ctrl+Shift+S")) {
-                engine.statusMessage = "Comando: Guardar como (Pendiente de conectar con App)";
+                if (onSaveAs) onSaveAs();
             }
             
             ImGui::Separator();
@@ -519,7 +518,7 @@ void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
             ImGui::Separator();
             
             if (ImGui::MenuItem("Salir", "Alt+F4")) {
-                // Señal para cerrar la aplicación
+                if (onExit) onExit();
             }
             
             ImGui::EndMenu();

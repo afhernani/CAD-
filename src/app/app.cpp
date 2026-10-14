@@ -180,12 +180,23 @@ namespace cad {
 
         // Inicializar ImGui Manager
         imguiManager_.init(window_, fontPath);
-        // ImGui::SFML::Init(window_);
-        
-        // // (Opcional) Cargar la misma fuente arial.ttf para que ImGui se vea igual que SFML
-        // ImGuiIO& io = ImGui::GetIO();
-        // io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 16.0f); 
-        // ImGui::SFML::UpdateFontTexture(); 
+        // CONECTAR CALLBACKS: ImGuiManager -> App
+        imguiManager_.onSave = [this]() { handleFileCommand("SAVE"); };
+        imguiManager_.onSaveAs = [this]() { handleFileCommand("SAVEAS"); };
+        imguiManager_.onOpen = [this]() { handleFileCommand("OPEN"); };
+        imguiManager_.onNew = [this]() { handleFileCommand("NEW"); };
+        imguiManager_.onOpenRecent = [this](const std::string& path) {
+            engine_.doc.load(path);
+            engine_.selectedEntities.clear();
+            engine_.undoStack.clear();
+            engine_.redoStack.clear();
+            engine_.statusMessage = "Dibujo cargado desde: " + path;
+        };
+        imguiManager_.onExit = [this]() {
+            if (confirmUnsavedChanges()) {
+                window_.close();
+            }
+        };; 
     }
 
     App::~App() {
@@ -466,6 +477,22 @@ namespace cad {
 
         // 2. Teclas especiales (KeyPressed)
         if (event.type == sf::Event::KeyPressed) {
+            // Atajos de teclado
+            if (event.key.control) {
+                if (event.key.code == sf::Keyboard::S) {
+                    if (event.key.shift) handleFileCommand("SAVEAS");
+                    else handleFileCommand("SAVE");
+                    return;
+                }
+                if (event.key.code == sf::Keyboard::O) {
+                    handleFileCommand("OPEN");
+                    return;
+                }
+                if (event.key.code == sf::Keyboard::N) {
+                    handleFileCommand("NEW");
+                    return;
+                }
+            }
             // Escape
             if (event.key.code == sf::Keyboard::Escape) {
                 if (isSelectingByWindow_) isSelectingByWindow_ = false;
@@ -942,22 +969,25 @@ namespace cad {
             bool success = false;
             if (engine_.doc.isUntitled()) {
                 std::string path = showSaveFileDialog();
-                if (!path.empty()) engine_.doc.saveAs(path);
+                if (!path.empty()) {
+                    bool success = engine_.doc.saveAs(path);
+                    if(success) imguiManager_.addRecentFile(path);
+                }
             } else {
-                success = engine_.doc.save();
+                bool success = engine_.doc.save();
+                if(success) imguiManager_.addRecentFile(engine_.doc.filePath);
             }
-            // Feedback claro al usuario
-            if (success) {
-                engine_.statusMessage = "Dibujo guardado correctamente en: " + engine_.doc.filePath;
-            } else {
-                engine_.statusMessage = "Error: No se pudo guardar el dibujo.";
-            }
+            engine_.statusMessage = success ?
+                "Dibujo guardado correctamente en: " + engine_.doc.filePath :
+                "Error: No se pudo guardar el dibujo.";
+            
         }
         else if (upperCmd == "SAVEAS" || upperCmd == "GUARDARCOMO") {
             std::string path = showSaveFileDialog();
             if (!path.empty()) {
                 bool success = engine_.doc.saveAs(path);
                 if (success) {
+                    imguiManager_.addRecentFile(path);
                     engine_.statusMessage = "Dibujo guardado correctamente en: " + engine_.doc.filePath;
                 } else {
                     engine_.statusMessage = "Error: No se pudo guardar el dibujo.";
@@ -973,6 +1003,7 @@ namespace cad {
                     bool success = engine_.doc.load(path);
                     if (success) {
                         // Limpiar estado de sesión del Engine
+                        imguiManager_.addRecentFile(path);
                         engine_.selectedEntities.clear();
                         engine_.undoStack.clear(); 
                         engine_.redoStack.clear();

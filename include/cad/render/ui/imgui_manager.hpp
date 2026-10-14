@@ -40,6 +40,14 @@ public:
     // Dibujar la barra de menú principal
     void drawMainMenu(Engine& engine, bool& showAxes);
     void addRecentFile(const std::string& path);
+
+    // Callbacks para comandos de archivo (App los conectará a sus métodos)
+    std::function<void()> onSave;
+    std::function<void()> onSaveAs;
+    std::function<void()> onOpen;
+    std::function<void()> onNew;
+    std::function<void(const std::string&)> onOpenRecent; // Para abrir archivos recientes
+    std::function<void()> onExit;
     
 private:
     bool initialized_ = false;
