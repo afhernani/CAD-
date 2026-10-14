@@ -51,6 +51,15 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     
     ImGui::SFML::Init(window);
     
+    // AÑADIR ESTO: Cambia el estilo de ImGui a un tema oscuro profesional
+    ImGui::StyleColorsDark(); 
+    
+    // Opcional: Ajustes finos para que encaje mejor con tu CAD
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowRounding = 4.0f;      // Bordes ligeramente redondeados
+    style.FrameRounding = 2.0f;       // Botones y inputs redondeados
+    style.ScrollbarRounding = 4.0f;   // Barras de scroll redondeadas
+
     // Cargar fuente
     ImGuiIO& io = ImGui::GetIO();
     io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 16.0f);
@@ -255,51 +264,56 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
     
     if (engine.selectedEntities.empty()) {
         ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "No hay entidades seleccionadas");
-    } else {
-        size_t count = engine.selectedEntities.size();
-        ImGui::Text("%zu entidad(es) seleccionada(s)", count);
-        ImGui::Separator();
+        ImGui::End();
+        return;
+    }
 
-        if (count > 1) {
-            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), 
-                               "Nota: La geometría mostrada corresponde a la 1ª entidad.");
-            ImGui::Separator();
-        }
+    size_t count = engine.selectedEntities.size();
+    
+    // Cabecera de selección
+    ImGui::Text("Selección:");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4(0.4f, 0.8f, 1.0f, 1.0f), "%zu entidad(es)", count);
+    
+    if (count > 1) {
+        ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "(Mostrando datos de la 1ª entidad)");
+    }
+    ImGui::Separator();
 
-        Entity* firstEntity = engine.selectedEntities[0];
+    Entity* firstEntity = engine.selectedEntities[0];
 
-        // =========================================================================
-        // 1. PROPIEDAD COMÚN: CAMBIAR CAPA (Aplica a TODAS las seleccionadas)
-        // =========================================================================
-        ImGui::Text("Capa:");
-        std::string layersStr;
+    // =========================================================================
+    // 1. GRUPO: CAPA (Siempre visible y accesible)
+    // =========================================================================
+    ImGui::Text("Capa:");
+    std::string layersStr;
+    for (const auto& pair : engine.doc.layers) {
+        layersStr += pair.first + "\0";
+    }
+    layersStr += "\0";
+
+    const char* preview = firstEntity->layerName.c_str();
+    if (ImGui::BeginCombo("##LayerCombo", preview)) {
         for (const auto& pair : engine.doc.layers) {
-            layersStr += pair.first + "\0";
-        }
-        layersStr += "\0";
-
-        const char* preview = firstEntity->layerName.c_str();
-        if (ImGui::BeginCombo("##LayerCombo", preview)) {
-            for (const auto& pair : engine.doc.layers) {
-                bool is_selected = (firstEntity->layerName == pair.first);
-                if (ImGui::Selectable(pair.first.c_str(), is_selected)) {
-                    for (Entity* ent : engine.selectedEntities) {
-                        ent->layerName = pair.first;
-                    }
-                    engine.doc.isModified = true;
-                    engine.statusMessage = "Capa cambiada a: " + pair.first;
+            bool is_selected = (firstEntity->layerName == pair.first);
+            if (ImGui::Selectable(pair.first.c_str(), is_selected)) {
+                for (Entity* ent : engine.selectedEntities) {
+                    ent->layerName = pair.first;
                 }
-                if (is_selected) ImGui::SetItemDefaultFocus();
+                engine.doc.isModified = true;
+                engine.statusMessage = "Capa cambiada a: " + pair.first;
             }
-            ImGui::EndCombo();
+            if (is_selected) ImGui::SetItemDefaultFocus();
         }
+        ImGui::EndCombo();
+    }
+    ImGui::Spacing();
 
-        ImGui::Separator();
-        ImGui::Text("Geometría:");
-
-        // =========================================================================
-        // 2. PROPIEDADES ESPECÍFICAS POR TIPO
-        // =========================================================================
+    // =========================================================================
+    // 2. GRUPO: GEOMETRÍA (Colapsable para ahorrar espacio)
+    // =========================================================================
+    if (ImGui::CollapsingHeader("Geometría", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::Indent(); // Sangría para dar sensación de grupo
         
         // --- LÍNEA ---
         if (auto* line = dynamic_cast<Line*>(firstEntity)) {
@@ -341,21 +355,16 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
         // --- POLÍGONO ---
         else if (auto* poly = dynamic_cast<Polygon*>(firstEntity)) {
             bool geometryChanged = false;
-
-            if (ImGui::InputDouble("Centro X", &poly->center.x, 0.1, 1.0, "%.4f")) geometryChanged = true;
-            if (ImGui::InputDouble("Centro Y", &poly->center.y, 0.1, 1.0, "%.4f")) geometryChanged = true;
-            
+            ImGui::InputDouble("Centro X", &poly->center.x, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Centro Y", &poly->center.y, 0.1, 1.0, "%.4f");
             if (ImGui::InputInt("Número de Lados", &poly->sides)) {
-                if (poly->sides < 3) poly->sides = 3; // Mínimo 3 lados
+                if (poly->sides < 3) poly->sides = 3;
                 geometryChanged = true;
             }
-            
             if (ImGui::InputDouble("Radio", &poly->radius, 0.1, 1.0, "%.4f")) {
                 if (poly->radius < 0.0) poly->radius = 0.0;
                 geometryChanged = true;
             }
-
-            // RECÁLCULO AUTOMÁTICO DE VÉRTICES
             if (geometryChanged) {
                 poly->points.clear();
                 double angleStep = 2.0 * 3.14159265359 / poly->sides;
@@ -375,31 +384,23 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
             ImGui::InputDouble("Centro Y", &ellipse->center.y, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Radio Mayor", &ellipse->majorRadius, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Radio Menor", &ellipse->minorRadius, 0.1, 1.0, "%.4f");
-            
-            // Conversión Rad -> Grados para la UI
             double rotDeg = ellipse->rotationAngle * 180.0 / 3.14159265359;
             if (ImGui::InputDouble("Rotación (°)", &rotDeg, 1.0, 5.0, "%.2f")) {
-                ellipse->rotationAngle = rotDeg * 3.14159265359 / 180.0; // Grados -> Rad
+                ellipse->rotationAngle = rotDeg * 3.14159265359 / 180.0;
                 engine.doc.isModified = true;
             }
         }
         // --- DIMENSIÓN (COTA) ---
         else if (auto* dim = dynamic_cast<Dimension*>(firstEntity)) {
-            ImGui::Text("P1 (Inicio):");
-            ImGui::SameLine(); ImGui::InputDouble("X", &dim->p1.x, 0.1, 1.0, "%.4f");
-            ImGui::SameLine(); ImGui::InputDouble("Y", &dim->p1.y, 0.1, 1.0, "%.4f");
-            
-            ImGui::Text("P2 (Fin):");
-            ImGui::SameLine(); ImGui::InputDouble("X", &dim->p2.x, 0.1, 1.0, "%.4f");
-            ImGui::SameLine(); ImGui::InputDouble("Y", &dim->p2.y, 0.1, 1.0, "%.4f");
-            
+            ImGui::Text("P1 (Inicio):"); ImGui::SameLine(); ImGui::InputDouble("X", &dim->p1.x, 0.1, 1.0, "%.4f"); ImGui::SameLine(); ImGui::InputDouble("Y", &dim->p1.y, 0.1, 1.0, "%.4f");
+            ImGui::Text("P2 (Fin):");   ImGui::SameLine(); ImGui::InputDouble("X", &dim->p2.x, 0.1, 1.0, "%.4f"); ImGui::SameLine(); ImGui::InputDouble("Y", &dim->p2.y, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Valor de Cota", &dim->value, 0.1, 1.0, "%.4f");
             engine.doc.isModified = true;
         }
-        // --- INSERCIÓN DE BLOQUE ---
+        // --- BLOQUE ---
         else if (auto* block = dynamic_cast<BlockInsert*>(firstEntity)) {
             std::string blkName = block->definition ? block->definition->name : "Desconocido";
-            ImGui::Text("Nombre del Bloque: %s", blkName.c_str());
+            ImGui::Text("Bloque: %s", blkName.c_str());
             ImGui::InputDouble("Inserción X", &block->insertPoint.x, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Inserción Y", &block->insertPoint.y, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Escala", &block->blockScale, 0.1, 1.0, "%.4f");
@@ -409,12 +410,10 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
         }
         // --- IMAGEN ---
         else if (auto* img = dynamic_cast<ImageEntity*>(firstEntity)) {
-            // InputText con std::string requiere un buffer temporal en ImGui estándar
             char pathBuf[512];
             strncpy(pathBuf, img->imagePath.c_str(), sizeof(pathBuf) - 1);
             pathBuf[sizeof(pathBuf) - 1] = '\0';
-            
-            if (ImGui::InputText("Ruta de Imagen", pathBuf, sizeof(pathBuf))) {
+            if (ImGui::InputText("Ruta", pathBuf, sizeof(pathBuf))) {
                 img->imagePath = pathBuf;
                 engine.doc.isModified = true;
             }
@@ -428,41 +427,38 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
             char contentBuf[512];
             strncpy(contentBuf, txt->content.c_str(), sizeof(contentBuf) - 1);
             contentBuf[sizeof(contentBuf) - 1] = '\0';
-            
             if (ImGui::InputText("Contenido", contentBuf, sizeof(contentBuf))) {
                 txt->content = contentBuf;
                 engine.doc.isModified = true;
             }
-            ImGui::InputDouble("Altura de Texto", &txt->height, 0.1, 1.0, "%.4f");
-            
+            ImGui::InputDouble("Altura", &txt->height, 0.1, 1.0, "%.4f");
             double rotDeg = txt->rotation * 180.0 / 3.14159265359;
             if (ImGui::InputDouble("Rotación (°)", &rotDeg, 1.0, 5.0, "%.2f")) {
                 txt->rotation = rotDeg * 3.14159265359 / 180.0;
                 engine.doc.isModified = true;
             }
         }
-        // --- SOMBRADO (HATCH) ---
+        // --- HATCH ---
         else if (auto* hatch = dynamic_cast<Hatch*>(firstEntity)) {
             const char* patterns[] = { "Sólido", "Diagonal", "Cruz" };
             int currentPattern = static_cast<int>(hatch->pattern);
-            
             if (ImGui::Combo("Patrón", &currentPattern, patterns, IM_ARRAYSIZE(patterns))) {
                 hatch->pattern = static_cast<HatchPattern>(currentPattern);
                 engine.doc.isModified = true;
             }
-            ImGui::InputDouble("Escala de Patrón", &hatch->patternScale, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Escala", &hatch->patternScale, 0.1, 1.0, "%.4f");
             ImGui::InputDouble("Ángulo (°)", &hatch->angle, 1.0, 5.0, "%.2f");
             ImGui::InputDouble("Espaciado", &hatch->spacing, 0.1, 1.0, "%.4f");
-            
-            ImGui::Text("Vértices del borde: %zu", hatch->points.size());
             engine.doc.isModified = true;
         }
-        // --- ENTIDAD DESCONOCIDA ---
+        // --- DESCONOCIDO ---
         else {
-            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Tipo de entidad no soportado para edición.");
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Entidad no editable.");
         }
+        
+        ImGui::Unindent(); // Quitar sangría
     }
-    
+
     ImGui::End();
 }
 
