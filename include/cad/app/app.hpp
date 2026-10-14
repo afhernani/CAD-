@@ -4,9 +4,12 @@
 #include "cad/render/view.hpp"
 #include "cad/render/renderer.hpp"
 #include "cad/render/ui/ui_manager.hpp"
+#include "cad/render/ui/imgui_manager.hpp"
 #include "cad/core/config/config.hpp"
 #include "cad/core/constants.hpp"
 #include <SFML/Graphics.hpp>
+// #include "imgui.h"
+// #include "imgui-SFML.h"
 #include <string>
 #include <vector>
 #include <chrono>
@@ -16,6 +19,7 @@ namespace cad {
     class App {
     public:
         App();
+        ~App();
         void run();
 
         bool confirmUnsavedChanges();
@@ -32,6 +36,7 @@ namespace cad {
         View view_;
         Renderer renderer_;
         UIManager ui_;
+        ImGuiManager imguiManager_;
         SnapEngine snapEngine_;
         SnapEngine::SnapResult lastSnapResult_;
 
@@ -60,12 +65,12 @@ namespace cad {
 
         // --- Control de visualización ---
         bool showAxes_ = true;
-        bool showEntityListPanel_ = false;
+        // bool showEntityListPanel_ = false;
         std::string entityListText_;
         int entityListScrollOffset_ = 0;
         // panel de capas
-        bool showLayerPanel_ = false;
-        int layerPanelScrollOffset_ = 0;
+        // bool showLayerPanel_ = false;
+        //int layerPanelScrollOffset_ = 0;
 
         // --- Estado del ratón ---
         sf::Vector2i currentMouseScreenPos_;
@@ -86,6 +91,8 @@ namespace cad {
         void render();
         void updateEntityList();
 
+        // void drawImGuiLayerManager();
+
         // --- Refactorización de Eventos (Dispatchers) ---
         void handleWindowEvent(const sf::Event& event);
         void handleMouseMovement(const sf::Event& event);
@@ -94,8 +101,8 @@ namespace cad {
         void handleKeyboardInput(const sf::Event& event);
 
         // --- Helpers de Detección de UI (Hit Testing) ---
-        bool isOverLayerPanel(int mx, int my) const;
-        bool isOverPropertiesPanel(int mx, int my) const;
+        //bool isOverLayerPanel(int mx, int my) const;
+        //bool isOverPropertiesPanel(int mx, int my) const;
         bool isOverCommandConsole(int mx, int my) const;
         bool isOverToolbar(int mx, int my) const;
         bool isOverCanvas(int mx, int my) const;

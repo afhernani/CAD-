@@ -38,3 +38,56 @@ add_custom_command(TARGET CAD+ POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     ${CMAKE_SOURCE_DIR}/config.json $<TARGET_FILE_DIR:CAD+>/config.json
 )
+# ==============================================================================
+# INTEGRACIÓN DE DEAR IMGUI (Solución definitiva a prueba de fallos)
+# ==============================================================================
+include(FetchContent)
+
+# 1. Descargar ImGui
+FetchContent_Declare(
+    imgui
+    GIT_REPOSITORY https://github.com/ocornut/imgui.git
+    GIT_TAG        v1.90.1
+)
+FetchContent_MakeAvailable(imgui)
+
+# 2. Descargar imgui-sfml
+FetchContent_Declare(
+    imgui_sfml
+    GIT_REPOSITORY https://github.com/SFML/imgui-sfml.git
+    GIT_TAG        v2.6
+)
+
+# Mantenemos ON para que imgui-sfml encuentre el SFML compartido de Pixi sin errores
+set(BUILD_SHARED_LIBS ON)
+set(IMGUI_SFML_FIND_IMGUI OFF)
+set(IMGUI_SFML_IMGUI_DEMO OFF)
+set(IMGUI_DIR ${imgui_SOURCE_DIR})
+
+FetchContent_MakeAvailable(imgui_sfml)
+
+# 3. Compilar el núcleo de ImGui como estático (nuestros propios archivos)
+add_library(imgui_lib STATIC
+    ${imgui_SOURCE_DIR}/imgui.cpp
+    ${imgui_SOURCE_DIR}/imgui_draw.cpp
+    ${imgui_SOURCE_DIR}/imgui_tables.cpp
+    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
+)
+target_include_directories(imgui_lib PUBLIC ${imgui_SOURCE_DIR})
+
+# 4. Enlazar todo a tu ejecutable
+target_link_libraries(CAD+ PRIVATE 
+    sfml-graphics 
+    sfml-window 
+    sfml-system
+    ImGui-SFML::ImGui-SFML
+    imgui_lib
+)
+
+# 5. ¡LA CLAVE! Copiar automáticamente la DLL de ImGui-SFML a la carpeta del .exe
+# Esto soluciona el error de "no se encontró la DLL" en tiempo de ejecución.
+add_custom_command(TARGET CAD+ POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:ImGui-SFML::ImGui-SFML>
+    $<TARGET_FILE_DIR:CAD+>
+)

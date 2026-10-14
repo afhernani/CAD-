@@ -171,9 +171,23 @@ namespace cad {
         engine_.viewScale = 1.0;
 
         showAxes_ = true;
-        showEntityListPanel_ = false;
+        //showEntityListPanel_ = false;
         entityListScrollOffset_ = 0;
         entityListText_ = "";
+
+        // Inicializar ImGui Manager
+        imguiManager_.init(window_, fontPath);
+        // ImGui::SFML::Init(window_);
+        
+        // // (Opcional) Cargar la misma fuente arial.ttf para que ImGui se vea igual que SFML
+        // ImGuiIO& io = ImGui::GetIO();
+        // io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 16.0f); 
+        // ImGui::SFML::UpdateFontTexture(); 
+    }
+
+    App::~App() {
+        // Cerrar ImGui limpiamente
+        imguiManager_.shutdown();
     }
 
     void App::run() {
@@ -192,6 +206,8 @@ namespace cad {
     void App::handleEvents() {
         sf::Event event;
         while (window_.pollEvent(event)) {
+            imguiManager_.processEvent(event, window_); // Delegar a ImGuiManager
+
             handleWindowEvent(event);
             handleMouseMovement(event);
             handleMouseScroll(event);
@@ -203,15 +219,15 @@ namespace cad {
     // =========================================================================
     // 2. HELPERS DE DETECCIÓN DE UI (Eliminan magia de números en el código)
     // =========================================================================
-    bool App::isOverLayerPanel(int mx, int my) const {
-        if (!showLayerPanel_) return false;
-        return (mx >= 0 && mx < 280 && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
-    }
+    // bool App::isOverLayerPanel(int mx, int my) const {
+    //     if (!showLayerPanel_) return false;
+    //     return (mx >= 0 && mx < 280 && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
+    // }
 
-    bool App::isOverPropertiesPanel(int mx, int my) const {
-        if (!showEntityListPanel_) return false;
-        return (mx >= WINDOW_WIDTH - 320 && mx < WINDOW_WIDTH && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
-    }
+    // bool App::isOverPropertiesPanel(int mx, int my) const {
+    //     if (!showEntityListPanel_) return false;
+    //     return (mx >= WINDOW_WIDTH - 320 && mx < WINDOW_WIDTH && my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
+    // }
 
     bool App::isOverCommandConsole(int mx, int my) const {
         return (my >= WINDOW_HEIGHT - STATUS_HEIGHT - COMMAND_HEIGHT && my < WINDOW_HEIGHT - STATUS_HEIGHT);
@@ -222,8 +238,8 @@ namespace cad {
     }
 
     bool App::isOverCanvas(int mx, int my) const {
-        return (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT &&
-                !isOverLayerPanel(mx, my) && !isOverPropertiesPanel(mx, my));
+        return (my >= MENU_HEIGHT + TOOLBAR_HEIGHT && my < WINDOW_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT); // &&
+                // !isOverLayerPanel(mx, my) && !isOverPropertiesPanel(mx, my));
     }
 
     // =========================================================================
@@ -244,7 +260,7 @@ namespace cad {
         int my = event.mouseMove.y;
         currentMouseScreenPos_ = {mx, my};
 
-        // Scroll de consola arrastrando
+        // 1. Scroll de consola arrastrando (Prioridad máxima)
         if (isDraggingCommandScroll_) {
             int deltaY = dragStartY_ - my;
             int lineHeight = 20;
@@ -256,7 +272,7 @@ namespace cad {
             return;
         }
 
-        // Pan arrastrando
+        // 2. Pan arrastrando (Prioridad máxima)
         if (isPanning_) {
             float dx = static_cast<float>(mx) - panStartMouse_.x;
             float dy = static_cast<float>(my) - panStartMouse_.y;
@@ -265,14 +281,18 @@ namespace cad {
             return;
         }
 
-        // Actualizar punto final de selección por ventana
+        // 3. Actualizar punto final de selección por ventana (Prioridad sobre ImGui)
         if (isSelectingByWindow_) {
+            // Forzamos la actualización de la coordenada del mundo aunque ImGui diga algo
+            currentMouseWorldPos_ = view_.screenToWorld(static_cast<float>(mx), static_cast<float>(my));
             selectionEndPoint_ = currentMouseWorldPos_;
             return;
         }
 
-        // Lógica del Canvas (Snaps y Grips)
-        if (isOverCanvas(mx, my)) {
+        // 4. Lógica normal del Canvas (Snaps y Grips)
+        bool imguiWantsMouse = imguiManager_.wantCaptureMouse();
+
+        if (!imguiWantsMouse && isOverCanvas(mx, my)) {
             window_.setMouseCursorVisible(false);
             currentMouseWorldPos_ = view_.screenToWorld(static_cast<float>(mx), static_cast<float>(my));
             lastSnapResult_ = snapEngine_.findSnap(engine_.doc.entities, currentMouseWorldPos_, view_.getScale());
@@ -294,24 +314,15 @@ namespace cad {
         int my = event.mouseWheelScroll.y;
         float delta = event.mouseWheelScroll.delta;
 
-        // 1. Panel de Capas
-        if (isOverLayerPanel(mx, my)) {
-            int totalLayers = engine_.doc.layers.size();
-            int maxLines = (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT - 75) / 24;
-            int maxOffset = std::max(0, totalLayers - maxLines);
-            layerPanelScrollOffset_ = (delta > 0) ? std::max(0, layerPanelScrollOffset_ - 1) : std::min(maxOffset, layerPanelScrollOffset_ + 1);
-            return;
-        }
-
-        // 2. Panel de Propiedades
-        if (isOverPropertiesPanel(mx, my)) {
-            int totalLines = 1;
-            for (char c : entityListText_) if (c == '\n') totalLines++;
-            int maxLines = (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT - 100) / 16;
-            int maxOffset = std::max(0, totalLines - maxLines);
-            entityListScrollOffset_ = (delta > 0) ? std::max(0, entityListScrollOffset_ - 1) : std::min(maxOffset, entityListScrollOffset_ + 1);
-            return;
-        }
+        // // 2. Panel de Propiedades
+        // if (isOverPropertiesPanel(mx, my)) {
+        //     int totalLines = 1;
+        //     for (char c : entityListText_) if (c == '\n') totalLines++;
+        //     int maxLines = (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT - 100) / 16;
+        //     int maxOffset = std::max(0, totalLines - maxLines);
+        //     entityListScrollOffset_ = (delta > 0) ? std::max(0, entityListScrollOffset_ - 1) : std::min(maxOffset, entityListScrollOffset_ + 1);
+        //     return;
+        // }
 
         // 3. Consola de Comandos
         if (isOverCommandConsole(mx, my)) {
@@ -353,49 +364,20 @@ namespace cad {
         if (isLeft && event.type == sf::Event::MouseButtonPressed) {
             isDraggingCommandScroll_ = false;
 
-            // 1. Panel de Capas
-            if (isOverLayerPanel(mx, my) && my >= MENU_HEIGHT + TOOLBAR_HEIGHT + 65) {
-                int clickedRow = (my - (MENU_HEIGHT + TOOLBAR_HEIGHT + 65)) / 24 + layerPanelScrollOffset_;
-                int currentRow = 0;
-                std::string clickedLayerName = "";
-                for (auto const& [name, layer] : engine_.doc.layers) {
-                    if (currentRow == clickedRow) { clickedLayerName = name; break; }
-                    currentRow++;
-                }
-
-                if (!clickedLayerName.empty()) {
-                    if (mx >= 160 && mx < 180) { // Color
-                        sf::Color newColor = showColorDialog(engine_.doc.getLayer(clickedLayerName)->color);
-                        engine_.doc.setLayerColor(clickedLayerName, newColor);
-                        engine_.statusMessage = "Color de capa '" + clickedLayerName + "' actualizado.";
-                    } else if (mx >= 185 && mx < 205) { // Visible
-                        engine_.doc.setLayerVisibility(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->visible);
-                    } else if (mx >= 210 && mx < 230) { // Frozen
-                        engine_.doc.setLayerFrozen(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->frozen);
-                    } else if (mx >= 235 && mx < 255) { // Locked
-                        engine_.doc.setLayerLocked(clickedLayerName, !engine_.doc.getLayer(clickedLayerName)->locked);
-                    } else { // Nombre
-                        engine_.doc.setCurrentLayer(clickedLayerName);
-                        engine_.statusMessage = "Capa actual: " + clickedLayerName;
-                    }
-                }
-                return; // Consumido por el panel
-            }
-
             // 2. Panel de Propiedades (Botón Cambiar Capa)
-            if (showEntityListPanel_ && !engine_.selectedEntities.empty()) {
-                const int panelX = WINDOW_WIDTH - 320;
-                const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
-                const int btnY = panelY + (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT) - 45;
+            // if (showEntityListPanel_ && !engine_.selectedEntities.empty()) {
+            //     const int panelX = WINDOW_WIDTH - 320;
+            //     const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+            //     const int btnY = panelY + (WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT) - 45;
                 
-                if (mx >= panelX + 10 && mx < panelX + 310 && my >= btnY && my < btnY + 35) {
-                    isTyping_ = true;
-                    inputBuffer_ = "CAPA ";
-                    engine_.statusMessage = "Escribe el nombre de la nueva capa y pulsa Enter:";
-                    commandScrollOffset_ = 0;
-                    return; // Consumido por el panel
-                }
-            }
+            //     if (mx >= panelX + 10 && mx < panelX + 310 && my >= btnY && my < btnY + 35) {
+            //         isTyping_ = true;
+            //         inputBuffer_ = "CAPA ";
+            //         engine_.statusMessage = "Escribe el nombre de la nueva capa y pulsa Enter:";
+            //         commandScrollOffset_ = 0;
+            //         return; // Consumido por el panel
+            //     }
+            // }
 
             // 3. Consola, Toolbar o Canvas
             if (isOverCommandConsole(mx, my)) {
@@ -442,10 +424,10 @@ namespace cad {
                 }
             }
             
-            if (showEntityListPanel_) {
-                entityListText_ = engine_.getSelectedEntityProperties();
-                entityListScrollOffset_ = 0;
-            }
+            // if (showEntityListPanel_) {
+            //     entityListText_ = engine_.getSelectedEntityProperties();
+            //     entityListScrollOffset_ = 0;
+            // }
             isSelectingByWindow_ = false;
         }
     }
@@ -506,25 +488,32 @@ namespace cad {
 
     // --- Render ---
     void App::render() {
+        // Actualizar ImGui
+        imguiManager_.update(window_);
+
+        // ✅ 2. Dibujar paneles de ImGui
+        imguiManager_.drawLayerPanel(engine_);
+        imguiManager_.drawPropertiesPanel(engine_);
+
+        // ==========================================
+        // DIBUJAR EL MUNDO DE SFML
+        // ==========================================
         window_.clear(sf::Color(30, 30, 30));
-        // 1. Dibujar el mundo (entidades, rejilla, ejes, snaps, etc.)
+        // Dibujar el mundo (entidades, rejilla, ejes, snaps, etc.)
         renderer_.render(window_, view_, engine_, currentMouseScreenPos_, currentMouseWorldPos_,
                         font_, lastSnapResult_.active, lastSnapResult_.point, showAxes_, lastSnapResult_.type);
 
-        // 2. Dibujar rectángulo de selección por ventana (si está activo)
+        // Dibujar rectángulo de selección por ventana (si está activo)
         if (isSelectingByWindow_) {
             renderer_.drawSelectionRect(window_, view_, selectionStartPoint_, selectionEndPoint_);
         }
-
-        // 3. Dibujar el Panel de Gestor de Capas (si está activado)
-        if (showLayerPanel_) {
-            ui_.drawLayerManagerPanel(window_, engine_, layerPanelScrollOffset_);
-        }
-        // 4. Dibujar la UI general (Barra de comandos, barra de estado, panel de propiedades derecho)
+        // Dibujar la UI general (Barra de comandos, barra de estado, panel de propiedades derecho)
         ui_.draw(window_, engine_, inputBuffer_, commandHistory_, commandScrollOffset_,
-                isTyping_, showEntityListPanel_, entityListText_, entityListScrollOffset_,
+                isTyping_, false, entityListText_, entityListScrollOffset_,
                 showAxes_, view_.getScale(), currentMouseWorldPos_);
-        // 5. Mostrar todo en pantalla
+        // Mostrar todo en pantalla
+        imguiManager_.render(window_); //renderizado imGui encima de todo
+
         window_.display();
     }
 
@@ -570,8 +559,9 @@ namespace cad {
             engine_.statusMessage = "Ayuda mostrada";
         }
         else if (mx >= 330 && mx <= 370) {
-            showLayerPanel_ = !showLayerPanel_;
-            engine_.statusMessage = showLayerPanel_ ? "Gestor de capas activado" : "Gestor de capas desactivado";
+            imguiManager_.toggleLayerPanel();
+            engine_.statusMessage = imguiManager_.isLayerPanelVisible() ? 
+                "Gestor de capas activado" : "Gestor de capas desactivado";
         }
     }
 
@@ -826,9 +816,22 @@ namespace cad {
     void App::handleKeyboardNavigation(const sf::Event& event) {
         // Ctrl+L: Toggle panel de lista de entidades
         if (event.key.code == sf::Keyboard::L && event.key.control) {
-            showEntityListPanel_ = !showEntityListPanel_;
-            if (showEntityListPanel_) updateEntityList();
-            engine_.statusMessage = showEntityListPanel_ ? "Panel activado" : "Panel desactivado";
+            // 1. Delegamos el cambio de estado al manager
+            imguiManager_.togglePropertiesPanel();     
+            // 2. Si se acaba de abrir, actualizamos la lista de texto
+            if (imguiManager_.isPropertiesPanelVisible()) {
+                updateEntityList();
+            } 
+            // 3. Feedback al usuario
+            engine_.statusMessage = imguiManager_.isPropertiesPanelVisible() ? 
+                                    "Panel de Propiedades activado" : 
+                                    "Panel de Propiedades desactivado";
+        }
+        // F11: Toggle panel de Capas (Estilo AutoCAD)
+        else if (event.key.code == sf::Keyboard::F11) {
+            imguiManager_.toggleLayerPanel();
+            engine_.statusMessage = imguiManager_.isLayerPanelVisible() ? 
+                                    "Gestor de Capas activado (F11)" : "Gestor de Capas desactivado (F11)";
         }
         // Flecha arriba: historial
         else if (event.key.code == sf::Keyboard::Up) {
@@ -925,7 +928,7 @@ namespace cad {
                 std::string path = showSaveFileDialog();
                 if (!path.empty()) engine_.doc.saveAs(path);
             } else {
-                engine_.doc.save();
+                success = engine_.doc.save();
             }
             // Feedback claro al usuario
             if (success) {

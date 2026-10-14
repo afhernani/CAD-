@@ -17,9 +17,9 @@ void UIManager::draw(sf::RenderWindow& window, const Engine& engine,
     drawCommandWindow(window, inputBuffer, commandHistory, commandScrollOffset, isTyping, showEntityListPanel);
     drawStatusBar(window, engine, viewScale, mouseWorldPos, showEntityListPanel);
     
-    if (showEntityListPanel) {
-        drawEntityListPanel(window, entityListText, entityListScrollOffset);
-    }
+    // if (showEntityListPanel) {
+    //     drawEntityListPanel(window, entityListText, entityListScrollOffset);
+    // }
 }
 
 void UIManager::drawMenuBar(sf::RenderWindow& window) const {
@@ -315,237 +315,237 @@ void UIManager::drawStatusBar(sf::RenderWindow& window, const Engine& engine, fl
     window.draw(statusTxt);
 }
 
-void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string& text, int scrollOffset) const {
-    const int panelWidth = 320;
-    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-    const int panelX = WINDOW_WIDTH - panelWidth;
-    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+// void UIManager::drawEntityListPanel(sf::RenderWindow& window, const std::string& text, int scrollOffset) const {
+//     const int panelWidth = 320;
+//     const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+//     const int panelX = WINDOW_WIDTH - panelWidth;
+//     const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
 
-    // 1. Fondo del panel
-    sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
-    panelBg.setFillColor(sf::Color(40, 40, 45));
-    panelBg.setPosition(panelX, panelY);
-    window.draw(panelBg);
+//     // 1. Fondo del panel
+//     sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
+//     panelBg.setFillColor(sf::Color(40, 40, 45));
+//     panelBg.setPosition(panelX, panelY);
+//     window.draw(panelBg);
 
-    // 2. Borde izquierdo
-    sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
-    panelBorder.setFillColor(sf::Color(80, 80, 80));
-    panelBorder.setPosition(panelX, panelY);
-    window.draw(panelBorder);
+//     // 2. Borde izquierdo
+//     sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
+//     panelBorder.setFillColor(sf::Color(80, 80, 80));
+//     panelBorder.setPosition(panelX, panelY);
+//     window.draw(panelBorder);
 
-    // 3. Título
-    sf::Text title;
-    title.setFont(font_);
-    title.setString("PROPIEDADES");
-    title.setCharacterSize(14);
-    title.setFillColor(sf::Color(220, 220, 220));
-    title.setPosition(panelX + 10, panelY + 10);
-    window.draw(title);
+//     // 3. Título
+//     sf::Text title;
+//     title.setFont(font_);
+//     title.setString("PROPIEDADES");
+//     title.setCharacterSize(14);
+//     title.setFillColor(sf::Color(220, 220, 220));
+//     title.setPosition(panelX + 10, panelY + 10);
+//     window.draw(title);
 
-    sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
-    separator.setFillColor(sf::Color(100, 100, 100));
-    separator.setPosition(panelX + 10, panelY + 35);
-    window.draw(separator);
+//     sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
+//     separator.setFillColor(sf::Color(100, 100, 100));
+//     separator.setPosition(panelX + 10, panelY + 35);
+//     window.draw(separator);
 
-    // 4. Contenido de texto (Propiedades)
-    const int lineHeight = 16;
-    const int startY = panelY + 45;
-    const int btnHeight = 35;
-    const int maxHeight = panelHeight - 55 - btnHeight - 10; // Dejar espacio para el botón
-    const int maxLines = maxHeight / lineHeight;
+//     // 4. Contenido de texto (Propiedades)
+//     const int lineHeight = 16;
+//     const int startY = panelY + 45;
+//     const int btnHeight = 35;
+//     const int maxHeight = panelHeight - 55 - btnHeight - 10; // Dejar espacio para el botón
+//     const int maxLines = maxHeight / lineHeight;
 
-    std::vector<std::string> lines;
-    std::string line;
-    for (char c : text) {
-        if (c == '\n') {
-            lines.push_back(line);
-            line.clear();
-        } else {
-            line += c;
-        }
-    }
-    if (!line.empty()) lines.push_back(line);
+//     std::vector<std::string> lines;
+//     std::string line;
+//     for (char c : text) {
+//         if (c == '\n') {
+//             lines.push_back(line);
+//             line.clear();
+//         } else {
+//             line += c;
+//         }
+//     }
+//     if (!line.empty()) lines.push_back(line);
 
-    int totalLines = lines.size();
-    int maxOffset = std::max(0, totalLines - maxLines);
-    scrollOffset = std::min(scrollOffset, maxOffset);
+//     int totalLines = lines.size();
+//     int maxOffset = std::max(0, totalLines - maxLines);
+//     scrollOffset = std::min(scrollOffset, maxOffset);
 
-    int startIdx = scrollOffset;
-    int lineCount = 0;
-    for (int i = startIdx; i < totalLines && lineCount < maxLines; ++i) {
-        sf::Text lineText;
-        lineText.setFont(font_);
-        lineText.setString(lines[i]);
-        lineText.setCharacterSize(12);
+//     int startIdx = scrollOffset;
+//     int lineCount = 0;
+//     for (int i = startIdx; i < totalLines && lineCount < maxLines; ++i) {
+//         sf::Text lineText;
+//         lineText.setFont(font_);
+//         lineText.setString(lines[i]);
+//         lineText.setCharacterSize(12);
 
-        if (lines[i].find("===") != std::string::npos || lines[i].find("---") != std::string::npos) {
-            lineText.setFillColor(sf::Color(100, 200, 255));
-        } else if (lines[i].find("Tipo:") != std::string::npos || lines[i].find("Capa:") != std::string::npos) {
-            lineText.setFillColor(sf::Color(255, 255, 100)); // Resaltar Tipo y Capa
-        } else {
-            lineText.setFillColor(sf::Color(200, 200, 200));
-        }
+//         if (lines[i].find("===") != std::string::npos || lines[i].find("---") != std::string::npos) {
+//             lineText.setFillColor(sf::Color(100, 200, 255));
+//         } else if (lines[i].find("Tipo:") != std::string::npos || lines[i].find("Capa:") != std::string::npos) {
+//             lineText.setFillColor(sf::Color(255, 255, 100)); // Resaltar Tipo y Capa
+//         } else {
+//             lineText.setFillColor(sf::Color(200, 200, 200));
+//         }
 
-        lineText.setPosition(panelX + 10, startY + lineCount * lineHeight);
-        window.draw(lineText);
-        lineCount++;
-    }
+//         lineText.setPosition(panelX + 10, startY + lineCount * lineHeight);
+//         window.draw(lineText);
+//         lineCount++;
+//     }
 
-    // 5. BOTÓN INTERACTIVO: "Cambiar Capa"
-    const int btnY = panelY + panelHeight - btnHeight - 10;
-    sf::RectangleShape btnChangeLayer(sf::Vector2f(panelWidth - 20, btnHeight));
-    btnChangeLayer.setFillColor(sf::Color(60, 100, 160));
-    btnChangeLayer.setOutlineColor(sf::Color(100, 150, 220));
-    btnChangeLayer.setOutlineThickness(1.f);
-    btnChangeLayer.setPosition(panelX + 10, btnY);
-    window.draw(btnChangeLayer);
+//     // 5. BOTÓN INTERACTIVO: "Cambiar Capa"
+//     const int btnY = panelY + panelHeight - btnHeight - 10;
+//     sf::RectangleShape btnChangeLayer(sf::Vector2f(panelWidth - 20, btnHeight));
+//     btnChangeLayer.setFillColor(sf::Color(60, 100, 160));
+//     btnChangeLayer.setOutlineColor(sf::Color(100, 150, 220));
+//     btnChangeLayer.setOutlineThickness(1.f);
+//     btnChangeLayer.setPosition(panelX + 10, btnY);
+//     window.draw(btnChangeLayer);
 
-    sf::Text btnText;
-    btnText.setFont(font_);
-    btnText.setString("Cambiar Capa...");
-    btnText.setCharacterSize(13);
-    btnText.setFillColor(sf::Color::White);
+//     sf::Text btnText;
+//     btnText.setFont(font_);
+//     btnText.setString("Cambiar Capa...");
+//     btnText.setCharacterSize(13);
+//     btnText.setFillColor(sf::Color::White);
     
-    // Centrar texto en el botón
-    float textWidth = btnText.getLocalBounds().width;
-    btnText.setPosition(panelX + 10 + (panelWidth - 20 - textWidth) / 2.0f, btnY + 9.0f);
-    window.draw(btnText);
+//     // Centrar texto en el botón
+//     float textWidth = btnText.getLocalBounds().width;
+//     btnText.setPosition(panelX + 10 + (panelWidth - 20 - textWidth) / 2.0f, btnY + 9.0f);
+//     window.draw(btnText);
 
-    // 6. Indicador de scroll (si hay mucho texto)
-    if (totalLines > maxLines) {
-        float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
-        float indicatorHeight = 30.f;
-        float maxIndicatorY = startY + maxHeight - indicatorHeight;
-        float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
+//     // 6. Indicador de scroll (si hay mucho texto)
+//     if (totalLines > maxLines) {
+//         float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
+//         float indicatorHeight = 30.f;
+//         float maxIndicatorY = startY + maxHeight - indicatorHeight;
+//         float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
 
-        sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
-        scrollIndicator.setFillColor(sf::Color(100, 100, 100));
-        scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
-        window.draw(scrollIndicator);
-    }
-}
+//         sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
+//         scrollIndicator.setFillColor(sf::Color(100, 100, 100));
+//         scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
+//         window.draw(scrollIndicator);
+//     }
+// }
 
-void UIManager::drawLayerManagerPanel(sf::RenderWindow& window, const Engine& engine, int scrollOffset) const {
-    const int panelWidth = 280;
-    const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
-    const int panelX = 0; // Panel a la izquierda
-    const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
+// void UIManager::drawLayerManagerPanel(sf::RenderWindow& window, const Engine& engine, int scrollOffset) const {
+//     const int panelWidth = 280;
+//     const int panelHeight = WINDOW_HEIGHT - MENU_HEIGHT - TOOLBAR_HEIGHT - STATUS_HEIGHT;
+//     const int panelX = 0; // Panel a la izquierda
+//     const int panelY = MENU_HEIGHT + TOOLBAR_HEIGHT;
 
-    // 1. Fondo del panel
-    sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
-    panelBg.setFillColor(sf::Color(40, 40, 45));
-    panelBg.setPosition(panelX, panelY);
-    window.draw(panelBg);
+//     // 1. Fondo del panel
+//     sf::RectangleShape panelBg(sf::Vector2f(panelWidth, panelHeight));
+//     panelBg.setFillColor(sf::Color(40, 40, 45));
+//     panelBg.setPosition(panelX, panelY);
+//     window.draw(panelBg);
 
-    // 2. Borde derecho (separador del canvas)
-    sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
-    panelBorder.setFillColor(sf::Color(80, 80, 80));
-    panelBorder.setPosition(panelX + panelWidth - 2, panelY);
-    window.draw(panelBorder);
+//     // 2. Borde derecho (separador del canvas)
+//     sf::RectangleShape panelBorder(sf::Vector2f(2, panelHeight));
+//     panelBorder.setFillColor(sf::Color(80, 80, 80));
+//     panelBorder.setPosition(panelX + panelWidth - 2, panelY);
+//     window.draw(panelBorder);
 
-    // 3. Título
-    sf::Text title;
-    title.setFont(font_);
-    title.setString("GESTOR DE CAPAS");
-    title.setCharacterSize(14);
-    title.setFillColor(sf::Color(220, 220, 220));
-    title.setPosition(panelX + 10, panelY + 10);
-    window.draw(title);
+//     // 3. Título
+//     sf::Text title;
+//     title.setFont(font_);
+//     title.setString("GESTOR DE CAPAS");
+//     title.setCharacterSize(14);
+//     title.setFillColor(sf::Color(220, 220, 220));
+//     title.setPosition(panelX + 10, panelY + 10);
+//     window.draw(title);
 
-    // 4. Cabeceras de columnas
-    sf::Text headers;
-    headers.setFont(font_);
-    headers.setString("Nombre          Color  V  F  L");
-    headers.setCharacterSize(12);
-    headers.setFillColor(sf::Color(150, 150, 150));
-    headers.setPosition(panelX + 10, panelY + 35);
-    window.draw(headers);
+//     // 4. Cabeceras de columnas
+//     sf::Text headers;
+//     headers.setFont(font_);
+//     headers.setString("Nombre          Color  V  F  L");
+//     headers.setCharacterSize(12);
+//     headers.setFillColor(sf::Color(150, 150, 150));
+//     headers.setPosition(panelX + 10, panelY + 35);
+//     window.draw(headers);
 
-    sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
-    separator.setFillColor(sf::Color(100, 100, 100));
-    separator.setPosition(panelX + 10, panelY + 55);
-    window.draw(separator);
+//     sf::RectangleShape separator(sf::Vector2f(panelWidth - 20, 1));
+//     separator.setFillColor(sf::Color(100, 100, 100));
+//     separator.setPosition(panelX + 10, panelY + 55);
+//     window.draw(separator);
 
-    // 5. Lista de capas
-    const int lineHeight = 24;
-    const int startY = panelY + 65;
-    const int maxHeight = panelHeight - 75;
-    const int maxLines = maxHeight / lineHeight;
+//     // 5. Lista de capas
+//     const int lineHeight = 24;
+//     const int startY = panelY + 65;
+//     const int maxHeight = panelHeight - 75;
+//     const int maxLines = maxHeight / lineHeight;
 
-    int totalLayers = engine.doc.layers.size();
-    int maxOffset = std::max(0, totalLayers - maxLines);
-    scrollOffset = std::min(scrollOffset, maxOffset);
+//     int totalLayers = engine.doc.layers.size();
+//     int maxOffset = std::max(0, totalLayers - maxLines);
+//     scrollOffset = std::min(scrollOffset, maxOffset);
 
-    int currentRow = 0;
-    for (auto const& [name, layer] : engine.doc.layers) {
-        if (currentRow < scrollOffset) {
-            currentRow++;
-            continue;
-        }
-        if (currentRow >= scrollOffset + maxLines) break;
+//     int currentRow = 0;
+//     for (auto const& [name, layer] : engine.doc.layers) {
+//         if (currentRow < scrollOffset) {
+//             currentRow++;
+//             continue;
+//         }
+//         if (currentRow >= scrollOffset + maxLines) break;
 
-        int yPos = startY + (currentRow - scrollOffset) * lineHeight;
-        bool isCurrent = (name == engine.doc.currentLayerName);
+//         int yPos = startY + (currentRow - scrollOffset) * lineHeight;
+//         bool isCurrent = (name == engine.doc.currentLayerName);
 
-        // Resaltar capa actual
-        if (isCurrent) {
-            sf::RectangleShape highlight(sf::Vector2f(panelWidth - 10, lineHeight));
-            highlight.setFillColor(sf::Color(60, 60, 70));
-            highlight.setPosition(panelX + 5, yPos - 2);
-            window.draw(highlight);
-        }
+//         // Resaltar capa actual
+//         if (isCurrent) {
+//             sf::RectangleShape highlight(sf::Vector2f(panelWidth - 10, lineHeight));
+//             highlight.setFillColor(sf::Color(60, 60, 70));
+//             highlight.setPosition(panelX + 5, yPos - 2);
+//             window.draw(highlight);
+//         }
 
-        // Nombre de la capa
-        sf::Text nameText;
-        nameText.setFont(font_);
-        nameText.setString(name + (isCurrent ? " (Actual)" : ""));
-        nameText.setCharacterSize(12);
-        nameText.setFillColor(isCurrent ? sf::Color(100, 200, 255) : sf::Color(200, 200, 200));
-        nameText.setPosition(panelX + 10, yPos);
-        window.draw(nameText);
+//         // Nombre de la capa
+//         sf::Text nameText;
+//         nameText.setFont(font_);
+//         nameText.setString(name + (isCurrent ? " (Actual)" : ""));
+//         nameText.setCharacterSize(12);
+//         nameText.setFillColor(isCurrent ? sf::Color(100, 200, 255) : sf::Color(200, 200, 200));
+//         nameText.setPosition(panelX + 10, yPos);
+//         window.draw(nameText);
 
-        // Muestra de Color (cuadrado)
-        sf::RectangleShape colorBox(sf::Vector2f(16, 16));
-        colorBox.setFillColor(layer.color);
-        colorBox.setOutlineColor(sf::Color(150, 150, 150));
-        colorBox.setOutlineThickness(1.f);
-        colorBox.setPosition(panelX + 160, yPos + 4);
-        window.draw(colorBox);
+//         // Muestra de Color (cuadrado)
+//         sf::RectangleShape colorBox(sf::Vector2f(16, 16));
+//         colorBox.setFillColor(layer.color);
+//         colorBox.setOutlineColor(sf::Color(150, 150, 150));
+//         colorBox.setOutlineThickness(1.f);
+//         colorBox.setPosition(panelX + 160, yPos + 4);
+//         window.draw(colorBox);
 
-        // Función helper para dibujar texto de estado
-        auto drawStatusChar = [&](int x, char c, bool isActive, sf::Color activeColor) {
-            sf::Text txt;
-            txt.setFont(font_);
-            txt.setString(std::string(1, c));
-            txt.setCharacterSize(12);
-            txt.setFillColor(isActive ? activeColor : sf::Color(100, 100, 100));
-            txt.setStyle(isActive ? sf::Text::Bold : sf::Text::Regular);
-            txt.setPosition(x, yPos);
-            window.draw(txt);
-        };
+//         // Función helper para dibujar texto de estado
+//         auto drawStatusChar = [&](int x, char c, bool isActive, sf::Color activeColor) {
+//             sf::Text txt;
+//             txt.setFont(font_);
+//             txt.setString(std::string(1, c));
+//             txt.setCharacterSize(12);
+//             txt.setFillColor(isActive ? activeColor : sf::Color(100, 100, 100));
+//             txt.setStyle(isActive ? sf::Text::Bold : sf::Text::Regular);
+//             txt.setPosition(x, yPos);
+//             window.draw(txt);
+//         };
 
-        // V (Visible)
-        drawStatusChar(panelX + 190, 'V', layer.visible, sf::Color(100, 255, 100));
-        // F (Frozen)
-        drawStatusChar(panelX + 215, 'F', layer.frozen, sf::Color(100, 200, 255));
-        // L (Locked)
-        drawStatusChar(panelX + 240, 'L', layer.locked, sf::Color(255, 100, 100));
+//         // V (Visible)
+//         drawStatusChar(panelX + 190, 'V', layer.visible, sf::Color(100, 255, 100));
+//         // F (Frozen)
+//         drawStatusChar(panelX + 215, 'F', layer.frozen, sf::Color(100, 200, 255));
+//         // L (Locked)
+//         drawStatusChar(panelX + 240, 'L', layer.locked, sf::Color(255, 100, 100));
 
-        currentRow++;
-    }
+//         currentRow++;
+//     }
 
-    // 6. Indicador de scroll
-    if (totalLayers > maxLines) {
-        float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
-        float indicatorHeight = 30.f;
-        float maxIndicatorY = startY + maxHeight - indicatorHeight;
-        float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
+//     // 6. Indicador de scroll
+//     if (totalLayers > maxLines) {
+//         float scrollRatio = (maxOffset > 0) ? (float)scrollOffset / maxOffset : 0.0f;
+//         float indicatorHeight = 30.f;
+//         float maxIndicatorY = startY + maxHeight - indicatorHeight;
+//         float indicatorY = startY + scrollRatio * (maxIndicatorY - startY);
 
-        sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
-        scrollIndicator.setFillColor(sf::Color(100, 100, 100));
-        scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
-        window.draw(scrollIndicator);
-    }
-}
+//         sf::RectangleShape scrollIndicator(sf::Vector2f(5, indicatorHeight));
+//         scrollIndicator.setFillColor(sf::Color(100, 100, 100));
+//         scrollIndicator.setPosition(panelX + panelWidth - 8, indicatorY);
+//         window.draw(scrollIndicator);
+//     }
+// }
 
 } // namespace cad
