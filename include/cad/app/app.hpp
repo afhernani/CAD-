@@ -65,10 +65,10 @@ namespace cad {
 
         // --- Control de visualización ---
         bool showAxes_ = true;
-        // bool showEntityListPanel_ = false;
         std::string entityListText_;
         int entityListScrollOffset_ = 0;
         // panel de capas
+        // bool showEntityListPanel_ = false;
         // bool showLayerPanel_ = false;
         //int layerPanelScrollOffset_ = 0;
 

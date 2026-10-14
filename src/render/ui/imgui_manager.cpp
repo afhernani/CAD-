@@ -251,27 +251,108 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
         size_t count = engine.selectedEntities.size();
         ImGui::Text("%zu entidad(es) seleccionada(s)", count);
         ImGui::Separator();
+
+        if (count > 1) {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), 
+                               "Nota: La geometría mostrada corresponde a la 1ª entidad.");
+            ImGui::Separator();
+        }
+
+        Entity* firstEntity = engine.selectedEntities[0];
+
+        // =========================================================================
+        // 1. PROPIEDAD COMÚN: CAMBIAR CAPA (Aplica a TODAS las seleccionadas)
+        // =========================================================================
+        ImGui::Text("Capa:");
         
-        // Mostrar un resumen de TODAS las entidades seleccionadas
-        for (size_t i = 0; i < count; ++i) {
-            const Entity* ent = engine.selectedEntities[i];
+        // Construir la lista de capas separada por '\0' para el Combo de ImGui
+        std::string layersStr;
+        for (const auto& pair : engine.doc.layers) {
+            layersStr += pair.first + "\0";
+        }
+        layersStr += "\0"; // Doble terminador nulo requerido por ImGui
+
+        const char* preview = firstEntity->layerName.c_str();
+        if (ImGui::BeginCombo("##LayerCombo", preview)) {
+            for (const auto& pair : engine.doc.layers) {
+                bool is_selected = (firstEntity->layerName == pair.first);
+                if (ImGui::Selectable(pair.first.c_str(), is_selected)) {
+                    // Aplicar el cambio de capa a TODAS las entidades seleccionadas
+                    for (Entity* ent : engine.selectedEntities) {
+                        ent->layerName = pair.first;
+                    }
+                    engine.doc.isModified = true;
+                    engine.statusMessage = "Capa cambiada a: " + pair.first;
+                }
+                if (is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        ImGui::Separator();
+        ImGui::Text("Geometría:");
+
+        // =========================================================================
+        // 2. PROPIEDADES ESPECÍFICAS POR TIPO (Editables en tiempo real)
+        // =========================================================================
+        
+        // --- LÍNEA ---
+        if (auto* line = dynamic_cast<Line*>(firstEntity)) {
+            ImGui::InputDouble("P1 X", &line->p1.x, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("P1 Y", &line->p1.y, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("P2 X", &line->p2.x, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("P2 Y", &line->p2.y, 0.1, 1.0, "%.4f");
             
-            // Formato: "1. Tipo: Línea | Capa: 0"
-            ImGui::Text("%zu. Tipo: %-10s | Capa: %s", 
-                i + 1, 
-                getEntityTypeName(ent).c_str(), 
-                ent->layerName.c_str());
+            // Mostrar longitud calculada (solo lectura)
+            double length = std::hypot(line->p2.x - line->p1.x, line->p2.y - line->p1.y);
+            ImGui::Text("Longitud: %.4f", length);
+            
+            engine.doc.isModified = true; // Marcar como modificado al editar
         }
         
-        // Si solo hay 1 entidad, podemos preparar el terreno para mostrar sus datos específicos
-        if (count == 1) {
-            ImGui::Separator();
-            ImGui::Text("Detalles específicos:");
-            const Entity* first = engine.selectedEntities[0];
-            ImGui::Text("ID Interno: %d", first->id);
+        // --- CÍRCULO ---
+        else if (auto* circle = dynamic_cast<Circle*>(firstEntity)) {
+            ImGui::InputDouble("Centro X", &circle->center.x, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Centro Y", &circle->center.y, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Radio", &circle->radius, 0.1, 1.0, "%.4f");
+            if (circle->radius < 0.0) circle->radius = 0.0; // Evitar radios negativos
             
-            // Aquí en el futuro podrás añadir:
-            // if (auto* line = dynamic_cast<const Line*>(first)) { ImGui::Text("Longitud: ..."); }
+            engine.doc.isModified = true;
+        }
+        
+        // --- ARCO ---
+        else if (auto* arc = dynamic_cast<Arc*>(firstEntity)) {
+            ImGui::InputDouble("Centro X", &arc->center.x, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Centro Y", &arc->center.y, 0.1, 1.0, "%.4f");
+            ImGui::InputDouble("Radio", &arc->radius, 0.1, 1.0, "%.4f");
+            if (arc->radius < 0.0) arc->radius = 0.0;
+            
+            ImGui::InputDouble("Ángulo Inicio (°)", &arc->startAngle, 1.0, 5.0, "%.2f");
+            ImGui::InputDouble("Ángulo Fin (°)", &arc->endAngle, 1.0, 5.0, "%.2f");
+            
+            engine.doc.isModified = true;
+        }
+        
+        // --- POLILÍNEA ---
+        else if (auto* pline = dynamic_cast<Polyline*>(firstEntity)) {
+            ImGui::Text("Vértices: %zu", pline->points.size());
+            
+            // Permitir cambiar si está cerrada o abierta
+            bool isClosed = pline->closed;
+            if (ImGui::Checkbox("Polilínea Cerrada", &isClosed)) {
+                pline->closed = isClosed;
+                engine.doc.isModified = true;
+            }
+            
+            ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), 
+                               "(Edición de vértices individuales pendiente de implementación)");
+        }
+        
+        // --- ENTIDAD DESCONOCIDA ---
+        else {
+            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.5f, 1.0f), "Tipo de entidad no soportado para edición.");
         }
     }
     
