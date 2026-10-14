@@ -42,7 +42,7 @@ void UIManager::drawToolbar(sf::RenderWindow& window, bool showAxes) const {
     // Barra de Herramientas (Debajo del menú)
     sf::RectangleShape toolbar(sf::Vector2f(WINDOW_WIDTH, TOOLBAR_HEIGHT));
     toolbar.setFillColor(sf::Color(45, 45, 48));
-    toolbar.setPosition(0, MENU_HEIGHT + 20);
+    toolbar.setPosition(0, MENU_HEIGHT);
     window.draw(toolbar);
 
     // Línea separadora inferior

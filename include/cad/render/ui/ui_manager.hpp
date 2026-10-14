@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "cad/commands/engine.hpp"
+#include "cad/core/constants.hpp"
 
 namespace cad {
 
@@ -20,15 +21,8 @@ public:
     // void drawLayerManagerPanel(sf::RenderWindow& window, const Engine& engine, int scrollOffset) const;
     
 private:
-    // Constantes de layout
-    static constexpr unsigned int WINDOW_WIDTH = 1280;
-    static constexpr unsigned int WINDOW_HEIGHT = 720;
-    static constexpr unsigned int MENU_HEIGHT = 30;
-    static constexpr unsigned int TOOLBAR_HEIGHT = 60;
-    static constexpr unsigned int COMMAND_HEIGHT = 90;
-    static constexpr unsigned int STATUS_HEIGHT = 25;
-
-    void drawMenuBar(sf::RenderWindow& window) const;
+    
+    // void drawMenuBar(sf::RenderWindow& window) const;
     void drawToolbar(sf::RenderWindow& window, bool showAxes) const;
     void drawCommandWindow(sf::RenderWindow& window, const std::string& inputBuffer, 
                            const std::vector<std::string>& commandHistory, int scrollOffset,

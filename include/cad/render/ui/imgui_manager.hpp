@@ -39,7 +39,6 @@ public:
 
     // Dibujar la barra de menú principal
     void drawMainMenu(Engine& engine, bool& showAxes);
-    // Gestión de archivos recientes
     void addRecentFile(const std::string& path);
     
 private:
