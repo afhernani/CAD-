@@ -4,17 +4,41 @@
 
 namespace cad {
 
+    // Inicializar el puntero estático a nulo
+    sf::Font* Text::s_font = nullptr;
+
     void Text::draw(sf::RenderWindow& window, const WorldToScreenFn& w2s,
                     const sf::Color& color, float viewScale) const {
-        // Dibujamos una pequeña cruz en el punto de inserción como referencia visual
-        sf::Vector2f pos = w2s(position.x, position.y);
-        sf::Vertex v1, v2, v3, v4;
-        v1.position = {pos.x - 5, pos.y}; v1.color = color;
-        v2.position = {pos.x + 5, pos.y}; v2.color = color;
-        v3.position = {pos.x, pos.y - 5}; v3.color = color;
-        v4.position = {pos.x, pos.y + 5}; v4.color = color;
-        sf::Vertex lines[] = {v1, v2, v3, v4};
-        window.draw(lines, 4, sf::Lines);
+        
+        // Si tenemos fuente, dibujamos el texto real
+        if (s_font && !content.empty()) {
+            sf::Vector2f screenPos = w2s(position.x, position.y);
+            
+            sf::Text sfText(content, *s_font, static_cast<unsigned int>(height * viewScale));
+            sfText.setFillColor(color);
+            sfText.setPosition(screenPos.x, screenPos.y);
+            
+            // Ajustar la rotación (SFML usa grados, nosotros guardamos radianes)
+            if (rotation != 0.0) {
+                sfText.setRotation(rotation * 180.0 / 3.14159265359);
+            }
+
+            // Opcional: Ajustar el origen si quieres que 'position' sea la esquina inferior izquierda
+            // sfText.setOrigin(0, sfText.getLocalBounds().height);
+
+            window.draw(sfText);
+        } 
+        else {
+            // Fallback: Si no hay fuente, dibujamos la cruz (útil para depurar)
+            sf::Vector2f pos = w2s(position.x, position.y);
+            sf::Vertex v1, v2, v3, v4;
+            v1.position = {pos.x - 5, pos.y}; v1.color = color;
+            v2.position = {pos.x + 5, pos.y}; v2.color = color;
+            v3.position = {pos.x, pos.y - 5}; v3.color = color;
+            v4.position = {pos.x, pos.y + 5}; v4.color = color;
+            sf::Vertex lines[] = {v1, v2, v3, v4};
+            window.draw(lines, 4, sf::Lines);
+        }
     }
 
     bool Text::isNear(const Point2D& point, double tolerance) const {

@@ -340,13 +340,34 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
         }
         // --- POLÍGONO ---
         else if (auto* poly = dynamic_cast<Polygon*>(firstEntity)) {
-            ImGui::InputDouble("Centro X", &poly->center.x, 0.1, 1.0, "%.4f");
-            ImGui::InputDouble("Centro Y", &poly->center.y, 0.1, 1.0, "%.4f");
-            ImGui::InputInt("Número de Lados", &poly->sides);
-            if (poly->sides < 3) poly->sides = 3; // Mínimo 3 lados
-            ImGui::InputDouble("Radio", &poly->radius, 0.1, 1.0, "%.4f");
-            if (poly->radius < 0.0) poly->radius = 0.0;
-            engine.doc.isModified = true;
+            bool geometryChanged = false;
+
+            if (ImGui::InputDouble("Centro X", &poly->center.x, 0.1, 1.0, "%.4f")) geometryChanged = true;
+            if (ImGui::InputDouble("Centro Y", &poly->center.y, 0.1, 1.0, "%.4f")) geometryChanged = true;
+            
+            if (ImGui::InputInt("Número de Lados", &poly->sides)) {
+                if (poly->sides < 3) poly->sides = 3; // Mínimo 3 lados
+                geometryChanged = true;
+            }
+            
+            if (ImGui::InputDouble("Radio", &poly->radius, 0.1, 1.0, "%.4f")) {
+                if (poly->radius < 0.0) poly->radius = 0.0;
+                geometryChanged = true;
+            }
+
+            // RECÁLCULO AUTOMÁTICO DE VÉRTICES
+            if (geometryChanged) {
+                poly->points.clear();
+                double angleStep = 2.0 * 3.14159265359 / poly->sides;
+                for (int i = 0; i < poly->sides; ++i) {
+                    double angle = i * angleStep;
+                    poly->points.push_back({
+                        poly->center.x + poly->radius * std::cos(angle),
+                        poly->center.y + poly->radius * std::sin(angle)
+                    });
+                }
+                engine.doc.isModified = true;
+            }
         }
         // --- ELIPSE ---
         else if (auto* ellipse = dynamic_cast<Ellipse*>(firstEntity)) {

@@ -1,5 +1,7 @@
 #include "cad/app/app.hpp"
 
+#include "cad/core/geometry/entities/text.hpp"
+
 #include "cad/core/geometry/entities/line.hpp"
 #include "cad/core/geometry/entities/circle.hpp"
 #include "cad/core/geometry/entities/arc.hpp"
@@ -155,6 +157,7 @@ namespace cad {
             if (!font_.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
                 std::cerr << "Error crítico: No se pudo cargar la fuente desde: " << fontPath << std::endl;
             }
+            Text::setGlobalFont(font_);
         } else {
             std::cout << "[App] Fuente cargada correctamente." << std::endl;
         }

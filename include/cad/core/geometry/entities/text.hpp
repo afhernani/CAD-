@@ -2,6 +2,7 @@
 #include "../entity.hpp"
 #include "cad/core/geometry/rect.hpp"
 #include "../point.hpp"
+#include <SFML/Graphics/Text.hpp>
 #include <string>
 
 namespace cad {
@@ -12,6 +13,10 @@ namespace cad {
         std::string content;
         double height = 1.0;
         double rotation = 0.0; // En radianes
+
+        // Gestión de fuente estática
+        static sf::Font* s_font;
+        static void setGlobalFont(sf::Font& font) { s_font = &font; }
 
         Text() = default;
         ~Text() override = default;
