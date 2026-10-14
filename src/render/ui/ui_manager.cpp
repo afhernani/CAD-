@@ -12,7 +12,7 @@ void UIManager::draw(sf::RenderWindow& window, const Engine& engine,
                      int commandScrollOffset, bool isTyping, bool showEntityListPanel,
                      const std::string& entityListText, int entityListScrollOffset,
                      bool showAxes, float viewScale, const Point2D& mouseWorldPos) const {
-    drawMenuBar(window);
+    // drawMenuBar(window);
     drawToolbar(window, showAxes);
     drawCommandWindow(window, inputBuffer, commandHistory, commandScrollOffset, isTyping, showEntityListPanel);
     drawStatusBar(window, engine, viewScale, mouseWorldPos, showEntityListPanel);
@@ -22,27 +22,27 @@ void UIManager::draw(sf::RenderWindow& window, const Engine& engine,
     // }
 }
 
-void UIManager::drawMenuBar(sf::RenderWindow& window) const {
-    // Barra de Menú (Arriba)
-    sf::RectangleShape menu(sf::Vector2f(WINDOW_WIDTH, MENU_HEIGHT));
-    menu.setFillColor(sf::Color(45, 45, 48));
-    menu.setPosition(0, 0);
-    window.draw(menu);
+// void UIManager::drawMenuBar(sf::RenderWindow& window) const {
+//     // Barra de Menú (Arriba)
+//     sf::RectangleShape menu(sf::Vector2f(WINDOW_WIDTH, MENU_HEIGHT));
+//     menu.setFillColor(sf::Color(45, 45, 48));
+//     menu.setPosition(0, 0);
+//     window.draw(menu);
 
-    sf::Text menuTxt;
-    menuTxt.setFont(font_);
-    menuTxt.setString(toSfString("Archivo  Editar  Ver  Dibujar  Modificar  Ayuda"));
-    menuTxt.setCharacterSize(14);
-    menuTxt.setFillColor(sf::Color(220, 220, 220));
-    menuTxt.setPosition(10, 8);
-    window.draw(menuTxt);
-}
+//     sf::Text menuTxt;
+//     menuTxt.setFont(font_);
+//     menuTxt.setString(toSfString("Archivo  Editar  Ver  Dibujar  Modificar  Ayuda"));
+//     menuTxt.setCharacterSize(14);
+//     menuTxt.setFillColor(sf::Color(220, 220, 220));
+//     menuTxt.setPosition(10, 8);
+//     window.draw(menuTxt);
+// }
 
 void UIManager::drawToolbar(sf::RenderWindow& window, bool showAxes) const {
     // Barra de Herramientas (Debajo del menú)
     sf::RectangleShape toolbar(sf::Vector2f(WINDOW_WIDTH, TOOLBAR_HEIGHT));
     toolbar.setFillColor(sf::Color(45, 45, 48));
-    toolbar.setPosition(0, MENU_HEIGHT);
+    toolbar.setPosition(0, MENU_HEIGHT + 20);
     window.draw(toolbar);
 
     // Línea separadora inferior

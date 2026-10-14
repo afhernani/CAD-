@@ -462,4 +462,130 @@ void ImGuiManager::drawPropertiesPanel(Engine& engine) {
     ImGui::End();
 }
 
+void ImGuiManager::addRecentFile(const std::string& path) {
+    // Evitar duplicados
+    auto it = std::find(recentFiles_.begin(), recentFiles_.end(), path);
+    if (it != recentFiles_.end()) {
+        recentFiles_.erase(it);
+    }
+    // Añadir al principio
+    recentFiles_.insert(recentFiles_.begin(), path);
+    
+    // Mantener solo los últimos 5
+    if (recentFiles_.size() > 5) {
+        recentFiles_.pop_back();
+    }
+}
+
+void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
+    if (ImGui::BeginMainMenuBar()) {
+        
+        // --- ARCHIVO ---
+        if (ImGui::BeginMenu("Archivo")) {
+            if (ImGui::MenuItem("Nuevo", "Ctrl+N")) {
+                // Aquí llamaremos a App::handleFileCommand("NEW") en el siguiente paso
+                engine.statusMessage = "Comando: Nuevo (Pendiente de conectar con App)";
+            }
+            if (ImGui::MenuItem("Abrir...", "Ctrl+O")) {
+                engine.statusMessage = "Comando: Abrir (Pendiente de conectar con App)";
+            }
+            
+            ImGui::Separator();
+            
+            if (ImGui::MenuItem("Guardar", "Ctrl+S")) {
+                engine.statusMessage = "Comando: Guardar (Pendiente de conectar con App)";
+            }
+            if (ImGui::MenuItem("Guardar como...", "Ctrl+Shift+S")) {
+                engine.statusMessage = "Comando: Guardar como (Pendiente de conectar con App)";
+            }
+            
+            ImGui::Separator();
+            
+            // Submenú de Archivos Recientes
+            if (!recentFiles_.empty() && ImGui::BeginMenu("Archivos Recientes")) {
+                for (const auto& file : recentFiles_) {
+                    // Mostrar solo el nombre del archivo, no la ruta completa
+                    std::string fileName = std::filesystem::path(file).filename().string();
+                    if (ImGui::MenuItem(fileName.c_str())) {
+                        engine.statusMessage = "Abriendo: " + file;
+                        // Aquí llamaremos a la lógica de carga
+                    }
+                }
+                ImGui::EndMenu();
+            } else {
+                ImGui::MenuItem("Archivos Recientes", nullptr, false, false); // Deshabilitado si está vacío
+            }
+            
+            ImGui::Separator();
+            
+            if (ImGui::MenuItem("Salir", "Alt+F4")) {
+                // Señal para cerrar la aplicación
+            }
+            
+            ImGui::EndMenu();
+        }
+
+        // --- EDITAR ---
+        if (ImGui::BeginMenu("Editar")) {
+            if (ImGui::MenuItem("Deshacer", "Ctrl+Z")) {
+                engine.undo();
+            }
+            if (ImGui::MenuItem("Rehacer", "Ctrl+Y")) {
+                engine.redo();
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Borrar", "Del")) {
+                engine.deleteSelected();
+            }
+            ImGui::EndMenu();
+        }
+
+        // --- VER ---
+        if (ImGui::BeginMenu("Ver")) {
+            if (ImGui::MenuItem("Ejes", nullptr, &showAxes)) {
+                // El checkbox se actualiza automáticamente por la referencia &showAxes
+                engine.statusMessage = showAxes ? "Ejes activados" : "Ejes desactivados";
+            }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Gestor de Capas", "Ctrl+Shift+L", &layerPanelVisible_)) {}
+            if (ImGui::MenuItem("Panel de Propiedades", "Ctrl+L", &propertiesPanelVisible_)) {}
+            ImGui::EndMenu();
+        }
+
+        // --- DIBUJAR ---
+        if (ImGui::BeginMenu("Dibujar")) {
+            // Usamos engine.processInput para activar los comandos de dibujo existentes
+            if (ImGui::MenuItem("Línea", "L")) engine.processInput("L");
+            if (ImGui::MenuItem("Círculo", "C")) engine.processInput("C");
+            if (ImGui::MenuItem("Arco", "A")) engine.processInput("A");
+            if (ImGui::MenuItem("Polilínea", "PL")) engine.processInput("PL");
+            if (ImGui::MenuItem("Polígono", "POL")) engine.processInput("POL");
+            if (ImGui::MenuItem("Elipse", "EL")) engine.processInput("EL");
+            if (ImGui::MenuItem("Texto", "T")) engine.processInput("T");
+            ImGui::EndMenu();
+        }
+
+        // --- MODIFICAR ---
+        if (ImGui::BeginMenu("Modificar")) {
+            if (ImGui::MenuItem("Mover", "M")) engine.processInput("M");
+            if (ImGui::MenuItem("Copiar", "CO")) engine.processInput("CO");
+            if (ImGui::MenuItem("Rotar", "RO")) engine.processInput("RO");
+            if (ImGui::MenuItem("Escala", "SC")) engine.processInput("SC");
+            if (ImGui::MenuItem("Recortar", "TR")) engine.processInput("TR");
+            if (ImGui::MenuItem("Empalme", "F")) engine.processInput("F");
+            ImGui::EndMenu();
+        }
+
+        // --- AYUDA ---
+        if (ImGui::BeginMenu("Ayuda")) {
+            if (ImGui::MenuItem("Acerca de CAD+")) {
+                engine.statusMessage = "CAD+ v0.5 - Desarrollado con SFML e ImGui";
+            }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+}
+
 } // namespace cad

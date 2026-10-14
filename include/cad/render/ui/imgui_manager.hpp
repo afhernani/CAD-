@@ -36,6 +36,11 @@ public:
     void togglePropertiesPanel();
     bool isPropertiesPanelVisible() const;
     void drawPropertiesPanel(Engine& engine);
+
+    // Dibujar la barra de menú principal
+    void drawMainMenu(Engine& engine, bool& showAxes);
+    // Gestión de archivos recientes
+    void addRecentFile(const std::string& path);
     
 private:
     bool initialized_ = false;
@@ -46,6 +51,7 @@ private:
     
     // Helper para crear capas
     void createNewLayer(Engine& engine);
+    std::vector<std::string> recentFiles_;
 };
 
 } // namespace cad

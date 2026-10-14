@@ -504,7 +504,10 @@ namespace cad {
         // Actualizar ImGui
         imguiManager_.update(window_);
 
-        // ✅ 2. Dibujar paneles de ImGui
+        // DIBUJAR LA NUEVA BARRA DE MENÚ (Debe ir antes que los paneles flotantes)
+        imguiManager_.drawMainMenu(engine_, showAxes_);
+
+        // 2. Dibujar paneles de ImGui
         imguiManager_.drawLayerPanel(engine_);
         imguiManager_.drawPropertiesPanel(engine_);
 
