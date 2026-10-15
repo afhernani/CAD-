@@ -492,6 +492,15 @@ namespace cad {
                     handleFileCommand("NEW");
                     return;
                 }
+                // Undo/Redo aquí, funcionan siempre con Ctrl
+                if (event.key.code == sf::Keyboard::Z) {
+                    engine_.undo();
+                    return;
+                }
+                if (event.key.code == sf::Keyboard::Y) {
+                    engine_.redo();
+                    return;
+                }
             }
             // Escape
             if (event.key.code == sf::Keyboard::Escape) {
@@ -512,16 +521,17 @@ namespace cad {
             else if (event.key.code == sf::Keyboard::Return && !isTyping_) {
                 if (engine_.activeCommand_ && !engine_.activeCommand_->isComplete()) {
                     engine_.processInput("");
+                    // La App comprueba si el comando ha decidido que ha terminado
+                    if (engine_.activeCommand_->isComplete()) {
+                        engine_.activeCommand_ = nullptr;      // Destruir el comando
+                        engine_.currentMode = Mode::IDLE;      // Volver al modo de selección
+                        engine_.statusMessage = "Comando finalizado.";
+                    }
                 }
             }
             // Atajos de teclado (Navegación)
             else if (isTyping_) {
                 handleKeyboardNavigation(event);
-            }
-            // Undo / Redo
-            else {
-                if (event.key.code == sf::Keyboard::Z && event.key.control) engine_.undo();
-                else if (event.key.code == sf::Keyboard::Y && event.key.control) engine_.redo();
             }
         }
     }
@@ -750,14 +760,28 @@ namespace cad {
             }
         }
 
-        // 4. Envío genérico de coordenadas al comando activo
-        Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
-        std::ostringstream ossCoord;
-        ossCoord << std::fixed << std::setprecision(6);
-        ossCoord << targetPoint.x << "," << targetPoint.y;
-        // Esto envia la coordenada al comando activo (ImageCommand)
-        engine_.processInput(ossCoord.str());
-        inputBuffer_.clear();
+        // =====================================================================
+        // 4. Envío genérico de coordenadas al comando activo (CORREGIDO)
+        // =====================================================================
+        if (engine_.activeCommand_ != nullptr) {
+            // Usamos el punto con snap si está activo, si no, el punto del mundo
+            Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
+            
+            // LLAMADA DIRECTA: Evitamos la conversión a string y el doble procesamiento
+            engine_.activeCommand_->onPoint(targetPoint, engine_);
+            
+            // Actualizamos el mensaje de estado tras la acción
+            engine_.statusMessage = engine_.activeCommand_->getStatusMessage();
+            
+            // Si el comando indica que ha terminado, lo limpiamos y volvemos a IDLE
+            if (engine_.activeCommand_->isComplete()) {
+                engine_.activeCommand_ = nullptr;
+                engine_.currentMode = Mode::IDLE; 
+            }
+            
+            inputBuffer_.clear();
+            return; // Salimos, el clic ya fue procesado correctamente
+        }
     }
 
     void App::processTextInput() {
@@ -850,6 +874,14 @@ namespace cad {
         // ✅ 3. Todo lo demás, va al Engine (Línea, Círculo, Move, Copy, etc.)
         else {
             engine_.processInput(inputBuffer_);
+
+            // ✅ AÑADIR ESTO AL FINAL de processTextInput():
+            if (engine_.activeCommand_ && engine_.activeCommand_->isComplete()) {
+                engine_.activeCommand_ = nullptr;
+                engine_.currentMode = Mode::IDLE;
+            }
+            
+            //inputBuffer_.clear();
         }
 
         inputBuffer_.clear();

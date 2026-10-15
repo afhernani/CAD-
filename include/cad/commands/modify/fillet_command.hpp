@@ -38,7 +38,7 @@ private:
     bool finished_ = false;
     std::string statusMessage_;
     Point2D lastClickPoint_; // Para recordar dónde hizo clic el usuario y decidir el lado del empalme
-
+    static double savedRadius_; 
     void createFillet(Engine& engine, const Point2D& clickPoint);
 };
 
