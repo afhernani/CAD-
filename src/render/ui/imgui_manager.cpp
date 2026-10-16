@@ -492,7 +492,7 @@ void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
             ImGui::Separator();
             
             if (ImGui::MenuItem("Guardar", "Ctrl+S")) {
-                if (onOpen) onOpen();
+                if (onSave) onSave();
             }
             if (ImGui::MenuItem("Guardar como...", "Ctrl+Shift+S")) {
                 if (onSaveAs) onSaveAs();
@@ -555,26 +555,66 @@ void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
         if (ImGui::BeginMenu("Dibujar")) {
             // Usamos engine.processInput para activar los comandos de dibujo existentes
             if (ImGui::MenuItem("Línea", "L")) engine.processInput("L");
+            if (ImGui::MenuItem("Polilínea", "PL")) engine.processInput("PL");
+            if (ImGui::MenuItem("Triángulo", "TRI")) engine.processInput("TRI");
+            ImGui::Separator();
             if (ImGui::MenuItem("Círculo", "C")) engine.processInput("C");
             if (ImGui::MenuItem("Arco", "A")) engine.processInput("A");
-            if (ImGui::MenuItem("Polilínea", "PL")) engine.processInput("PL");
-            if (ImGui::MenuItem("Polígono", "POL")) engine.processInput("POL");
             if (ImGui::MenuItem("Elipse", "EL")) engine.processInput("EL");
+            ImGui::Separator();
+            if (ImGui::MenuItem("Polígono", "POL")) engine.processInput("POL");
             if (ImGui::MenuItem("Texto", "T")) engine.processInput("T");
             ImGui::EndMenu();
         }
-
+        // =========================================================================
+        // --- ACOTAR ---
+        // =========================================================================
+        if (ImGui::BeginMenu("Acotar")) {
+            if (ImGui::MenuItem("Cota Alineada", "DIM")) engine.processInput("DIM");
+            if (ImGui::MenuItem("Cota Horizontal", "DIMH")) engine.processInput("DIMH");
+            if (ImGui::MenuItem("Cota Vertical", "DIMV")) engine.processInput("DIMV");
+            ImGui::Separator();
+            if (ImGui::MenuItem("Cota de Radio", "DIMR")) engine.processInput("DIMR");
+            if (ImGui::MenuItem("Cota de Diámetro", "DIMDIA")) engine.processInput("DIMDIA");
+            ImGui::EndMenu();
+        }
+        // =========================================================================
         // --- MODIFICAR ---
+        // =========================================================================
         if (ImGui::BeginMenu("Modificar")) {
             if (ImGui::MenuItem("Mover", "M")) engine.processInput("M");
             if (ImGui::MenuItem("Copiar", "CO")) engine.processInput("CO");
             if (ImGui::MenuItem("Rotar", "RO")) engine.processInput("RO");
             if (ImGui::MenuItem("Escala", "SC")) engine.processInput("SC");
+            if (ImGui::MenuItem("Simetría", "SI")) engine.processInput("SI");
+            if (ImGui::MenuItem("Estirar", "S")) engine.processInput("S");
+            ImGui::Separator();
             if (ImGui::MenuItem("Recortar", "TR")) engine.processInput("TR");
+            if (ImGui::MenuItem("Alargar", "EX")) engine.processInput("EX");
             if (ImGui::MenuItem("Empalme", "F")) engine.processInput("F");
+            if (ImGui::MenuItem("Chaflán", "CHA")) engine.processInput("CHA");
+            if (ImGui::MenuItem("Desplazar (Offset)", "OF")) engine.processInput("OF");
+            ImGui::Separator();
+            if (ImGui::MenuItem("Matriz (Array)", "ARR")) engine.processInput("ARR");
+            if (ImGui::MenuItem("Descomponer (Explode)", "X")) engine.processInput("X");
+            ImGui::EndMenu();
+        }
+        // =========================================================================
+        // --- BLOQUES ---
+        // =========================================================================
+        if (ImGui::BeginMenu("Bloques")) {
+            if (ImGui::MenuItem("Crear Bloque", "BLOCK")) engine.processInput("BLOCK");
+            if (ImGui::MenuItem("Insertar Bloque", "INSERT")) engine.processInput("INSERT");
             ImGui::EndMenu();
         }
 
+        // =========================================================================
+        // --- HERRAMIENTAS ---
+        // =========================================================================
+        if (ImGui::BeginMenu("Herramientas")) {
+            if (ImGui::MenuItem("Medir Distancia", "DIST")) engine.processInput("DIST");
+            ImGui::EndMenu();
+        }
         // --- AYUDA ---
         if (ImGui::BeginMenu("Ayuda")) {
             if (ImGui::MenuItem("Acerca de CAD+")) {
