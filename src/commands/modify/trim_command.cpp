@@ -124,6 +124,10 @@ namespace cad {
             std::vector<IntersectionResult> validIntersections;
             for (Entity* boundary : boundaries_) {
                 if (auto* bLine = dynamic_cast<Line*>(boundary)) {
+                    // usamos interceccion de rectas infinitas para ser más tolerante
+                    Point2D I;
+                    // Asumimos que tienes getInfiniteLineIntersection disponible, si no, usa lineLineIntersection
+                    // Aquí uso lineLineIntersection por compatibilidad con tu código base, pero idealmente usa la infinita.
                     auto res = lineLineIntersection(line->p1, line->p2, bLine->p1, bLine->p2);
                     if (res.intersects) validIntersections.push_back(res);
                 } 
@@ -169,6 +173,7 @@ namespace cad {
                 } else {
                     line->p2 = closest.point;
                 }
+                engine.doc.isModified = true;
                 statusMessage_ = "TRIM | Línea recortada.";
             } else {
                 statusMessage_ = "TRIM | Sin intersecciones válidas.";
@@ -223,6 +228,7 @@ namespace cad {
                 } else {
                     arc->endAngle = intAngle * 180.0 / PI;
                 }
+                engine.doc.isModified = true;
                 statusMessage_ = "TRIM | Arco recortado.";
             } else {
                 statusMessage_ = "TRIM | Sin intersecciones válidas en el arco.";
@@ -325,20 +331,94 @@ namespace cad {
 
     void TrimCommand::drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                                    const Point2D& mouseWorldPos, sf::Font& font) const {
-        if (boundaries_.empty()) return;
+        // if (boundaries_.empty()) return;
 
-        sf::Color boundaryColor(0, 255, 0, 150); // Verde translúcido
+        // sf::Color boundaryColor(0, 255, 0, 150); // Verde translúcido
+        // auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
+
+        // for (Entity* boundary : boundaries_) {
+        //     if (auto* line = dynamic_cast<Line*>(boundary)) {
+        //         sf::Vertex lineVerts[] = {
+        //             sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor),
+        //             sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor)
+        //         };
+        //         window.draw(lineVerts, 2, sf::Lines);
+        //     }
+        //     // Aquí podrías añadir el dibujo de Arcos/Círculos de corte si lo deseas en el futuro
+        // }
+
         auto w2s = [&](double x, double y) { return view.worldToScreen(x, y); };
 
-        for (Entity* boundary : boundaries_) {
-            if (auto* line = dynamic_cast<Line*>(boundary)) {
-                sf::Vertex lineVerts[] = {
-                    sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor),
-                    sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor)
-                };
-                window.draw(lineVerts, 2, sf::Lines);
+        // 1. Dibujar bordes de corte en VERDE (ya seleccionados)
+        if (step_ == Step::SelectingBoundaries || step_ == Step::SelectingEntitiesToTrim) {
+            sf::Color boundaryColor(0, 255, 0, 150);
+            for (Entity* boundary : boundaries_) {
+                if (auto* line = dynamic_cast<Line*>(boundary)) {
+                    sf::Vertex lineVerts[] = {
+                        sf::Vertex(w2s(line->p1.x, line->p1.y), boundaryColor),
+                        sf::Vertex(w2s(line->p2.x, line->p2.y), boundaryColor)
+                    };
+                    window.draw(lineVerts, 2, sf::Lines);
+                }
             }
-            // Aquí podrías añadir el dibujo de Arcos/Círculos de corte si lo deseas en el futuro
+        }
+
+        // 2. MEJORA DE UX: Previsualizar qué se va a borrar
+        if (step_ == Step::SelectingEntitiesToTrim && !boundaries_.empty()) {
+            double tolerance = 10.0 / view.getScale();
+            
+            // entity es un unique_ptr, usamos entity.get() para comparaciones y casts
+            for (auto& entity : engine.doc.entities) {
+                if (std::find(boundaries_.begin(), boundaries_.end(), entity.get()) != boundaries_.end()) {
+                    continue;
+                }
+
+                if (entity->isNear(mouseWorldPos, tolerance)) {
+                    // dynamic_cast sobre entity.get(), no sobre entity
+                    if (auto* line = dynamic_cast<Line*>(entity.get())) {
+                        Point2D closestIntersect = line->p1; 
+                        double minDist = std::numeric_limits<double>::max();
+                        bool found = false;
+
+                        for (Entity* boundary : boundaries_) {
+                            if (auto* bLine = dynamic_cast<Line*>(boundary)) {
+                                // ✅ CORRECCIÓN: 4 argumentos correctos (el compilador se confundía antes)
+                                auto res = lineLineIntersection(line->p1, line->p2, bLine->p1, bLine->p2);
+                                if (res.intersects) {
+                                    double dist = std::hypot(res.point.x - mouseWorldPos.x, res.point.y - mouseWorldPos.y);
+                                    if (dist < minDist) { 
+                                        minDist = dist; 
+                                        closestIntersect = res.point; 
+                                        found = true; 
+                                    }
+                                }
+                            }
+                        }
+
+                        if (found) {
+                            sf::Color trimColor(255, 50, 50, 200); // Rojo para indicar "eliminación"
+                            
+                            // Decidir qué extremo de la línea está más cerca del clic para dibujar el segmento a borrar
+                            Point2D endToTrim = (std::hypot(line->p1.x - mouseWorldPos.x, line->p1.y - mouseWorldPos.y) < 
+                                                 std::hypot(line->p2.x - mouseWorldPos.x, line->p2.y - mouseWorldPos.y)) ? line->p1 : line->p2;
+                            
+                            sf::Vertex trimLine[] = {
+                                sf::Vertex(w2s(endToTrim.x, endToTrim.y), trimColor),
+                                sf::Vertex(w2s(closestIntersect.x, closestIntersect.y), trimColor)
+                            };
+                            window.draw(trimLine, 2, sf::Lines);
+                            
+                            // Dibujar un pequeño marcador en el punto de corte
+                            sf::CircleShape marker(3.0f);
+                            marker.setOrigin(3.0f, 3.0f);
+                            marker.setPosition(w2s(closestIntersect.x, closestIntersect.y));
+                            marker.setFillColor(trimColor);
+                            window.draw(marker);
+                        }
+                    }
+                    break; // Solo previsualizamos la entidad bajo el ratón
+                }
+            }
         }
     }
 
