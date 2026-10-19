@@ -4,6 +4,7 @@
 #include "cad/commands/engine.hpp"
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <map>
 
 namespace cad {
 
@@ -38,6 +39,7 @@ public:
     void drawPropertiesPanel(Engine& engine);
 
     // Dibujar la barra de menú principal
+    void drawToolbar(Engine& engine);
     void drawMainMenu(Engine& engine, bool& showAxes);
     void addRecentFile(const std::string& path);
 
@@ -55,7 +57,9 @@ private:
     bool propertiesPanelVisible_ = false;
 
     sf::RenderWindow* windowPtr_ = nullptr;
-    
+    // ... dentro de la clase ImGuiManager, en private:
+    std::map<std::string, sf::Texture> iconTextures_;
+    bool loadIconTexture(const std::string& name, const std::string& filePath);
     // Helper para crear capas
     void createNewLayer(Engine& engine);
     std::vector<std::string> recentFiles_;

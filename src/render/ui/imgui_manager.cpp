@@ -1,4 +1,5 @@
 #include "cad/render/ui/imgui_manager.hpp"
+#include "../../../assets/IconsFontAwesome6.h"
 #include "cad/core/geometry/entities/line.hpp"
 #include "cad/core/geometry/entities/circle.hpp"
 #include "cad/core/geometry/entities/arc.hpp"
@@ -14,6 +15,7 @@
 #include <commdlg.h>
 #include <iostream>
 #include <cmath> // Para M_PI o conversiones de ángulos
+#include <filesystem> 
 
 // Función auxiliar local para abrir el diálogo de color de Windows
 namespace {
@@ -65,6 +67,46 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     io.Fonts->AddFontFromFileTTF(fontPath.c_str(), 16.0f);
     ImGui::SFML::UpdateFontTexture();
     
+    // Mostrar el directorio de trabajo actual
+    std::filesystem::path cwd = std::filesystem::current_path();
+    std::cout << "[DEBUG] Directorio de trabajo actual: " << cwd << std::endl;
+
+    // Probar varias rutas candidatas hasta encontrar los iconos
+    std::vector<std::filesystem::path> candidatePaths = {
+        cwd / "assets" / "icons",                          // Si se ejecuta desde la raíz
+        cwd / ".." / "assets" / "icons",                   // Si se ejecuta desde build/
+        cwd / ".." / ".." / "assets" / "icons",            // Si se ejecuta desde build/Release/
+        "E:/Store/Docs/github/cad/assets/icons"            // Ruta absoluta de respaldo
+    };
+
+    std::filesystem::path iconsDir;
+    for (const auto& path : candidatePaths) {
+        if (std::filesystem::exists(path)) {
+            iconsDir = path;
+            std::cout << "[DEBUG] Iconos encontrados en: " << iconsDir << std::endl;
+            break;
+        }
+    }
+
+    if (iconsDir.empty()) {
+        std::cout << "[DEBUG] No se encontró la carpeta de iconos en ninguna ruta candidata." << std::endl;
+        initialized_ = true;
+        return;
+    }
+
+    // Cargar iconos personalizados para la toolbar
+    // Ajusta la ruta relativa según dónde esté tu ejecutable (normalmente build/Release/)
+    // loadIconTexture("line", "../../assets/icons/draw_line.png");
+    // loadIconTexture("circle", "../../assets/icons/draw_circle.png");
+    // loadIconTexture("arc", "../../assets/icons/draw_arc.png");
+    // loadIconTexture("text", "../../assets/icons/draw_text.png");
+
+    // Cargar iconos con los nombres que TÚ estás usando (según tu log)
+    loadIconTexture("line", (iconsDir / "draw_line.png").string());
+    loadIconTexture("circle", (iconsDir / "draw_circle.png").string());
+    loadIconTexture("arc", (iconsDir / "draw_arc.png").string());
+    loadIconTexture("text", (iconsDir / "draw_text.png").string());
+
     initialized_ = true;
 }
 
@@ -625,6 +667,137 @@ void ImGuiManager::drawMainMenu(Engine& engine, bool& showAxes) {
 
         ImGui::EndMainMenuBar();
     }
+}
+
+void ImGuiManager::drawToolbar(Engine& engine) {
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 4));
+    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+
+    ImGuiWindowFlags toolbarFlags = ImGuiWindowFlags_NoDecoration |
+                                    ImGuiWindowFlags_NoMove |
+                                    ImGuiWindowFlags_NoSavedSettings |
+                                    ImGuiWindowFlags_NoScrollbar |
+                                    ImGuiWindowFlags_NoScrollWithMouse;
+
+    ImGuiViewport* viewport = ImGui::GetMainViewport();
+    ImGui::SetNextWindowPos(ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + ImGui::GetFrameHeight()));
+    ImGui::SetNextWindowSize(ImVec2(viewport->WorkSize.x, 45.0f));
+
+    ImGui::Begin("Toolbar", nullptr, toolbarFlags);
+
+    // Helper para botón con icono PNG
+    auto toolIconButton = [&](const std::string& iconName, const char* tooltip, 
+                              const char* command, ImVec4 color) {
+        auto it = iconTextures_.find(iconName);
+        if (it == iconTextures_.end()) {
+            // Fallback: si no se cargó la textura, muestra un botón de texto
+            if (ImGui::Button(command, ImVec2(60, 32))) {
+                engine.processInput(command);
+            }
+            ImGui::SameLine();
+            return;
+        }
+
+        sf::Texture& tex = it->second;
+        ImVec2 iconSize(tex.getSize().x, tex.getSize().y);
+
+        // Aplicar color al botón (teñirá el icono blanco)
+        ImGui::PushStyleColor(ImGuiCol_Button, color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(
+            color.x + 0.1f > 1.0f ? 1.0f : color.x + 0.1f,
+            color.y + 0.1f > 1.0f ? 1.0f : color.y + 0.1f,
+            color.z + 0.1f > 1.0f ? 1.0f : color.z + 0.1f,
+            color.w));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(
+            color.x - 0.1f < 0.0f ? 0.0f : color.x - 0.1f,
+            color.y - 0.1f < 0.0f ? 0.0f : color.y - 0.1f,
+            color.z - 0.1f < 0.0f ? 0.0f : color.z - 0.1f,
+            color.w));
+
+        // CLAVE: ImageButton con la textura de SFML
+        if (ImGui::ImageButton((ImTextureID)(intptr_t)tex.getNativeHandle(), iconSize)) {
+            engine.processInput(command);
+        }
+
+        ImGui::PopStyleColor(3);
+
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s (%s)", tooltip, command);
+        }
+        ImGui::SameLine();
+    };
+
+    // =========================================================================
+    // SECCIÓN: DIBUJO (Azul) - CON ICONOS
+    // =========================================================================
+    ImVec4 colorDraw(0.2f, 0.4f, 0.8f, 1.0f);
+    toolIconButton("line", "Dibujar Línea", "L", colorDraw);
+    toolIconButton("circle", "Dibujar Círculo", "C", colorDraw);
+    toolIconButton("arc", "Dibujar Arco", "A", colorDraw);
+    toolIconButton("text", "Insertar Texto", "T", colorDraw);
+
+    // Separador
+    ImGui::Dummy(ImVec2(2, 28));
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    // =========================================================================
+    // SECCIÓN: MODIFICACIÓN (Naranja) - Aún con texto (hasta que tengas iconos)
+    // =========================================================================
+    ImVec4 colorMod(0.8f, 0.5f, 0.2f, 1.0f);
+    auto toolButton = [&](const char* label, const char* tooltip, const char* command, ImVec4 color) {
+        ImGui::PushStyleColor(ImGuiCol_Button, color);
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(
+            color.x + 0.1f > 1.0f ? 1.0f : color.x + 0.1f,
+            color.y + 0.1f > 1.0f ? 1.0f : color.y + 0.1f,
+            color.z + 0.1f > 1.0f ? 1.0f : color.z + 0.1f, color.w));
+        ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(
+            color.x - 0.1f < 0.0f ? 0.0f : color.x - 0.1f,
+            color.y - 0.1f < 0.0f ? 0.0f : color.y - 0.1f,
+            color.z - 0.1f < 0.0f ? 0.0f : color.z - 0.1f, color.w));
+        if (ImGui::Button(label, ImVec2(60, 28))) {
+            engine.processInput(command);
+        }
+        ImGui::PopStyleColor(3);
+        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s (%s)", tooltip, command);
+        ImGui::SameLine();
+    };
+
+    toolButton("Mover", "Mover Entidades", "M", colorMod);
+    toolButton("Copiar", "Copiar Entidades", "CO", colorMod);
+    toolButton("Recortar", "Recortar Entidades", "TR", colorMod);
+    toolButton("Empalme", "Empalme (Fillet)", "F", colorMod);
+    toolButton("Desplazar", "Desplazar (Offset)", "OF", colorMod);
+
+    ImGui::Dummy(ImVec2(2, 28));
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    // =========================================================================
+    // SECCIÓN: UTILIDADES (Verde)
+    // =========================================================================
+    ImVec4 colorUtil(0.2f, 0.6f, 0.4f, 1.0f);
+    if (ImGui::Button("Capas", ImVec2(60, 28))) toggleLayerPanel();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Gestor de Capas");
+    ImGui::SameLine();
+    if (ImGui::Button("Props", ImVec2(60, 28))) togglePropertiesPanel();
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Panel de Propiedades");
+
+    ImGui::End();
+    ImGui::PopStyleVar(2);
+}
+
+bool ImGuiManager::loadIconTexture(const std::string& name, const std::string& filePath) {
+    sf::Texture tex;
+    if (tex.loadFromFile(filePath)) {
+        tex.setSmooth(true); // Suavizado para que no se pixelen al escalar
+        iconTextures_[name] = tex;
+        return true;
+    }
+    std::cerr << "[ERROR] No se pudo cargar el icono: " << filePath << std::endl;
+    return false;
 }
 
 } // namespace cad

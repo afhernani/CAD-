@@ -13,7 +13,7 @@ void UIManager::draw(sf::RenderWindow& window, const Engine& engine,
                      const std::string& entityListText, int entityListScrollOffset,
                      bool showAxes, float viewScale, const Point2D& mouseWorldPos) const {
     // drawMenuBar(window);
-    drawToolbar(window, showAxes);
+    // drawToolbar(window, showAxes);
     drawCommandWindow(window, inputBuffer, commandHistory, commandScrollOffset, isTyping, showEntityListPanel);
     drawStatusBar(window, engine, viewScale, mouseWorldPos, showEntityListPanel);
     
@@ -38,188 +38,188 @@ void UIManager::draw(sf::RenderWindow& window, const Engine& engine,
 //     window.draw(menuTxt);
 // }
 
-void UIManager::drawToolbar(sf::RenderWindow& window, bool showAxes) const {
-    // Barra de Herramientas (Debajo del menú)
-    sf::RectangleShape toolbar(sf::Vector2f(WINDOW_WIDTH, TOOLBAR_HEIGHT));
-    toolbar.setFillColor(sf::Color(45, 45, 48));
-    toolbar.setPosition(0, MENU_HEIGHT);
-    window.draw(toolbar);
+// void UIManager::drawToolbar(sf::RenderWindow& window, bool showAxes) const {
+//     // Barra de Herramientas (Debajo del menú)
+//     sf::RectangleShape toolbar(sf::Vector2f(WINDOW_WIDTH, TOOLBAR_HEIGHT));
+//     toolbar.setFillColor(sf::Color(45, 45, 48));
+//     toolbar.setPosition(0, MENU_HEIGHT);
+//     window.draw(toolbar);
 
-    // Línea separadora inferior
-    sf::RectangleShape separator(sf::Vector2f(WINDOW_WIDTH, 1));
-    separator.setFillColor(sf::Color(80, 80, 80));
-    separator.setPosition(0, MENU_HEIGHT + TOOLBAR_HEIGHT - 1);
-    window.draw(separator);
+//     // Línea separadora inferior
+//     sf::RectangleShape separator(sf::Vector2f(WINDOW_WIDTH, 1));
+//     separator.setFillColor(sf::Color(80, 80, 80));
+//     separator.setPosition(0, MENU_HEIGHT + TOOLBAR_HEIGHT - 1);
+//     window.draw(separator);
 
-    // --- Botón Línea (L) ---
-    sf::RectangleShape btnLine(sf::Vector2f(40, 40));
-    btnLine.setFillColor(sf::Color(70, 70, 75));
-    btnLine.setOutlineColor(sf::Color(100, 100, 100));
-    btnLine.setOutlineThickness(1.f);
-    btnLine.setPosition(10, MENU_HEIGHT + 10);
-    window.draw(btnLine);
+//     // --- Botón Línea (L) ---
+//     sf::RectangleShape btnLine(sf::Vector2f(40, 40));
+//     btnLine.setFillColor(sf::Color(70, 70, 75));
+//     btnLine.setOutlineColor(sf::Color(100, 100, 100));
+//     btnLine.setOutlineThickness(1.f);
+//     btnLine.setPosition(10, MENU_HEIGHT + 10);
+//     window.draw(btnLine);
 
-    // Icono de línea (diagonal blanca)
-    sf::Vertex lineIcon[] = {
-        sf::Vertex(sf::Vector2f(18, MENU_HEIGHT + 38), sf::Color::White),
-        sf::Vertex(sf::Vector2f(42, MENU_HEIGHT + 14), sf::Color::White)
-    };
-    window.draw(lineIcon, 2, sf::Lines);
+//     // Icono de línea (diagonal blanca)
+//     sf::Vertex lineIcon[] = {
+//         sf::Vertex(sf::Vector2f(18, MENU_HEIGHT + 38), sf::Color::White),
+//         sf::Vertex(sf::Vector2f(42, MENU_HEIGHT + 14), sf::Color::White)
+//     };
+//     window.draw(lineIcon, 2, sf::Lines);
 
-    // --- Botón Círculo (C) ---
-    sf::RectangleShape btnCircle(sf::Vector2f(40, 40));
-    btnCircle.setFillColor(sf::Color(70, 70, 75));
-    btnCircle.setOutlineColor(sf::Color(100, 100, 100));
-    btnCircle.setOutlineThickness(1.f);
-    btnCircle.setPosition(60, MENU_HEIGHT + 10);
-    window.draw(btnCircle);
+//     // --- Botón Círculo (C) ---
+//     sf::RectangleShape btnCircle(sf::Vector2f(40, 40));
+//     btnCircle.setFillColor(sf::Color(70, 70, 75));
+//     btnCircle.setOutlineColor(sf::Color(100, 100, 100));
+//     btnCircle.setOutlineThickness(1.f);
+//     btnCircle.setPosition(60, MENU_HEIGHT + 10);
+//     window.draw(btnCircle);
 
-    // Icono de círculo
-    sf::CircleShape circleIcon(12.f);
-    circleIcon.setFillColor(sf::Color::Transparent);
-    circleIcon.setOutlineColor(sf::Color::White);
-    circleIcon.setOutlineThickness(2.f);
-    circleIcon.setPosition(72, MENU_HEIGHT + 22);
-    window.draw(circleIcon);
+//     // Icono de círculo
+//     sf::CircleShape circleIcon(12.f);
+//     circleIcon.setFillColor(sf::Color::Transparent);
+//     circleIcon.setOutlineColor(sf::Color::White);
+//     circleIcon.setOutlineThickness(2.f);
+//     circleIcon.setPosition(72, MENU_HEIGHT + 22);
+//     window.draw(circleIcon);
 
-    // --- Botón Arco (A) ---
-    sf::RectangleShape btnArc(sf::Vector2f(40, 40));
-    btnArc.setFillColor(sf::Color(70, 70, 75));
-    btnArc.setOutlineColor(sf::Color(100, 100, 100));
-    btnArc.setOutlineThickness(1.f);
-    btnArc.setPosition(110, MENU_HEIGHT + 10);
-    window.draw(btnArc);
+//     // --- Botón Arco (A) ---
+//     sf::RectangleShape btnArc(sf::Vector2f(40, 40));
+//     btnArc.setFillColor(sf::Color(70, 70, 75));
+//     btnArc.setOutlineColor(sf::Color(100, 100, 100));
+//     btnArc.setOutlineThickness(1.f);
+//     btnArc.setPosition(110, MENU_HEIGHT + 10);
+//     window.draw(btnArc);
 
-    // Icono de arco (semicírculo)
-    sf::CircleShape arcIcon(12.f);
-    arcIcon.setFillColor(sf::Color::Transparent);
-    arcIcon.setOutlineColor(sf::Color::White);
-    arcIcon.setOutlineThickness(2.f);
-    arcIcon.setRadius(10.f);
-    arcIcon.setPosition(122, MENU_HEIGHT + 24);
-    window.draw(arcIcon);
+//     // Icono de arco (semicírculo)
+//     sf::CircleShape arcIcon(12.f);
+//     arcIcon.setFillColor(sf::Color::Transparent);
+//     arcIcon.setOutlineColor(sf::Color::White);
+//     arcIcon.setOutlineThickness(2.f);
+//     arcIcon.setRadius(10.f);
+//     arcIcon.setPosition(122, MENU_HEIGHT + 24);
+//     window.draw(arcIcon);
 
-    // Línea base del arco
-    sf::Vertex arcBase[] = {
-        sf::Vertex(sf::Vector2f(122, MENU_HEIGHT + 34), sf::Color::White),
-        sf::Vertex(sf::Vector2f(142, MENU_HEIGHT + 34), sf::Color::White)
-    };
-    window.draw(arcBase, 2, sf::Lines);
+//     // Línea base del arco
+//     sf::Vertex arcBase[] = {
+//         sf::Vertex(sf::Vector2f(122, MENU_HEIGHT + 34), sf::Color::White),
+//         sf::Vertex(sf::Vector2f(142, MENU_HEIGHT + 34), sf::Color::White)
+//     };
+//     window.draw(arcBase, 2, sf::Lines);
 
-    // --- Separador vertical ---
-    sf::RectangleShape sep1(sf::Vector2f(1, 40));
-    sep1.setFillColor(sf::Color(80, 80, 80));
-    sep1.setPosition(160, MENU_HEIGHT + 10);
-    window.draw(sep1);
+//     // --- Separador vertical ---
+//     sf::RectangleShape sep1(sf::Vector2f(1, 40));
+//     sep1.setFillColor(sf::Color(80, 80, 80));
+//     sep1.setPosition(160, MENU_HEIGHT + 10);
+//     window.draw(sep1);
 
-    // --- Botón Ejes ON/OFF ---
-    sf::RectangleShape btnAxes(sf::Vector2f(40, 40));
-    btnAxes.setFillColor(showAxes ? sf::Color(0, 100, 0) : sf::Color(70, 70, 75));
-    btnAxes.setOutlineColor(sf::Color(100, 100, 100));
-    btnAxes.setOutlineThickness(1.f);
-    btnAxes.setPosition(170, MENU_HEIGHT + 10);
-    window.draw(btnAxes);
+//     // --- Botón Ejes ON/OFF ---
+//     sf::RectangleShape btnAxes(sf::Vector2f(40, 40));
+//     btnAxes.setFillColor(showAxes ? sf::Color(0, 100, 0) : sf::Color(70, 70, 75));
+//     btnAxes.setOutlineColor(sf::Color(100, 100, 100));
+//     btnAxes.setOutlineThickness(1.f);
+//     btnAxes.setPosition(170, MENU_HEIGHT + 10);
+//     window.draw(btnAxes);
 
-    // Icono de ejes (X rojo, Y verde)
-    sf::Vertex axisX[] = {
-        sf::Vertex(sf::Vector2f(178, MENU_HEIGHT + 30), sf::Color::Red),
-        sf::Vertex(sf::Vector2f(202, MENU_HEIGHT + 30), sf::Color::Red)
-    };
-    window.draw(axisX, 2, sf::Lines);
+//     // Icono de ejes (X rojo, Y verde)
+//     sf::Vertex axisX[] = {
+//         sf::Vertex(sf::Vector2f(178, MENU_HEIGHT + 30), sf::Color::Red),
+//         sf::Vertex(sf::Vector2f(202, MENU_HEIGHT + 30), sf::Color::Red)
+//     };
+//     window.draw(axisX, 2, sf::Lines);
 
-    sf::Vertex axisY[] = {
-        sf::Vertex(sf::Vector2f(190, MENU_HEIGHT + 38), sf::Color::Green),
-        sf::Vertex(sf::Vector2f(190, MENU_HEIGHT + 14), sf::Color::Green)
-    };
-    window.draw(axisY, 2, sf::Lines);
+//     sf::Vertex axisY[] = {
+//         sf::Vertex(sf::Vector2f(190, MENU_HEIGHT + 38), sf::Color::Green),
+//         sf::Vertex(sf::Vector2f(190, MENU_HEIGHT + 14), sf::Color::Green)
+//     };
+//     window.draw(axisY, 2, sf::Lines);
 
-    // --- Botón Borrar (papelera) ---
-    sf::RectangleShape btnClear(sf::Vector2f(40, 40));
-    btnClear.setFillColor(sf::Color(70, 70, 75));
-    btnClear.setOutlineColor(sf::Color(100, 100, 100));
-    btnClear.setOutlineThickness(1.f);
-    btnClear.setPosition(220, MENU_HEIGHT + 10);
-    window.draw(btnClear);
+//     // --- Botón Borrar (papelera) ---
+//     sf::RectangleShape btnClear(sf::Vector2f(40, 40));
+//     btnClear.setFillColor(sf::Color(70, 70, 75));
+//     btnClear.setOutlineColor(sf::Color(100, 100, 100));
+//     btnClear.setOutlineThickness(1.f);
+//     btnClear.setPosition(220, MENU_HEIGHT + 10);
+//     window.draw(btnClear);
 
-    // Icono de papelera (rectángulo con tapa)
-    sf::RectangleShape trashBody(sf::Vector2f(16, 14));
-    trashBody.setFillColor(sf::Color::Transparent);
-    trashBody.setOutlineColor(sf::Color::White);
-    trashBody.setOutlineThickness(1.5f);
-    trashBody.setPosition(228, MENU_HEIGHT + 22);
-    window.draw(trashBody);
+//     // Icono de papelera (rectángulo con tapa)
+//     sf::RectangleShape trashBody(sf::Vector2f(16, 14));
+//     trashBody.setFillColor(sf::Color::Transparent);
+//     trashBody.setOutlineColor(sf::Color::White);
+//     trashBody.setOutlineThickness(1.5f);
+//     trashBody.setPosition(228, MENU_HEIGHT + 22);
+//     window.draw(trashBody);
 
-    sf::RectangleShape trashLid(sf::Vector2f(20, 3));
-    trashLid.setFillColor(sf::Color::White);
-    trashLid.setPosition(226, MENU_HEIGHT + 19);
-    window.draw(trashLid);
+//     sf::RectangleShape trashLid(sf::Vector2f(20, 3));
+//     trashLid.setFillColor(sf::Color::White);
+//     trashLid.setPosition(226, MENU_HEIGHT + 19);
+//     window.draw(trashLid);
 
-    // Líneas verticales de la papelera
-    sf::Vertex trashLine1[] = {
-        sf::Vertex(sf::Vector2f(233, MENU_HEIGHT + 22), sf::Color::White),
-        sf::Vertex(sf::Vector2f(233, MENU_HEIGHT + 36), sf::Color::White)
-    };
-    window.draw(trashLine1, 2, sf::Lines);
+//     // Líneas verticales de la papelera
+//     sf::Vertex trashLine1[] = {
+//         sf::Vertex(sf::Vector2f(233, MENU_HEIGHT + 22), sf::Color::White),
+//         sf::Vertex(sf::Vector2f(233, MENU_HEIGHT + 36), sf::Color::White)
+//     };
+//     window.draw(trashLine1, 2, sf::Lines);
 
-    sf::Vertex trashLine2[] = {
-        sf::Vertex(sf::Vector2f(238, MENU_HEIGHT + 22), sf::Color::White),
-        sf::Vertex(sf::Vector2f(238, MENU_HEIGHT + 36), sf::Color::White)
-    };
-    window.draw(trashLine2, 2, sf::Lines);
+//     sf::Vertex trashLine2[] = {
+//         sf::Vertex(sf::Vector2f(238, MENU_HEIGHT + 22), sf::Color::White),
+//         sf::Vertex(sf::Vector2f(238, MENU_HEIGHT + 36), sf::Color::White)
+//     };
+//     window.draw(trashLine2, 2, sf::Lines);
 
-    // --- Separador vertical ---
-    sf::RectangleShape sep2(sf::Vector2f(1, 40));
-    sep2.setFillColor(sf::Color(80, 80, 80));
-    sep2.setPosition(270, MENU_HEIGHT + 10);
-    window.draw(sep2);
+//     // --- Separador vertical ---
+//     sf::RectangleShape sep2(sf::Vector2f(1, 40));
+//     sep2.setFillColor(sf::Color(80, 80, 80));
+//     sep2.setPosition(270, MENU_HEIGHT + 10);
+//     window.draw(sep2);
 
-    // --- Botón Ayuda (?) ---
-    sf::RectangleShape btnHelp(sf::Vector2f(40, 40));
-    btnHelp.setFillColor(sf::Color(70, 70, 75));
-    btnHelp.setOutlineColor(sf::Color(100, 100, 100));
-    btnHelp.setOutlineThickness(1.f);
-    btnHelp.setPosition(280, MENU_HEIGHT + 10);
-    window.draw(btnHelp);
+//     // --- Botón Ayuda (?) ---
+//     sf::RectangleShape btnHelp(sf::Vector2f(40, 40));
+//     btnHelp.setFillColor(sf::Color(70, 70, 75));
+//     btnHelp.setOutlineColor(sf::Color(100, 100, 100));
+//     btnHelp.setOutlineThickness(1.f);
+//     btnHelp.setPosition(280, MENU_HEIGHT + 10);
+//     window.draw(btnHelp);
 
-    // Icono de interrogación
-    sf::Text helpIcon("?", font_, 24);
-    helpIcon.setFillColor(sf::Color::White);
-    helpIcon.setPosition(288, MENU_HEIGHT + 14);
-    window.draw(helpIcon);
+//     // Icono de interrogación
+//     sf::Text helpIcon("?", font_, 24);
+//     helpIcon.setFillColor(sf::Color::White);
+//     helpIcon.setPosition(288, MENU_HEIGHT + 14);
+//     window.draw(helpIcon);
 
-        // --- Separador vertical antes del botón Capas ---
-    sf::RectangleShape sep3(sf::Vector2f(1, 40));
-    sep3.setFillColor(sf::Color(80, 80, 80));
-    sep3.setPosition(320, MENU_HEIGHT + 10);
-    window.draw(sep3);
+//         // --- Separador vertical antes del botón Capas ---
+//     sf::RectangleShape sep3(sf::Vector2f(1, 40));
+//     sep3.setFillColor(sf::Color(80, 80, 80));
+//     sep3.setPosition(320, MENU_HEIGHT + 10);
+//     window.draw(sep3);
 
-    // --- Botón Gestor de Capas ---
-    sf::RectangleShape btnLayers(sf::Vector2f(40, 40));
-    btnLayers.setFillColor(sf::Color(70, 70, 75));
-    btnLayers.setOutlineColor(sf::Color(100, 100, 100));
-    btnLayers.setOutlineThickness(1.f);
-    btnLayers.setPosition(330, MENU_HEIGHT + 10);
-    window.draw(btnLayers);
+//     // --- Botón Gestor de Capas ---
+//     sf::RectangleShape btnLayers(sf::Vector2f(40, 40));
+//     btnLayers.setFillColor(sf::Color(70, 70, 75));
+//     btnLayers.setOutlineColor(sf::Color(100, 100, 100));
+//     btnLayers.setOutlineThickness(1.f);
+//     btnLayers.setPosition(330, MENU_HEIGHT + 10);
+//     window.draw(btnLayers);
 
-    // Icono de Capas (3 líneas horizontales apiladas de diferentes colores)
-    // Capa 1 (Blanco)
-    sf::RectangleShape layer1(sf::Vector2f(24, 4));
-    layer1.setFillColor(sf::Color::White);
-    layer1.setPosition(338, MENU_HEIGHT + 20);
-    window.draw(layer1);
+//     // Icono de Capas (3 líneas horizontales apiladas de diferentes colores)
+//     // Capa 1 (Blanco)
+//     sf::RectangleShape layer1(sf::Vector2f(24, 4));
+//     layer1.setFillColor(sf::Color::White);
+//     layer1.setPosition(338, MENU_HEIGHT + 20);
+//     window.draw(layer1);
 
-    // Capa 2 (Cian)
-    sf::RectangleShape layer2(sf::Vector2f(24, 4));
-    layer2.setFillColor(sf::Color::Cyan);
-    layer2.setPosition(338, MENU_HEIGHT + 28);
-    window.draw(layer2);
+//     // Capa 2 (Cian)
+//     sf::RectangleShape layer2(sf::Vector2f(24, 4));
+//     layer2.setFillColor(sf::Color::Cyan);
+//     layer2.setPosition(338, MENU_HEIGHT + 28);
+//     window.draw(layer2);
 
-    // Capa 3 (Amarillo)
-    sf::RectangleShape layer3(sf::Vector2f(24, 4));
-    layer3.setFillColor(sf::Color::Yellow);
-    layer3.setPosition(338, MENU_HEIGHT + 36);
-    window.draw(layer3);
-}
+//     // Capa 3 (Amarillo)
+//     sf::RectangleShape layer3(sf::Vector2f(24, 4));
+//     layer3.setFillColor(sf::Color::Yellow);
+//     layer3.setPosition(338, MENU_HEIGHT + 36);
+//     window.draw(layer3);
+// }
 
 void UIManager::drawCommandWindow(sf::RenderWindow& window, const std::string& inputBuffer, 
                                    const std::vector<std::string>& commandHistory, int scrollOffset,

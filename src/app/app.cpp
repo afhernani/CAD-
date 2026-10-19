@@ -545,6 +545,7 @@ namespace cad {
         imguiManager_.drawMainMenu(engine_, showAxes_);
 
         // 2. Dibujar paneles de ImGui
+        imguiManager_.drawToolbar(engine_);
         imguiManager_.drawLayerPanel(engine_);
         imguiManager_.drawPropertiesPanel(engine_);
 

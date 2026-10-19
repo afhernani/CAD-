@@ -23,7 +23,7 @@ public:
 private:
     
     // void drawMenuBar(sf::RenderWindow& window) const;
-    void drawToolbar(sf::RenderWindow& window, bool showAxes) const;
+    // void drawToolbar(sf::RenderWindow& window, bool showAxes) const;
     void drawCommandWindow(sf::RenderWindow& window, const std::string& inputBuffer, 
                            const std::vector<std::string>& commandHistory, int scrollOffset,
                            bool isTyping, bool showEntityListPanel) const;
