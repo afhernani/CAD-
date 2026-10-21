@@ -7,7 +7,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Recopilar todos los .cpp de src/
 file(GLOB_RECURSE SOURCES "src/*.cpp")
 
-add_executable(CAD+ ${SOURCES})
+add_executable(CAD+ 
+    ${SOURCES} 
+    ${CMAKE_SOURCE_DIR}/resources.rc
+)
 
 # Cabeceras
 target_include_directories(CAD+ PRIVATE 

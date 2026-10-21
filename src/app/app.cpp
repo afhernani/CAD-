@@ -20,6 +20,7 @@
 #include "cad/commands/draw/dimension_command.hpp" // Por si también lo usas aquí
 #include "cad/commands/draw/image_command.hpp" // >>> AÑADIDO PARA QUE app.cpp PUEDA RECONOCER ImageEntity EN fromJson() <<<
 
+#include <SFML/Graphics/Image.hpp>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -151,6 +152,17 @@ namespace cad {
         float realCanvasHeight = config_.window.height - MENU_HEIGHT - TOOLBAR_HEIGHT - COMMAND_HEIGHT - STATUS_HEIGHT;
         view_.setCanvasHeight(realCanvasHeight);
         
+        // Cargar el icono de la ventana (SFML funciona mucho mejor con PNG que con ICO)
+        sf::Image icon;
+        std::string iconPath = (assetsPath / "CAD+.png").string(); // Usa la ruta dinámica y el PNG
+        
+        if (icon.loadFromFile(iconPath)) {
+            window_.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+            std::cout << "[App] Icono de ventana cargado correctamente desde: " << iconPath << std::endl;
+        } else {
+            std::cout << "[App] ADVERTENCIA: No se pudo cargar el icono de la ventana. Revisa la ruta: " << iconPath << std::endl;
+        }
+
         // 3. Cargar fuente (usando la ruta calculada)
         if (!font_.loadFromFile(fontPath)) {
             // Fallback a ruta absoluta de sistema (solo Linux)
