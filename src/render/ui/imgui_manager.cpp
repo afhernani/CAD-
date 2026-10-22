@@ -107,6 +107,17 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("arc", (iconsDir / "draw_arc.png").string());
     loadIconTexture("text", (iconsDir / "draw_text.png").string());
 
+    // 2. Iconos de MODIFICACIÓN (Naranja)
+    loadIconTexture("move", (iconsDir / "mover.png").string());
+    loadIconTexture("copy", (iconsDir / "copiar.png").string());
+    loadIconTexture("trim", (iconsDir / "recortar.png").string());
+    loadIconTexture("fillet", (iconsDir / "empalme.png").string());
+    loadIconTexture("offset", (iconsDir / "desface.png").string());
+
+    // 3. Iconos de UTILIDADES (Verde)
+    loadIconTexture("layers", (iconsDir / "capas.png").string());
+    loadIconTexture("props", (iconsDir / "properties.png").string());
+
     initialized_ = true;
 }
 
@@ -685,7 +696,9 @@ void ImGuiManager::drawToolbar(Engine& engine) {
 
     ImGui::Begin("Toolbar", nullptr, toolbarFlags);
 
-    // Helper para botón con icono PNG
+    // =========================================================================
+    // HELPER 1: Botones con icono que ejecutan comandos (Dibujo y Modificación)
+    // =========================================================================
     auto toolIconButton = [&](const std::string& iconName, const char* tooltip, 
                               const char* command, ImVec4 color) {
         auto it = iconTextures_.find(iconName);
@@ -701,26 +714,21 @@ void ImGuiManager::drawToolbar(Engine& engine) {
         sf::Texture& tex = it->second;
         ImVec2 iconSize(tex.getSize().x, tex.getSize().y);
 
-        // Aplicar color al botón (teñirá el icono blanco)
         ImGui::PushStyleColor(ImGuiCol_Button, color);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(
             color.x + 0.1f > 1.0f ? 1.0f : color.x + 0.1f,
             color.y + 0.1f > 1.0f ? 1.0f : color.y + 0.1f,
-            color.z + 0.1f > 1.0f ? 1.0f : color.z + 0.1f,
-            color.w));
+            color.z + 0.1f > 1.0f ? 1.0f : color.z + 0.1f, color.w));
         ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(
             color.x - 0.1f < 0.0f ? 0.0f : color.x - 0.1f,
             color.y - 0.1f < 0.0f ? 0.0f : color.y - 0.1f,
-            color.z - 0.1f < 0.0f ? 0.0f : color.z - 0.1f,
-            color.w));
+            color.z - 0.1f < 0.0f ? 0.0f : color.z - 0.1f, color.w));
 
-        // CLAVE: ImageButton con la textura de SFML
         if (ImGui::ImageButton((ImTextureID)(intptr_t)tex.getNativeHandle(), iconSize)) {
             engine.processInput(command);
         }
 
         ImGui::PopStyleColor(3);
-
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("%s (%s)", tooltip, command);
         }
@@ -728,7 +736,7 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     };
 
     // =========================================================================
-    // SECCIÓN: DIBUJO (Azul) - CON ICONOS
+    // SECCIÓN: DIBUJO (Azul)
     // =========================================================================
     ImVec4 colorDraw(0.2f, 0.4f, 0.8f, 1.0f);
     toolIconButton("line", "Dibujar Línea", "L", colorDraw);
@@ -743,10 +751,40 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     ImGui::SameLine();
 
     // =========================================================================
-    // SECCIÓN: MODIFICACIÓN (Naranja) - Aún con texto (hasta que tengas iconos)
+    // SECCIÓN: MODIFICACIÓN (Naranja) - AHORA CON ICONOS
     // =========================================================================
     ImVec4 colorMod(0.8f, 0.5f, 0.2f, 1.0f);
-    auto toolButton = [&](const char* label, const char* tooltip, const char* command, ImVec4 color) {
+    toolIconButton("move", "Mover Entidades", "M", colorMod);
+    toolIconButton("copy", "Copiar Entidades", "CO", colorMod);
+    toolIconButton("trim", "Recortar Entidades", "TR", colorMod);
+    toolIconButton("fillet", "Empalme (Fillet)", "F", colorMod);
+    toolIconButton("offset", "Desplazar (Offset)", "OF", colorMod);
+
+    // Separador
+    ImGui::Dummy(ImVec2(2, 28));
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    // =========================================================================
+    // HELPER 2: Botones con icono para utilidades (llaman a funciones, no a comandos)
+    // =========================================================================
+    auto utilIconButton = [&](const std::string& iconName, const char* tooltip, ImVec4 color) {
+        auto it = iconTextures_.find(iconName);
+        std::string labelText = (iconName == "layers") ? "Capas" : "Props";
+        
+        if (it == iconTextures_.end()) {
+            if (ImGui::Button(labelText.c_str(), ImVec2(60, 32))) {
+                if (iconName == "layers") toggleLayerPanel();
+                else if (iconName == "props") togglePropertiesPanel();
+            }
+            ImGui::SameLine();
+            return;
+        }
+
+        sf::Texture& tex = it->second;
+        ImVec2 iconSize(tex.getSize().x, tex.getSize().y);
+
         ImGui::PushStyleColor(ImGuiCol_Button, color);
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(
             color.x + 0.1f > 1.0f ? 1.0f : color.x + 0.1f,
@@ -756,34 +794,25 @@ void ImGuiManager::drawToolbar(Engine& engine) {
             color.x - 0.1f < 0.0f ? 0.0f : color.x - 0.1f,
             color.y - 0.1f < 0.0f ? 0.0f : color.y - 0.1f,
             color.z - 0.1f < 0.0f ? 0.0f : color.z - 0.1f, color.w));
-        if (ImGui::Button(label, ImVec2(60, 28))) {
-            engine.processInput(command);
+
+        if (ImGui::ImageButton((ImTextureID)(intptr_t)tex.getNativeHandle(), iconSize)) {
+            if (iconName == "layers") toggleLayerPanel();
+            else if (iconName == "props") togglePropertiesPanel();
         }
+
         ImGui::PopStyleColor(3);
-        if (ImGui::IsItemHovered()) ImGui::SetTooltip("%s (%s)", tooltip, command);
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("%s", tooltip);
+        }
         ImGui::SameLine();
     };
 
-    toolButton("Mover", "Mover Entidades", "M", colorMod);
-    toolButton("Copiar", "Copiar Entidades", "CO", colorMod);
-    toolButton("Recortar", "Recortar Entidades", "TR", colorMod);
-    toolButton("Empalme", "Empalme (Fillet)", "F", colorMod);
-    toolButton("Desplazar", "Desplazar (Offset)", "OF", colorMod);
-
-    ImGui::Dummy(ImVec2(2, 28));
-    ImGui::SameLine();
-    ImGui::Separator();
-    ImGui::SameLine();
-
     // =========================================================================
-    // SECCIÓN: UTILIDADES (Verde)
+    // SECCIÓN: UTILIDADES (Verde) - AHORA CON ICONOS
     // =========================================================================
     ImVec4 colorUtil(0.2f, 0.6f, 0.4f, 1.0f);
-    if (ImGui::Button("Capas", ImVec2(60, 28))) toggleLayerPanel();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Gestor de Capas");
-    ImGui::SameLine();
-    if (ImGui::Button("Props", ImVec2(60, 28))) togglePropertiesPanel();
-    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Panel de Propiedades");
+    utilIconButton("layers", "Gestor de Capas", colorUtil);
+    utilIconButton("props", "Panel de Propiedades", colorUtil);
 
     ImGui::End();
     ImGui::PopStyleVar(2);
