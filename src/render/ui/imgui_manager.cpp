@@ -119,10 +119,24 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("fillet", (iconsDir / "empalme.png").string());
     loadIconTexture("offset", (iconsDir / "desface.png").string());
 
+    loadIconTexture("rotate", (iconsDir / "rotar.png").string());
+    loadIconTexture("scale", (iconsDir / "escalar.png").string());
+    loadIconTexture("mirror", (iconsDir / "simetria.png").string());
+    loadIconTexture("stretch", (iconsDir / "estirar.png").string());
+    loadIconTexture("array", (iconsDir / "Matriz-Rectangular.png").string());
+    loadIconTexture("explode", (iconsDir / "descomponer.png").string());
+
     // 3. Iconos de UTILIDADES (Verde)
     loadIconTexture("measure", (iconsDir / "rule.png").string());
     loadIconTexture("layers", (iconsDir / "capas.png").string());
     loadIconTexture("props", (iconsDir / "properties.png").string());
+
+    // Iconos de ANOTACIÓN / ACOTACIÓN
+    loadIconTexture("hatch", (iconsDir / "sombreado.png").string());
+    loadIconTexture("dim", (iconsDir / "cota_alineada.png").string());
+    loadIconTexture("dimh", (iconsDir / "cota_horizontal.png").string());
+    loadIconTexture("dimv", (iconsDir / "cota_vertical.png").string());
+    loadIconTexture("dimr", (iconsDir / "cota_radio.png").string());
 
     initialized_ = true;
 }
@@ -766,15 +780,46 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     ImVec4 colorMod(0.8f, 0.5f, 0.2f, 1.0f);
     toolIconButton("move", "Mover Entidades", "M", colorMod);
     toolIconButton("copy", "Copiar Entidades", "CO", colorMod);
+    toolIconButton("rotate", "Rotar Entidades", "RO", colorMod);
+    toolIconButton("scale", "Escalar Entidades", "SC", colorMod);
+    toolIconButton("mirror", "Simetría", "SI", colorMod);
+    toolIconButton("stretch", "Estirar", "S", colorMod);
+
+    // Separador interno
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
+
     toolIconButton("trim", "Recortar Entidades", "TR", colorMod);
     toolIconButton("fillet", "Empalme (Fillet)", "F", colorMod);
     toolIconButton("offset", "Desplazar (Offset)", "OF", colorMod);
 
+    // Separador interno
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
+
+    // Grupo 3: Avanzadas
+    toolIconButton("array", "Matriz (Array)", "ARR", colorMod);
+    toolIconButton("explode", "Descomponer", "X", colorMod);
+
+
     // Separador
-    ImGui::Dummy(ImVec2(2, 28));
-    ImGui::SameLine();
-    ImGui::Separator();
-    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
+
+    // =========================================================================
+    // SECCIÓN: ANOTACIÓN (Morado/Violeta) - ¡NUEVA SECCIÓN!
+    // =========================================================================
+    ImVec4 colorAnno(0.6f, 0.3f, 0.8f, 1.0f); // Color morado para diferenciar
+    
+    toolIconButton("hatch", "Sombreado (Hatch)", "H", colorAnno);
+    
+    // Separador sutil
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
+    
+    toolIconButton("dim", "Cota Alineada", "DIM", colorAnno);
+    toolIconButton("dimh", "Cota Horizontal", "DIMH", colorAnno);
+    toolIconButton("dimv", "Cota Vertical", "DIMV", colorAnno);
+    toolIconButton("dimr", "Cota Radio/Diámetro", "DIMR", colorAnno);
+
+    // Separador principal
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
 
     // =========================================================================
     // HELPER 2: Botones con icono para utilidades (llaman a funciones, no a comandos)
