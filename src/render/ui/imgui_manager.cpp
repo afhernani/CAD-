@@ -106,6 +106,11 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("circle", (iconsDir / "draw_circle.png").string());
     loadIconTexture("arc", (iconsDir / "draw_arc.png").string());
     loadIconTexture("text", (iconsDir / "draw_text.png").string());
+    loadIconTexture("polyline", (iconsDir / "draw_polyline.png").string());
+    loadIconTexture("polygon", (iconsDir / "draw_polygon.png").string());
+    loadIconTexture("triangle", (iconsDir / "draw_triangle.png").string());
+    loadIconTexture("ellipse", (iconsDir / "draw_ellipse.png").string());
+
 
     // 2. Iconos de MODIFICACIÓN (Naranja)
     loadIconTexture("move", (iconsDir / "mover.png").string());
@@ -115,6 +120,7 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("offset", (iconsDir / "desface.png").string());
 
     // 3. Iconos de UTILIDADES (Verde)
+    loadIconTexture("measure", (iconsDir / "rule.png").string());
     loadIconTexture("layers", (iconsDir / "capas.png").string());
     loadIconTexture("props", (iconsDir / "properties.png").string());
 
@@ -740,8 +746,12 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     // =========================================================================
     ImVec4 colorDraw(0.2f, 0.4f, 0.8f, 1.0f);
     toolIconButton("line", "Dibujar Línea", "L", colorDraw);
+    toolIconButton("polyline", "Dibujar Polilínea", "PL", colorDraw);
+    toolIconButton("polygon", "Dibujar Polígono", "POL", colorDraw);
+    toolIconButton("triangle", "Dibujar Triángulo", "TRI", colorDraw);
     toolIconButton("circle", "Dibujar Círculo", "C", colorDraw);
     toolIconButton("arc", "Dibujar Arco", "A", colorDraw);
+    toolIconButton("ellipse", "Dibujar Elipse", "EL", colorDraw);
     toolIconButton("text", "Insertar Texto", "T", colorDraw);
 
     // Separador
@@ -813,6 +823,14 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     ImVec4 colorUtil(0.2f, 0.6f, 0.4f, 1.0f);
     utilIconButton("layers", "Gestor de Capas", colorUtil);
     utilIconButton("props", "Panel de Propiedades", colorUtil);
+
+    // Separador sutil antes de Medir
+    ImGui::Dummy(ImVec2(2, 28));
+    ImGui::SameLine();
+    ImGui::Separator();
+    ImGui::SameLine();
+
+    toolIconButton("measure", "Medir Distancia", "DIST", colorUtil);
 
     ImGui::End();
     ImGui::PopStyleVar(2);
