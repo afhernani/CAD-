@@ -125,6 +125,9 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("stretch", (iconsDir / "estirar.png").string());
     loadIconTexture("array", (iconsDir / "Matriz-Rectangular.png").string());
     loadIconTexture("explode", (iconsDir / "descomponer.png").string());
+    // Iconos de dibujo
+    loadIconTexture("block_create", (iconsDir / "bloque.png").string());
+    loadIconTexture("block_insert", (iconsDir / "insertar.png").string());
 
     // 3. Iconos de UTILIDADES (Verde)
     loadIconTexture("measure", (iconsDir / "rule.png").string());
@@ -768,11 +771,13 @@ void ImGuiManager::drawToolbar(Engine& engine) {
     toolIconButton("ellipse", "Dibujar Elipse", "EL", colorDraw);
     toolIconButton("text", "Insertar Texto", "T", colorDraw);
 
+    //Separador sutil y los iconos de Bloques
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
+    toolIconButton("block_create", "Crear Bloque", "BLOCK", colorDraw);
+    toolIconButton("block_insert", "Insertar Bloque", "INSERT", colorDraw);
+
     // Separador
-    ImGui::Dummy(ImVec2(2, 28));
-    ImGui::SameLine();
-    ImGui::Separator();
-    ImGui::SameLine();
+    ImGui::Dummy(ImVec2(2, 28)); ImGui::SameLine(); ImGui::Separator(); ImGui::SameLine();
 
     // =========================================================================
     // SECCIÓN: MODIFICACIÓN (Naranja) - AHORA CON ICONOS
