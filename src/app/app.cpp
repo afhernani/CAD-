@@ -632,13 +632,32 @@ namespace cad {
     }
 
     void App::handleCanvasClick(const Point2D& worldPoint) {
-        std::cout << "[DEBUG APP] handleCanvasClick llamado con punto: (" 
-              << worldPoint.x << ", " << worldPoint.y << ")" << std::endl;
-        std::cout << "[DEBUG APP] Modo actual: " << static_cast<int>(engine_.currentMode) << std::endl;
-        
-        double tolerance = 5.0 / view_.getScale();
+        // 0. Determinar el punto real (con snap si está activo)
+        Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
 
-        // 1. Modo GRIP_EDIT: terminar edición
+        // =========================================================================
+        // 1. COMANDOS ACTIVOS: Prioridad absoluta. Ellos gestionan el clic.
+        // =========================================================================
+        if (engine_.activeCommand_) {
+            // Delegamos TODO el manejo del clic al comando activo
+            engine_.activeCommand_->onPoint(targetPoint, engine_);
+            
+            // Actualizamos el mensaje de estado
+            engine_.statusMessage = engine_.activeCommand_->getStatusMessage();
+            
+            // Si el comando ha terminado, lo limpiamos y volvemos al modo IDLE
+            if (engine_.activeCommand_->isComplete()) {
+                engine_.activeCommand_.reset();
+                engine_.currentMode = Mode::IDLE;
+                engine_.statusMessage = "Listo";
+            }
+            
+            inputBuffer_.clear(); // Limpiamos el buffer de texto por si acaso
+            return; // ¡IMPORTANTE! Salimos. El comando ya procesó este clic.
+        }
+        // =========================================================================
+
+        // 2. Modo GRIP_EDIT: terminar edición de grip
         if (engine_.currentMode == Mode::GRIP_EDIT) {
             engine_.currentMode = Mode::IDLE;
             engine_.activeGripEntity = nullptr;
@@ -647,19 +666,19 @@ namespace cad {
             return;
         }
 
-        // 2. Modo IDLE: buscar grips o iniciar selección por ventana
+        // 3. Modo IDLE: buscar grips o iniciar selección por ventana
         if (engine_.currentMode == Mode::IDLE) {
+            double tolerance = 5.0 / view_.getScale();
             Entity* hitEntity = nullptr;
             int hitIndex = -1;
             
             for (Entity* e : engine_.selectedEntities) {
-                // >>> FILTRO DE SEGURIDAD: No permitir grips en capas bloqueadas/congeladas <<<
                 const Layer* layer = engine_.doc.getLayer(e->layerName);
                 if (!layer || !layer->visible || layer->frozen || layer->locked) continue;
 
                 auto grips = e->getGripPoints();
                 for (int i = 0; i < static_cast<int>(grips.size()); ++i) {
-                    double dist = std::hypot(worldPoint.x - grips[i].x, worldPoint.y - grips[i].y);
+                    double dist = std::hypot(targetPoint.x - grips[i].x, targetPoint.y - grips[i].y);
                     if (dist <= tolerance) {
                         hitEntity = e;
                         hitIndex = i;
@@ -677,8 +696,8 @@ namespace cad {
                 engine_.statusMessage = "Arrastrando grip...";
             } else {
                 // Iniciar selección por ventana
-                selectionStartPoint_ = worldPoint;
-                selectionEndPoint_ = worldPoint;
+                selectionStartPoint_ = targetPoint;
+                selectionEndPoint_ = targetPoint;
                 isSelectingByWindow_ = true;
                 
                 if (!sf::Keyboard::isKeyPressed(sf::Keyboard::LShift) && 
@@ -687,113 +706,6 @@ namespace cad {
                 }
             }
             return;
-        }
-
-        // 3. Comandos activos con lógica especial
-        // >>> STRETCH <<<
-        if (engine_.currentMode == Mode::STRETCH && engine_.activeCommand_) {
-            if (auto* stretchCmd = dynamic_cast<StretchCommand*>(engine_.activeCommand_.get())) {
-                if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP1) {
-                    stretchCmd->setWindowP1(worldPoint);
-                    engine_.statusMessage = "STRETCH | Esquina opuesta de la ventana:";
-                    return;
-                }
-                else if (stretchCmd->getStep() == StretchCommand::Step::SelectingWindowP2) {
-                    stretchCmd->setWindowP2(worldPoint);
-                    double minX = std::min(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
-                    double maxX = std::max(stretchCmd->getWindowP1().x, stretchCmd->getWindowP2().x);
-                    double minY = std::min(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
-                    double maxY = std::max(stretchCmd->getWindowP1().y, stretchCmd->getWindowP2().y);
-                    
-                    std::vector<Entity*> found;
-                    for (auto& entity : engine_.doc.entities) {
-                        auto grips = entity->getGripPoints();
-                        for (const auto& grip : grips) {
-                            if (grip.x >= minX && grip.x <= maxX && grip.y >= minY && grip.y <= maxY) {
-                                found.push_back(entity.get());
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!found.empty()) {
-                        stretchCmd->setSelectedEntities(found);
-                        stretchCmd->advanceToBasePoint();
-                        engine_.statusMessage = "STRETCH | Punto base:";
-                    } else {
-                        engine_.statusMessage = "STRETCH | No hay entidades. Intenta de nuevo:";
-                        stretchCmd->resetWindow();
-                    }
-                    return;
-                }
-            }
-        }
-
-        // >>> BLOCK CREATE <<<
-        if (engine_.currentMode == Mode::BLOCK_CREATE && engine_.activeCommand_) {
-            if (auto* blockCmd = dynamic_cast<BlockCreateCommand*>(engine_.activeCommand_.get())) {
-                if (blockCmd->getStep() == BlockCreateCommand::Step::WaitingBasePoint) {
-                    std::ostringstream ossCoord;
-                    ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
-                    engine_.processInput(ossCoord.str());
-                    inputBuffer_.clear();
-                    return;
-                }
-                else if (blockCmd->getStep() == BlockCreateCommand::Step::SelectingEntities) {
-                    double minDist = 10.0 / view_.getScale();
-                    Entity* found = nullptr;
-                    for (auto& entity : engine_.doc.entities) {
-                        if (dynamic_cast<BlockInsert*>(entity.get())) continue;
-                        if (entity->isNear(worldPoint, minDist)) {
-                            found = entity.get();
-                            break;
-                        }
-                    }
-                    if (found) {
-                        blockCmd->addSelectedEntity(found);
-                        engine_.statusMessage = "BLOQUE | " +
-                            std::to_string(blockCmd->getSelectedEntities().size()) +
-                            " entidades. Enter para terminar:";
-                    }
-                    return;
-                }
-            }
-        }
-
-        // >>> BLOCK INSERT <<<
-        if (engine_.currentMode == Mode::BLOCK_INSERT && engine_.activeCommand_) {
-            if (auto* insertCmd = dynamic_cast<BlockInsertCommand*>(engine_.activeCommand_.get())) {
-                if (insertCmd->getStep() == BlockInsertCommand::Step::WaitingInsertPoint) {
-                    std::ostringstream ossCoord;
-                    ossCoord << std::fixed << std::setprecision(6) << worldPoint.x << "," << worldPoint.y;
-                    engine_.processInput(ossCoord.str());
-                    inputBuffer_.clear();
-                    return;
-                }
-            }
-        }
-
-        // =====================================================================
-        // 4. Envío genérico de coordenadas al comando activo (CORREGIDO)
-        // =====================================================================
-        if (engine_.activeCommand_ != nullptr) {
-            // Usamos el punto con snap si está activo, si no, el punto del mundo
-            Point2D targetPoint = lastSnapResult_.active ? lastSnapResult_.point : worldPoint;
-            
-            // LLAMADA DIRECTA: Evitamos la conversión a string y el doble procesamiento
-            engine_.activeCommand_->onPoint(targetPoint, engine_);
-            
-            // Actualizamos el mensaje de estado tras la acción
-            engine_.statusMessage = engine_.activeCommand_->getStatusMessage();
-            
-            // Si el comando indica que ha terminado, lo limpiamos y volvemos a IDLE
-            if (engine_.activeCommand_->isComplete()) {
-                engine_.activeCommand_ = nullptr;
-                engine_.currentMode = Mode::IDLE; 
-            }
-            
-            inputBuffer_.clear();
-            return; // Salimos, el clic ya fue procesado correctamente
         }
     }
 

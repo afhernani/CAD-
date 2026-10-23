@@ -24,23 +24,9 @@ namespace cad {
         void drawFeedback(sf::RenderWindow& window, const View& view, Engine& engine,
                           const Point2D& mouseWorldPos, sf::Font& font) const override;
 
-        // Getters para feedback visual y app.cpp
-        enum class Step { SelectingWindowP1, SelectingWindowP2, WaitingBasePoint, WaitingDestPoint };
-        Step getStep() const { return step_; }
-        Point2D getWindowP1() const { return windowP1_; }
-        Point2D getWindowP2() const { return windowP2_; }
-        bool hasWindowP1() const { return hasWindowP1_; }
-        bool hasWindow() const { return hasWindow_; }
-        const std::vector<Entity*>& getSelectedEntities() const { return selectedEntities_; }
-
-        // Métodos para que app.cpp gestione la ventana
-        void setWindowP1(const Point2D& p) { windowP1_ = p; hasWindowP1_ = true; }
-        void setWindowP2(const Point2D& p) { windowP2_ = p; hasWindow_ = true; }
-        void setSelectedEntities(const std::vector<Entity*>& entities) { selectedEntities_ = entities; }
-        void advanceToBasePoint() { step_ = Step::WaitingBasePoint; }
-        void resetWindow() { windowP1_ = {0,0}; windowP2_ = {0,0}; hasWindowP1_ = false; hasWindow_ = false; }
-
     private:
+        enum class Step { SelectingWindowP1, SelectingWindowP2, WaitingBasePoint, WaitingDestPoint };
+        
         Step step_ = Step::SelectingWindowP1;
         Point2D windowP1_;
         Point2D windowP2_;
@@ -53,6 +39,7 @@ namespace cad {
         bool finished_ = false;
         std::string statusMessage_;
 
+        void performWindowSelection(Engine& engine);
         void executeStretch(Engine& engine);
     };
 
