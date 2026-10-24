@@ -140,6 +140,7 @@ void ImGuiManager::init(sf::RenderWindow& window, const std::string& fontPath) {
     loadIconTexture("dimh", (iconsDir / "cota_horizontal.png").string());
     loadIconTexture("dimv", (iconsDir / "cota_vertical.png").string());
     loadIconTexture("dimr", (iconsDir / "cota_radio.png").string());
+    loadIconTexture("dimd", (iconsDir / "cota_diametro.png").string());
 
     initialized_ = true;
 }
